@@ -167,6 +167,11 @@ export class TripSync {
     return () => this.listeners.delete(cb)
   }
 
+  /** 立刻把還沒送的改動送出去，不等下一次計時（App 被切到背景前呼叫）。 */
+  flush(): void {
+    this.enqueue(() => this.tick())
+  }
+
   /** 等目前排隊中的處理做完（測試用）。 */
   idle(): Promise<void> {
     return this.queue

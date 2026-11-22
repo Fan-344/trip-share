@@ -134,7 +134,11 @@ export async function openTrip(reg: Registry, tripId: string, withSync = true): 
     })
     await sync.start()
     // 手機切回畫面或恢復網路時，立刻重連，不等重試計時。
-    const kick = () => { if (document.visibilityState === 'visible') relays.forEach((r) => r.kick()) }
+    // 切到背景或關掉之前，把剛改的東西馬上送出，不等 2.5 秒的計時（手機常常改完就切走）。
+    const kick = () => {
+      if (document.visibilityState === 'visible') relays.forEach((r) => r.kick())
+      else sync!.flush()
+    }
     document.addEventListener('visibilitychange', kick)
     addEventListener('online', kick)
     closers.push(() => {

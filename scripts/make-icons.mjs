@@ -2,8 +2,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { crc32, deflateSync } from 'node:zlib'
 
-const BG = [0x17, 0x61, 0x6b]
-const FG = [0xff, 0xff, 0xff]
+const BG = [0xf6, 0xd2, 0x7a]
+const FG = [0x3e, 0x3a, 0x39]
 
 /** 座標是 0–1。圖形留在中央 60% 以內，Android 把圖示裁成圓形時也不會被切到。 */
 function inPin(x, y) {
