@@ -337,3 +337,87 @@ button, .btn, .tabs a, .card.tap { transition: transform 0.08s ease, background-
 
 /* 選檔案的輸入框：字級一樣固定 16px，避免 iPhone 點進去放大。 */
 input[type="file"] { font: inherit; font-size: 16px; width: 100%; }
+
+/* ---- 行前準備與購物 ---- */
+.tabs a { font-size: 0.9rem; white-space: nowrap; }
+.group { margin: 12px 0 2px; font-size: 0.82rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.group::before { content: ""; width: 8px; height: 8px; border: 2px solid var(--ink); border-radius: 50%; background: var(--accent); }
+.check .name small { display: block; color: var(--muted); font-size: 0.8rem; text-decoration: none; }
+ul.points { margin: 8px 0 0; padding-left: 1.2em; }
+ul.points li { padding: 3px 0; }
+.shopday { display: flex; align-items: center; gap: 10px; margin: 22px 0 10px; }
+.shopday span { line-height: 1.3; }
+.shopday small { display: block; color: var(--muted); }
+.card.bought { background: var(--green-l); }
+.card.bought h3 { text-decoration: line-through; color: var(--muted); }
+
+/* ================= 折疊 ================= */
+.chev { transition: transform 0.2s ease; }
+.chev.open { transform: rotate(180deg); }
+/* 區塊標題當開關：外觀跟原本的 h2 一樣，右邊多一個箭頭 */
+.fold { margin-top: 18px; }
+.foldhead {
+  width: 100%; min-height: 44px; padding: 4px 2px; gap: 8px; justify-content: flex-start; text-align: left;
+  border: 0; border-radius: 10px; background: transparent; font-size: 1.15rem;
+}
+.foldhead .dot { width: 12px; height: 12px; flex: none; border: var(--line); border-radius: 50%; background: var(--accent); }
+.foldhead .muted { font-weight: 400; }
+.foldbody { margin-top: 10px; animation: up 0.25s ease both; }
+.foldbody > h2:first-child { margin-top: 0; }
+/* 卡片自己的標題列也能當開關 */
+.cardhead { display: flex; align-items: center; gap: 8px; width: 100%; cursor: pointer; }
+.cardhead h3 { overflow-wrap: anywhere; }
+.card.shut { padding-bottom: 12px; }
+.card.shut .bar { margin-bottom: 0; }
+/* 清單裡的分類標題：可點、顯示幾項完成 */
+button.group {
+  width: 100%; min-height: 36px; margin: 8px 0 0; padding: 2px 0; justify-content: flex-start; gap: 6px;
+  border: 0; border-radius: 8px; background: transparent; font-size: 0.86rem; font-weight: 700;
+}
+button.group .muted { font-weight: 400; margin-left: auto; }
+/* 行程項目：收起來只留兩行說明 */
+.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
+.stop .card { padding: 10px 14px; margin-bottom: 10px; }
+/* 一行式的精簡列（次要的航班、已買到的東西） */
+.mini { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
+.mini .grow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 行程卡片上的地圖按鈕：收起來時是一個圖釘，點了直接開地圖 */
+.maplink { display: grid; place-items: center; width: 34px; height: 34px; margin: -6px 0; border: 2px solid var(--ink); border-radius: 50%; background: var(--mizu-l); flex: none; }
+
+/* ---- 照片與現場詢問 ---- */
+.photo { display: block; width: 100%; max-height: 220px; object-fit: cover; border: var(--line); border-radius: 14px; margin-bottom: 10px; background: #fff; }
+.photo.tap { cursor: zoom-in; }
+.photo.full { max-height: none; object-fit: contain; }
+.photofield { margin: 6px 0 10px; }
+.card.asking { background: var(--mizu-l); }
+
+/* ---- 數量的加減按鈕 ---- */
+.stepper { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.stepper button { width: 44px; min-height: 44px; padding: 0; border-radius: 50%; }
+.stepper output { min-width: 40px; text-align: center; font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ---- 全螢幕看照片 ---- */
+.lightbox {
+  position: fixed; inset: 0; z-index: 40; background: rgba(40, 37, 36, 0.96);
+  display: flex; align-items: center; justify-content: center;
+  overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  animation: fadein 0.18s ease;
+}
+.lightbox img { max-width: 100vw; max-height: 100dvh; object-fit: contain; cursor: zoom-in; display: block; }
+/* 放大：照片變成螢幕的兩倍半寬，外框可以捲動，用手指拖著看 */
+.lightbox.zoomed { align-items: flex-start; justify-content: flex-start; }
+.lightbox.zoomed img { flex: none; max-width: none; max-height: none; width: 250vw; cursor: zoom-out; }
+.lightbox-close {
+  position: fixed; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));
+  width: 46px; min-height: 46px; padding: 0; border-radius: 50%; background: var(--paper);
+}
+.lightbox-hint {
+  position: fixed; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); text-align: center;
+  color: var(--paper); font-size: 0.8rem; opacity: 0.8; pointer-events: none;
+}
+
+/* ---- 連點不放大 ---- */
+/* 手機瀏覽器預設「快速點兩下」會放大畫面，連按加號、減號或勾選時很容易誤觸。
+   manipulation：保留捲動和兩指縮放，只關掉點兩下放大。 */
+*, *::before, *::after { touch-action: manipulation; }

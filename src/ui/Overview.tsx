@@ -9,6 +9,7 @@ import {
 import { THEMES, autoTheme, themeName } from '../themes'
 import { Art, RouteArc } from './Art'
 import { Empty, Farewell } from './bits'
+import { Chevron } from './fold'
 import { Icon } from './Icons'
 import { Field, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
@@ -34,6 +35,9 @@ export function Overview({ trip, theme }: TabProps) {
   const days = daysBetween(meta.startDate, meta.endDate)
 
   const next = flights.find((f) => toInstant(f.dep) > now)
+  // 預設展開的那一班：接下來要搭的；都飛完了就是最後一班。
+  const focus = next ?? flights[flights.length - 1]
+  const [openFlight, setOpenFlight] = useState<Record<string, boolean>>({})
   const t = today()
   const dayIndex = days.indexOf(t)
 
@@ -69,16 +73,31 @@ export function Overview({ trip, theme }: TabProps) {
       {flights.map((f) => {
         const mins = Math.round((toInstant(f.arr) - toInstant(f.dep)) / 60_000)
         const pnr = trip.getPnr(f.id)
+        // 只展開接下來要搭的那一班，其他縮成一行；點一下可以展開或收起。
+        const open = openFlight[f.id] ?? (focus ? f.id === focus.id : false)
+        const toggle = () => setOpenFlight({ ...openFlight, [f.id]: !open })
+        if (!open) {
+          return (
+            <div class="card tap mini" key={f.id} role="button" aria-expanded="false" onClick={toggle}>
+              <span class="chip yellow">{f.code}</span>
+              <span class="grow">
+                {fullDay(f.dep.local.slice(0, 10))}　{f.from} {hm(f.dep.local)} ～ {f.to} {hm(f.arr.local)}
+              </span>
+              <Chevron open={false} />
+            </div>
+          )
+        }
         return (
-          <div class="card tap" key={f.id} onClick={() => setSheet({ kind: 'flight', id: f.id })}>
+          <div class="card" key={f.id}>
             <EditedNotice rec={f} trip={trip} now={now} />
-            <div class="row wrap">
+            <div class="row wrap cardhead" role="button" aria-expanded="true" onClick={toggle}>
               <span class="chip yellow">{f.code}</span>
               <span class="muted">{fullDay(f.dep.local.slice(0, 10))}</span>
               {f.cabin && <span class="chip">{f.cabin}</span>}
-              <span class="muted right">
-                {mins > 0 && `${Math.floor(mins / 60)} 小時 ${mins % 60} 分`}{f.aircraft && `・${f.aircraft}`}
+              <span class="muted grow" style="text-align:right">
+                {mins > 0 && `${Math.floor(mins / 60)} 小時 ${mins % 60} 分`}
               </span>
+              <Chevron open />
             </div>
             <div class="route">
               <div>
@@ -99,7 +118,12 @@ export function Overview({ trip, theme }: TabProps) {
                 <div class="muted">{placeName(f.arr.tz, flights)}當地時間</div>
               </div>
             </div>
-            {pnr && <div class="muted">訂位代號 {pnr.code}（只存在這支手機）</div>}
+            <div class="row">
+              <span class="muted grow">
+                {f.aircraft}{f.aircraft && pnr && '・'}{pnr && `訂位代號 ${pnr.code}（只存在這支手機）`}
+              </span>
+              <button class="small" onClick={() => setSheet({ kind: 'flight', id: f.id })}><Icon id="pencil" size={16} />修改</button>
+            </div>
           </div>
         )
       })}

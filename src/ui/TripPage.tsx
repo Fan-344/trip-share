@@ -11,6 +11,7 @@ import { Lists } from './Lists'
 import { More } from './More'
 import { Overview } from './Overview'
 import { Plan } from './Plan'
+import { Shop } from './Shop'
 
 export interface TabProps {
   trip: Trip
@@ -20,7 +21,7 @@ export interface TabProps {
   theme: ThemeId
 }
 
-const TABS: [string, string][] = [['home', '總覽'], ['plan', '行程'], ['lists', '清單'], ['more', '更多']]
+const TABS: [string, string][] = [['home', '總覽'], ['plan', '行程'], ['lists', '準備'], ['shop', '購物'], ['more', '更多']]
 
 export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; tab: string }) {
   const [opened, setOpened] = useState<OpenTrip | null>(null)
@@ -40,7 +41,7 @@ export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; 
 }
 
 function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: string }) {
-  useDocs([trip.docs.main, trip.docs.priv, trip.docs.device])
+  useDocs([trip.docs.main, trip.docs.comments, trip.docs.priv, trip.docs.device])
   const meta = trip.meta
   // 佈景主題設在 <html> 上，整頁（含底色）一起換；離開行程時拿掉，首頁用預設配色。
   const theme = resolveTheme(meta.theme, trip.flights.all())
@@ -116,7 +117,7 @@ function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: str
         </nav>
       </div>
       <div class="page">
-        {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}
+        {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'shop' ? <Shop {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { currentPlatform } from '../pwa'
 import { BackupError, createBackup, readBackup, restoreBackup, type BackupData, type RestoreMode, type RestoreResult } from '../store/backup'
 import type { Registry } from '../store/local'
 import { ago } from '../time'
+import { Fold } from './fold'
 import { Icon } from './Icons'
 import { Field, Seg, Sheet, useNow, value } from './kit'
 
@@ -68,12 +69,10 @@ export function BackupCard({ reg }: { reg: Registry }) {
   const stale = reg.trips().length > 0 && (last === null || now - last > 7 * DAY)
   return (
     <div>
-      <h2>備份</h2>
+      {/* 該備份了（沒備份過或超過 7 天）才預設展開提醒；平常收著，標題列看得到上次備份的時間。 */}
+      <Fold key={String(stale)} title="備份" summary={last === null ? '還沒備份過' : `上次：${ago(last, now)}`} open={stale}>
       <div class="card flat" style={stale ? 'background:var(--yellow-l)' : ''}>
-        <p>
-          <b>上次備份：{last === null ? '還沒備份過' : ago(last, now)}</b>
-        </p>
-        <p class="muted">
+        <p class="muted" style="margin-top:0">
           資料只存在這支手機。換手機、清除瀏覽器資料或手機遺失時，備份檔可以把身分、所有行程和私人清單找回來。
         </p>
         <div class="row wrap">
@@ -83,6 +82,7 @@ export function BackupCard({ reg }: { reg: Registry }) {
           <button onClick={() => setSheet('restore')}>從備份檔還原</button>
         </div>
       </div>
+      </Fold>
       {sheet === 'download' && <DownloadSheet reg={reg} onClose={() => setSheet(null)} />}
       {sheet === 'restore' && <RestoreSheet reg={reg} onClose={() => setSheet(null)} />}
       {justRestored && <ResultSheet result={justRestored} onClose={() => setJustRestored(null)} />}

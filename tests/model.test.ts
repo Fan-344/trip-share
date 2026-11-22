@@ -191,3 +191,90 @@ describe('不該離開手機的資料', () => {
     expect(new TextDecoder().decode(Y.encodeStateAsUpdate(a.docs.main))).not.toContain('COMMENTTEXT')
   })
 })
+
+describe('行前準備與購物', () => {
+  it('清單項目可以有分類與說明，並能修改', () => {
+    const { a, b } = twoPhones()
+    const list = a.lists.get(a.createList({ kind: 'shared', title: '出發前清單', owners: [] }))!
+    const id = a.addListItem(list, '護照效期確認', { group: '證件', note: '至少 6 個月' })
+    sync(a, b)
+    expect(b.listItemsOf(list)[0]).toMatchObject({ name: '護照效期確認', group: '證件', note: '至少 6 個月' })
+    b.updateListItem('shared', id, { note: '已確認' })
+    sync(a, b)
+    expect(a.listItemsOf(list)[0].note).toBe('已確認')
+  })
+
+  it('兩個人同時請同一個人代買，數量都算進去', () => {
+    const { a, b } = twoPhones()
+    const id = a.shop.create({ name: '包包', note: '', date: '', itemId: '', place: '', owner: 'pubA', qty: 1, bought: false })
+    sync(a, b)
+    // 第三支手機
+    const c = new Trip(newTripDocs(), { pubkey: 'pubC', device: 'devC' })
+    for (const k of ['main', 'comments'] as const) Y.applyUpdate(c.docs[k], Y.encodeStateAsUpdate(a.docs[k]))
+    b.setWant(id, 2)
+    c.setWant(id, 1)
+    sync(a, b)
+    for (const k of ['main', 'comments'] as const) {
+      Y.applyUpdate(a.docs[k], Y.encodeStateAsUpdate(c.docs[k]))
+      Y.applyUpdate(c.docs[k], Y.encodeStateAsUpdate(a.docs[k]))
+    }
+    sync(a, b)
+    for (const t of [a, b, c]) {
+      expect(t.shopItems()[0]).toMatchObject({ qty: 1, total: 4, wants: { pubB: 2, pubC: 1 } })
+    }
+    b.setWant(id, 0)
+    sync(a, b)
+    expect(a.shopItems()[0]).toMatchObject({ total: 2, wants: { pubC: 1 } })
+  })
+
+  it('買到了會同步，並留下可還原的紀錄', () => {
+    const { a, b } = twoPhones()
+    const id = a.shop.create({ name: '芒果乾', note: '', date: '', itemId: '', place: '', owner: '', qty: 3, bought: false })
+    sync(a, b)
+    b.shop.update(id, { bought: true })
+    sync(a, b)
+    expect(a.shopItems()[0].bought).toBe(true)
+    a.revert(a.historyEntries().find((h) => h.coll === 'shop' && h.field === 'bought')!)
+    expect(a.shopItems()[0].bought).toBe(false)
+  })
+})
+
+describe('現場詢問', () => {
+  const ask = { name: '手工皂', note: '', date: '', itemId: '', place: '市集', owner: 'pubA', qty: 1, bought: false, ask: true, price: '120 泰銖' }
+
+  it('回覆「要」「不用」和「還沒回」分得清楚，收回也可以', () => {
+    const { a, b } = twoPhones()
+    const id = a.shop.create(ask)
+    sync(a, b)
+    expect(a.shopItems()[0]).toMatchObject({ wants: {}, declined: [], total: 1 })
+
+    b.setWant(id, 0)
+    sync(a, b)
+    expect(a.shopItems()[0]).toMatchObject({ wants: {}, declined: ['pubB'], total: 1 })
+
+    b.setWant(id, 2)
+    sync(a, b)
+    expect(a.shopItems()[0]).toMatchObject({ wants: { pubB: 2 }, declined: [], total: 3 })
+
+    b.setWant(id, null)
+    sync(a, b)
+    expect(a.shopItems()[0]).toMatchObject({ wants: {}, declined: [], total: 1 })
+  })
+
+  it('照片放在留言文件，不在行程主文件；換照片只留一張', () => {
+    const { a, b } = twoPhones()
+    const id = a.shop.create(ask)
+    const first = new Uint8Array(3000).fill(7)
+    const second = new Uint8Array(3000).fill(9)
+    a.setPhoto(id, first)
+    a.setPhoto(id, second)
+    sync(a, b)
+    expect(b.photoOf(id)).toEqual(second)
+    expect(b.photos.all()).toHaveLength(1)
+    expect(Y.encodeStateAsUpdate(a.docs.main).length).toBeLessThan(3000)
+    expect(Y.encodeStateAsUpdate(a.docs.comments).length).toBeGreaterThan(3000)
+    a.setPhoto(id, null)
+    sync(a, b)
+    expect(b.photoOf(id)).toBeUndefined()
+  })
+})

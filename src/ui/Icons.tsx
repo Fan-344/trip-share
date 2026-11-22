@@ -26,8 +26,10 @@ const ICONS: Record<string, JSX.Element> = {
     </g>
   ),
   close: <path stroke-width="3" d="M9 9l14 14M23 9L9 23" />,
+  chevron: <path stroke-width="3" d="M8 12l8 8l8 -8" />,
   back: <path stroke-width="3" d="M26 16H7M14 8l-8 8l8 8" />,
   plus: <path stroke-width="3" d="M16 7v18M7 16h18" />,
+  minus: <path stroke-width="3" d="M7 16h18" />,
   check: <path stroke-width="3.200" d="M7 17l6 6L25 10" />,
   more: (
     <g fill="var(--ink)" stroke="none">

@@ -95,6 +95,13 @@ export interface Item {
   cat?: ItemCat
   /** 時間是大約的（顯示「約」）。 */
   approx?: boolean
+  /** 地圖連結（從地圖 App 複製的分享連結）。 */
+  mapUrl?: string
+  /**
+   * 沒貼地圖連結時，要不要用地點名稱到地圖搜尋。編輯畫面的勾選項。
+   * 沒有這個欄位（舊資料）時看類別：用餐、景點、體驗、購物預設要，其他預設不要。
+   */
+  mapSearch?: boolean
 }
 
 export type ItemCat = '' | 'flight' | 'transport' | 'food' | 'sight' | 'activity' | 'rest' | 'shop' | 'stay'
@@ -111,6 +118,55 @@ export interface List {
 export interface ListItem {
   listId: string
   name: string
+  /** 分類（例如「證件」「衣物」）；同一份清單裡相同分類的項目排在一起。 */
+  group?: string
+  /** 補充說明（例如「需至少到 2027/5/25 之後」）。 */
+  note?: string
+}
+
+/** 行前準備頁的重點說明（例如「簽證與入境重點」）：只有文字，不用勾。 */
+export interface Note {
+  title: string
+  /** 一行一個重點。 */
+  body: string
+}
+
+/** 購物清單的一項。代買的需求另外存（每個成員各自一格，見 Trip.setWant）。 */
+export interface ShopItem {
+  name: string
+  note: string
+  /** 預計哪一天買；空白是還沒決定。 */
+  date: string
+  /** 搭配哪個行程項目去買（行程項目的 ID）；空白是沒有指定。 */
+  itemId: string
+  place: string
+  /** 負責去買的人（公鑰）；空白是還沒有人負責。 */
+  owner: string
+  /** 負責的人自己要買幾個。 */
+  qty: number
+  bought: boolean
+  /**
+   * 現場詢問：我在店裡看到東西，問大家要不要。跟事先計畫的代購差在——
+   * 每個人都要回覆（要幾個，或不用），畫面會列出誰還沒回。
+   */
+  ask?: boolean
+  /** 價錢，隨手寫（例如「350 泰銖」）。 */
+  price?: string
+}
+
+export type ShopItemView = ShopItem & Meta & {
+  /** 誰要幾個（公鑰 → 數量，只列大於 0 的）。 */
+  wants: Record<string, number>
+  /** 明確回覆「不用」的人。 */
+  declined: string[]
+  /** 合計要買幾個（自己的加上別人要的）。 */
+  total: number
+}
+
+/** 照片（縮小過的 JPEG）。放在留言文件，跟行程主文件分開同步。ref 是它屬於哪一筆（例如購物項目的 ID）。 */
+export interface Photo {
+  ref: string
+  data: Uint8Array
 }
 
 export interface CheckState {

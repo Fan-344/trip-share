@@ -6,6 +6,7 @@ import { THEMES } from '../themes'
 import { fullDay } from '../time'
 import { Art } from './Art'
 import { BackupCard, Recover } from './Backup'
+import { Fold } from './fold'
 import { Icon } from './Icons'
 import { Field, PasteInvite, Sheet, useDocs, useHash, value } from './kit'
 import { TripPage } from './TripPage'
@@ -188,8 +189,9 @@ function Home({ reg }: { reg: Registry }) {
         </button>
       ))}
 
-      <h2>加入別人的行程</h2>
+      <Fold key={String(trips.length === 0)} title="加入別人的行程" open={trips.length === 0}>
       <PasteInvite />
+      </Fold>
 
       <BackupCard reg={reg} />
 

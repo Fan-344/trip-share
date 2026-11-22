@@ -153,6 +153,32 @@ export function ago(at: number, now = Date.now()): string {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+/** 這些類別的地點通常是找得到的店家或景點，預設用地點名稱找地圖；交通、休息之類的預設不要。 */
+const SEARCH_BY_DEFAULT = ['food', 'sight', 'activity', 'shop']
+
+/** 沒貼連結時要不要用地點名稱找地圖：有明確勾選就照勾選，沒有就看類別。 */
+export function mapSearchOn(item: { mapSearch?: boolean; cat?: string }): boolean {
+  return item.mapSearch ?? SEARCH_BY_DEFAULT.includes(item.cat ?? '')
+}
+
+/**
+ * 行程項目的地圖連結。
+ * - 有貼地圖連結（而且是 http／https）：直接開那個地點（exact）。
+ * - 沒貼、有填地點、而且這個項目要用地點找地圖：到 Google 地圖搜尋；
+ *   near 是所在地（例如「清邁」），加進去比較不會搜到別的城市。
+ * - 其他情況：沒有連結。
+ */
+export function mapLink(
+  item: { mapUrl?: string; place: string; mapSearch?: boolean; cat?: string }, near = '',
+): { url: string; exact: boolean } | null {
+  const pasted = item.mapUrl ? safeUrl(item.mapUrl) : null
+  if (pasted) return { url: pasted, exact: true }
+  const place = item.place.trim()
+  if (!place || !mapSearchOn(item)) return null
+  const query = near && !place.includes(near) ? `${place} ${near}` : place
+  return { url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, exact: false }
+}
+
 /** 別人填的連結只接受 http／https，其他一律不給點（避免 javascript: 之類的網址）。 */
 export function safeUrl(u: string): string | null {
   try {

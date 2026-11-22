@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import { Table, newId } from './table'
 import type {
   Actor, CheckState, Comment, DayInfo, Flight, HistoryEntry, Item, List, ListItem, ListKind,
-  Member, Meta, Pnr, Role, Stay, TripMeta,
+  Member, Meta, Note, Photo, Pnr, Role, ShopItem, ShopItemView, Stay, TripMeta,
 } from './types'
 
 export const SCHEMA = 1
@@ -43,7 +43,10 @@ export class Trip {
   readonly days: Table<DayInfo>
   readonly lists: Table<List>
   readonly listItems: Table<ListItem>
+  readonly notes: Table<Note>
+  readonly shop: Table<ShopItem>
   readonly comments: Table<Comment>
+  readonly photos: Table<Photo>
   readonly privLists: Table<List>
   readonly privListItems: Table<ListItem>
   private readonly metaMap: Y.Map<unknown>
@@ -60,7 +63,10 @@ export class Trip {
     this.days = new Table(main, 'days', actor, this.history)
     this.lists = new Table(main, 'lists', actor, this.history)
     this.listItems = new Table(main, 'listItems', actor, this.history, ['checks'])
+    this.notes = new Table(main, 'notes', actor, this.history)
+    this.shop = new Table(main, 'shop', actor, this.history, ['wants'])
     this.comments = new Table(comments, 'comments', actor)
+    this.photos = new Table(comments, 'photos', actor)
     this.privLists = new Table(priv, 'lists', actor)
     this.privListItems = new Table(priv, 'listItems', actor, null, ['checks'])
     this.pnrs = device.getMap('pnrs')
@@ -153,8 +159,12 @@ export class Trip {
     return kind === 'private' ? this.privListItems : this.listItems
   }
 
-  addListItem(list: List & Meta, name: string): string {
-    return this.itemsTable(list.kind).create({ listId: list.id, name })
+  addListItem(list: List & Meta, name: string, extra: { group?: string; note?: string } = {}): string {
+    return this.itemsTable(list.kind).create({ listId: list.id, name, group: extra.group ?? '', note: extra.note ?? '' })
+  }
+
+  updateListItem(kind: ListKind, id: string, patch: Partial<Pick<ListItem, 'name' | 'group' | 'note'>>): void {
+    this.itemsTable(kind).update(id, patch)
   }
 
   removeListItem(kind: ListKind, id: string): void {
@@ -184,6 +194,53 @@ export class Trip {
       if (checked) checks.set(newId(), { by: this.actor.pubkey, at: Date.now() })
       else [...checks.keys()].forEach((k) => checks.delete(k))
     })
+  }
+
+  // ---- 購物 ----
+
+  shopItems(): ShopItemView[] {
+    return this.shop.all().map((s) => {
+      const wants: Record<string, number> = {}
+      const declined: string[] = []
+      ;(this.shop.raw(s.id)!.get('wants') as Y.Map<number>).forEach((n, who) => {
+        if (n > 0) wants[who] = n
+        else declined.push(who)
+      })
+      return { ...s, wants, declined, total: s.qty + Object.values(wants).reduce((a, b) => a + b, 0) }
+    })
+  }
+
+  /**
+   * 我要幾個。每個成員的數量各自一格，所以兩個人同時說「幫我帶一個」不會互相蓋掉。
+   * - qty 大於 0：要這麼多個。
+   * - qty 是 0：明確回覆「不用」（現場詢問時，這樣問的人才知道你看到了）。
+   * - qty 是 null：收回，當作沒回覆過。
+   */
+  setWant(id: string, qty: number | null): void {
+    const rec = this.shop.raw(id)
+    if (!rec) return
+    const wants = rec.get('wants') as Y.Map<number>
+    const old = wants.get(this.actor.pubkey)
+    const next = qty === null ? undefined : Math.max(0, Math.floor(qty))
+    if (old === next) return
+    this.shop.mutate(id, 'wants', old ?? null, (r) => {
+      const w = r.get('wants') as Y.Map<number>
+      if (next === undefined) w.delete(this.actor.pubkey)
+      else w.set(this.actor.pubkey, next)
+    })
+  }
+
+  // ---- 照片（在留言文件，不在主文件）----
+
+  /** 換掉或拿掉某一筆的照片。每筆最多一張。 */
+  setPhoto(ref: string, data: Uint8Array | null): void {
+    for (const p of this.photos.all()) if (p.ref === ref) this.photos.remove(p.id)
+    if (data) this.photos.create({ ref, data })
+  }
+
+  photoOf(ref: string): Uint8Array | undefined {
+    // 兩個人同時換照片會留下兩張，取比較新的那張
+    return this.photos.all().filter((p) => p.ref === ref).pop()?.data
   }
 
   // ---- 訂位代號（只在 device 文件）----
@@ -216,13 +273,14 @@ export class Trip {
     if (e.op === 'create' || e.op === 'restore') table.remove(e.recId)
     else if (e.op === 'delete') table.restore(e.recId)
     else if (e.field === 'checked') this.setChecked('shared', e.recId, Boolean(e.old))
+    else if (e.field === 'wants') return // 代買數量是每個人自己的，不提供從紀錄還原
     else if (e.field) table.update(e.recId, { [e.field]: e.old })
   }
 
   private mainTables(): Record<string, Table<any>> {
     return {
       members: this.members, flights: this.flights, stays: this.stays, days: this.days,
-      items: this.items, lists: this.lists, listItems: this.listItems,
+      items: this.items, lists: this.lists, listItems: this.listItems, notes: this.notes, shop: this.shop,
     }
   }
 }

@@ -1,5 +1,6 @@
 // 各畫面共用的小元件與 hook。
 import type { ComponentChildren } from 'preact'
+import { createPortal } from 'preact/compat'
 import { useEffect, useState } from 'preact/hooks'
 import { encode } from 'uqr'
 import { Icon } from './Icons'
@@ -38,23 +39,57 @@ export function useNow(ms: number): number {
 
 export const value = (e: Event): string => (e.target as HTMLInputElement).value
 
+/**
+ * 蓋住整個畫面的東西（面板、照片檢視）開著的時候，鎖住底下頁面的捲動。
+ * 用計數：同時開兩層時，要兩層都關了才解鎖。
+ * （以前是「記住原本的值、關掉時還原」，兩層不照順序關的話，頁面會永遠捲不動。）
+ */
+let scrollLocks = 0
+export function useScrollLock(): void {
+  useEffect(() => {
+    if (scrollLocks++ === 0) document.body.style.overflow = 'hidden'
+    return () => {
+      if (--scrollLocks <= 0) {
+        scrollLocks = 0
+        document.body.style.overflow = ''
+      }
+    }
+  }, [])
+}
+
+/**
+ * 把內容直接掛到 <body> 底下，不留在原本的卡片裡。
+ * 卡片有進場動畫（位移），而位移過的元素會把裡面「固定在螢幕上」的東西關在自己的範圍內：
+ * 面板可能只出現在卡片裡、甚至看不到，頁面卻已經被鎖住不能捲——看起來就是卡死。
+ */
+export function Overlay({ children }: { children: ComponentChildren }) {
+  return createPortal(<>{children}</>, document.body)
+}
+
+/** 按 Esc 關閉（接了鍵盤的平板、電腦用）。 */
+export function useEscape(onClose: () => void): void {
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    addEventListener('keydown', f)
+    return () => removeEventListener('keydown', f)
+  }, [onClose])
+}
+
 /** 從畫面底部滑上來的面板，用來新增與編輯。點背景或右上角的叉叉關閉。 */
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ComponentChildren }) {
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
+  useScrollLock()
   return (
-    <div class="sheet-wrap" onClick={onClose}>
-      <div class="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        <div class="sheet-head">
-          <h2>{title}</h2>
-          <button class="ghost" aria-label="關閉" onClick={onClose}><Icon id="close" size={20} /></button>
+    <Overlay>
+      <div class="sheet-wrap" onClick={onClose}>
+        <div class="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
+          <div class="sheet-head">
+            <h2>{title}</h2>
+            <button class="ghost" aria-label="關閉" onClick={onClose}><Icon id="close" size={20} /></button>
+          </div>
+          {children}
         </div>
-        {children}
       </div>
-    </div>
+    </Overlay>
   )
 }
 

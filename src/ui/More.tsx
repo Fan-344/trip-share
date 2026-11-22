@@ -5,16 +5,19 @@ import type { HistoryEntry } from '../model/types'
 import { inviteLink } from '../store/local'
 import { themeName } from '../themes'
 import { ago } from '../time'
+import { Fold } from './fold'
 import { CopyButton, Qr, useNow } from './kit'
 import { BUILD } from './Start'
 import { leaveTrip, type TabProps } from './TripPage'
 
 const COLL: Record<string, string> = {
-  trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', days: '每日標題', lists: '清單', listItems: '清單項目',
+  trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', days: '每日標題', lists: '清單', listItems: '清單項目', notes: '重點說明', shop: '購物',
 }
 const FIELD: Record<string, string> = {
   title: '名稱', startDate: '出發日', endDate: '回程日', theme: '佈景主題', desc: '簡介', nickname: '暱稱', role: '角色',
-  cat: '類別', approx: '大約時間', icon: '圖示',
+  cat: '類別', approx: '大約時間', icon: '圖示', group: '分類', body: '內容', itemId: '搭配的行程',
+  owner: '負責人', qty: '數量', bought: '是否買到', wants: '要的數量', ask: '現場詢問', price: '價錢',
+  mapSearch: '用地點找地圖',
   code: '航班代號', from: '出發機場', to: '抵達機場', dep: '起飛時間', arr: '抵達時間', cabin: '艙等', aircraft: '機型',
   name: '名稱', checkIn: '入住', checkOut: '退房', mapUrl: '地圖連結', confirmed: '確認狀態',
   date: '日期', time: '時間', tz: '時區', note: '說明', place: '地點', transport: '交通', kind: '類型',
@@ -34,6 +37,8 @@ function recordName(trip: Trip, e: HistoryEntry): string {
     case 'days': return e.recId.slice(5).replace('-', '/')
     case 'lists': return trip.lists.get(e.recId)?.title ?? ''
     case 'listItems': return trip.listItems.get(e.recId)?.name ?? ''
+    case 'notes': return trip.notes.get(e.recId)?.title ?? ''
+    case 'shop': return trip.shop.get(e.recId)?.name ?? ''
     default: return ''
   }
 }
@@ -59,7 +64,7 @@ function describe(trip: Trip, e: HistoryEntry): string {
 
 export function More({ trip, reg, sync }: TabProps) {
   const now = useNow(60_000)
-  const [shown, setShown] = useState(20)
+  const [shown, setShown] = useState(10)
   const [showRelays, setShowRelays] = useState(false)
   const me = trip.actor.pubkey
   const ref = reg.trip(trip.meta.id)
@@ -70,7 +75,8 @@ export function More({ trip, reg, sync }: TabProps) {
 
   return (
     <div>
-      <h2>邀請家人</h2>
+      {/* 各區塊都可以收合。只有自己一個人時邀請預設展開，其他時候預設只開成員。 */}
+      <Fold title="邀請家人" summary="QR Code" open={members.length <= 1}>
       {ref && (
         <div class="card center">
           <p>請家人用手機相機掃這個 QR Code，打開後就會加入。</p>
@@ -79,8 +85,9 @@ export function More({ trip, reg, sync }: TabProps) {
           <CopyButton text={inviteLink(ref)} label="人不在旁邊？複製連結用私訊傳" cls="small" />
         </div>
       )}
+      </Fold>
 
-      <h2>成員</h2>
+      <Fold title="成員" summary={`${members.length} 人`} open>
       <div class="card">
         <ul class="plain">
           {members.map((m) => (
@@ -96,8 +103,9 @@ export function More({ trip, reg, sync }: TabProps) {
           <p class="muted">建議至少兩位管理員，其中一人換手機或遺失資料時，另一人還能管理行程。</p>
         )}
       </div>
+      </Fold>
 
-      <h2>修改紀錄</h2>
+      <Fold title="修改紀錄" summary={`${history.length} 筆`}>
       <div class="card">
         {history.length === 0 && <p class="empty">還沒有紀錄。</p>}
         <ul class="plain">
@@ -108,7 +116,7 @@ export function More({ trip, reg, sync }: TabProps) {
                 <div class="muted">{ago(h.at, now)}</div>
               </span>
               {/* 「加入行程」不給還原：那等於把人移出成員名單，不是這個按鈕該做的事。 */}
-              {!(h.coll === 'members' && h.op === 'create') && (
+              {!(h.coll === 'members' && h.op === 'create') && h.field !== 'wants' && (
                 <button class="small" onClick={() => trip.revert(h)}>還原</button>
               )}
             </li>
@@ -116,8 +124,9 @@ export function More({ trip, reg, sync }: TabProps) {
         </ul>
         {history.length > shown && <button class="add" onClick={() => setShown(shown + 50)}>顯示更早的紀錄</button>}
       </div>
+      </Fold>
 
-      <h2>同步</h2>
+      <Fold title="同步" summary={sync ? `連上 ${sync.status().connected}／${sync.status().total} 台` : '未同步'}>
       <div class="card">
         {sync ? (
           <div>
@@ -141,8 +150,9 @@ export function More({ trip, reg, sync }: TabProps) {
           </div>
         ) : <p>這份行程沒有金鑰，無法同步。</p>}
       </div>
+      </Fold>
 
-      <h2>移除與刪除</h2>
+      <Fold title="移除與刪除">
       <div class="card flat">
         <b>從這支手機移除</b>
         <p class="muted">
@@ -165,6 +175,7 @@ export function More({ trip, reg, sync }: TabProps) {
           }}>刪除整份行程</button>
         </div>
       )}
+      </Fold>
 
       <p class="muted center" style="margin-top:28px">版本 {BUILD}</p>
     </div>

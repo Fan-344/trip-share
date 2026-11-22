@@ -3,8 +3,9 @@ import { useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import type { Item, ItemCat, ItemKind } from '../model/types'
 import { defaultDayIcon, themeOf } from '../themes'
-import { ago, dayLabel, daysBetween, defaultTz, fullDay, placeName, today, zoneOptions } from '../time'
+import { ago, dayLabel, daysBetween, defaultTz, fullDay, mapLink, mapSearchOn, placeName, safeUrl, today, zoneOptions } from '../time'
 import { Empty, Farewell } from './bits'
+import { Chevron } from './fold'
 import { CATS, DAY_ICONS, Icon, catOf } from './Icons'
 import { Field, Seg, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
@@ -23,6 +24,7 @@ export function Plan({ trip, theme }: TabProps) {
   const [picked, setPicked] = useState('')
   const day = days.includes(picked) ? picked : days.includes(t) ? t : days[0] ?? meta.startDate
   const [sheet, setSheet] = useState<{ kind: 'item'; id?: string } | { kind: 'day' } | null>(null)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   // 沒填時間的排最前面（整天的事），其餘照時間。
   const list = items.filter((i) => i.date === day).sort((a, b) => a.time.localeCompare(b.time) || a.createdAt - b.createdAt)
@@ -70,28 +72,53 @@ export function Plan({ trip, theme }: TabProps) {
           <div class="timeline">
             {list.map((i) => {
               const cat = catOf(i.cat)
+              // 卡片平常只顯示時間、標題和一行說明，點一下才展開細節；提醒一開始就展開，免得漏看。
+              const open = expanded[i.id] ?? i.kind === 'reminder'
+              const hasMore = !!(i.note || i.place || i.transport)
+              const map = mapLink(i, placeName(i.tz, flights))
+              // 點地圖連結是開地圖，不要順便把卡片展開或收起
+              const openMap = (e: Event) => e.stopPropagation()
               return (
                 <div class={`stop ${i.kind} ${cat ? 'cat' : ''}`} key={i.id}>
                   {cat && <span class="catdot" style={`background:${cat.color}`}><Icon id={cat.icon} size={22} /></span>}
-                  <div class={`card tap ${i.kind === 'reminder' ? 'reminder' : ''}`} onClick={() => setSheet({ kind: 'item', id: i.id })}>
-                    <div class="row wrap">
+                  <div class={`card tap ${i.kind === 'reminder' ? 'reminder' : ''}`} role="button" aria-expanded={open}
+                    onClick={() => setExpanded({ ...expanded, [i.id]: !open })}>
+                    <div class="row">
                       {i.time && i.approx && <span class="approx">約</span>}
                       {i.time ? <span class="time">{i.time}</span> : <span class="chip">整天</span>}
                       {cat && <span class="chip" style={`background:${cat.color}`}>{cat.name}</span>}
                       {i.kind === 'must' && <span class="chip coral">必去</span>}
                       {i.kind === 'reminder' && <span class="chip yellow">提醒</span>}
+                      <span class="grow" />
+                      <Chevron open={open} />
                     </div>
                     <div class="title">{i.title}</div>
-                    {i.note && <div class="note">{i.note}</div>}
-                    {(i.place || i.transport) && (
-                      <div class="row wrap" style="margin-top:6px">
-                        {i.place && <span class="chip mizu"><Icon id="pin" size={14} />{i.place}</span>}
-                        {i.transport && <span class="chip green">{i.transport}</span>}
+                    {i.note && <div class={`note ${open ? '' : 'clamp muted'}`}>{i.note}</div>}
+                    {!open && !i.note && hasMore && <div class="muted clamp">{[i.place, i.transport].filter(Boolean).join('・')}</div>}
+                    {open && (
+                      <div>
+                        {(i.place || i.transport) && (
+                          <div class="row wrap" style="margin-top:6px">
+                            {i.place && <span class="chip mizu"><Icon id="pin" size={14} />{i.place}</span>}
+                            {i.transport && <span class="chip green">{i.transport}</span>}
+                          </div>
+                        )}
+                        <div class="muted" style="margin-top:8px">
+                          {i.time && `${placeName(i.tz, flights)}當地時間・`}{trip.nicknameOf(i.updatedBy)}・{ago(i.updatedAt, now)}
+                        </div>
+                        <div class="row wrap" style="margin-top:8px">
+                          {map && (
+                            <a class="btn small primary" href={map.url} target="_blank" rel="noopener noreferrer" onClick={openMap}>
+                              <Icon id="pin" size={16} />{map.exact ? '開地圖' : '在地圖上找'}
+                            </a>
+                          )}
+                          <span class="grow" />
+                          <button class="small" onClick={(e) => { e.stopPropagation(); setSheet({ kind: 'item', id: i.id }) }}>
+                            <Icon id="pencil" size={16} />修改
+                          </button>
+                        </div>
                       </div>
                     )}
-                    <div class="muted" style="margin-top:6px">
-                      {i.time && `${placeName(i.tz, flights)}當地時間・`}{trip.nicknameOf(i.updatedBy)}・{ago(i.updatedAt, now)}
-                    </div>
                   </div>
                 </div>
               )
@@ -151,16 +178,20 @@ function ItemSheet({ trip, id, day, onClose }: { trip: Trip; id?: string; day: s
   const [f, setF] = useState<Item>({
     date: old?.date ?? day, time: old?.time ?? '', tz: old?.tz ?? defaultTz(day, flights),
     title: old?.title ?? '', note: old?.note ?? '', place: old?.place ?? '', transport: old?.transport ?? '',
-    kind: old?.kind ?? 'normal', cat: old?.cat ?? '', approx: old?.approx ?? false,
+    kind: old?.kind ?? 'normal', cat: old?.cat ?? '', approx: old?.approx ?? false, mapUrl: old?.mapUrl ?? '', mapSearch: old?.mapSearch,
   })
   const set = (patch: Partial<Item>) => setF({ ...f, ...patch })
-  const ok = f.title.trim() && f.date
+  const badUrl = (f.mapUrl ?? '').trim() !== '' && !safeUrl(f.mapUrl ?? '')
+  const ok = f.title.trim() && f.date && !badUrl
   return (
     <Sheet title={id ? '編輯項目' : '新增項目'} onClose={onClose}>
       <form onSubmit={(e) => {
         e.preventDefault()
         if (!ok) return
-        const data = { ...f, title: f.title.trim(), note: f.note.trim(), place: f.place.trim(), transport: f.transport.trim() }
+        const data = {
+          ...f, title: f.title.trim(), note: f.note.trim(), place: f.place.trim(), transport: f.transport.trim(),
+          mapUrl: (f.mapUrl ?? '').trim(), mapSearch: mapSearchOn(f),
+        }
         if (id) trip.items.update(id, data)
         else trip.items.create(data)
         onClose()
@@ -200,6 +231,14 @@ function ItemSheet({ trip, id, day, onClose }: { trip: Trip; id?: string; day: s
           <Field label="地點（可不填）"><input value={f.place} onInput={(e) => set({ place: value(e) })} placeholder="尼曼路" /></Field>
           <Field label="交通（可不填）"><input value={f.transport} onInput={(e) => set({ transport: value(e) })} placeholder="飯店接送" /></Field>
         </div>
+        <Field label={badUrl ? '地圖連結（要以 https:// 開頭）' : '地圖連結（可不填）'}>
+          <input type="url" value={f.mapUrl ?? ''} onInput={(e) => set({ mapUrl: value(e) })} placeholder="從地圖 App 按「分享」複製的連結" />
+        </Field>
+        {/* 沒勾過的時候跟著類別走：用餐、景點、體驗、購物預設勾，其他預設不勾 */}
+        <label class="check" style="border-top:0">
+          <input type="checkbox" checked={mapSearchOn(f)} onChange={(e) => set({ mapSearch: (e.target as HTMLInputElement).checked })} />
+          <span class="name">沒貼連結時，用地點名稱在地圖上找<small>卡片上會出現圖釘。地點是「度假村內」這種泛稱時可以取消。</small></span>
+        </label>
         <Field label="說明（可不填）"><textarea value={f.note} onInput={(e) => set({ note: value(e) })} /></Field>
         <div class="actions">
           {id && <button type="button" class="danger" onClick={() => { trip.items.remove(id); onClose() }}>刪除</button>}

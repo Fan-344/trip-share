@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Flight } from '../src/model/types'
-import { ago, countdown, dayLabel, daysBetween, defaultTz, nightsBetween, placeName, safeUrl, toInstant } from '../src/time'
+import { ago, countdown, dayLabel, daysBetween, defaultTz, mapLink, mapSearchOn, nightsBetween, placeName, safeUrl, toInstant } from '../src/time'
 
 const out: Flight = {
   code: 'JX1751', from: 'TPE', to: 'CNX', cabin: '', aircraft: '',
@@ -67,5 +67,44 @@ describe('連結', () => {
     expect(safeUrl('javascript:alert(1)')).toBeNull()
     expect(safeUrl('data:text/html,hi')).toBeNull()
     expect(safeUrl('不是網址')).toBeNull()
+  })
+})
+
+describe('地圖連結', () => {
+  it('有貼連結就直接用', () => {
+    expect(mapLink({ mapUrl: 'https://maps.app.goo.gl/abc', place: '尼曼路' })).toEqual({ url: 'https://maps.app.goo.gl/abc', exact: true })
+  })
+
+  it('沒貼連結但有地點：用地點加所在地搜尋', () => {
+    const link = mapLink({ place: 'Night Safari', cat: 'sight' }, '清邁')!
+    expect(link.exact).toBe(false)
+    expect(link.url).toBe('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('Night Safari 清邁'))
+    // 地點裡已經有所在地就不重複加
+    expect(mapLink({ place: '清邁夜間動物園', cat: 'sight' }, '清邁')!.url).toContain(encodeURIComponent('清邁夜間動物園'))
+    expect(mapLink({ place: '清邁夜間動物園', cat: 'sight' }, '清邁')!.url).not.toContain(encodeURIComponent(' 清邁'))
+  })
+
+  it('不安全的連結不採用，退回用地點搜尋；什麼都沒有就沒有連結', () => {
+    expect(mapLink({ mapUrl: 'javascript:alert(1)', place: '尼曼路', cat: 'shop' })!.exact).toBe(false)
+    expect(mapLink({ mapUrl: 'javascript:alert(1)', place: '' })).toBeNull()
+    expect(mapLink({ place: '  ' })).toBeNull()
+  })
+})
+
+describe('用地點找地圖的勾選', () => {
+  it('沒勾過時看類別：用餐、景點、體驗、購物預設要，其他不要', () => {
+    for (const cat of ['food', 'sight', 'activity', 'shop']) expect(mapSearchOn({ cat })).toBe(true)
+    for (const cat of ['', 'transport', 'rest', 'stay', 'flight']) expect(mapSearchOn({ cat })).toBe(false)
+    expect(mapSearchOn({})).toBe(false)
+  })
+
+  it('有明確勾選就照勾選', () => {
+    expect(mapSearchOn({ cat: 'rest', mapSearch: true })).toBe(true)
+    expect(mapSearchOn({ cat: 'food', mapSearch: false })).toBe(false)
+    expect(mapLink({ place: '度假村內', cat: 'food', mapSearch: false })).toBeNull()
+    expect(mapLink({ place: '度假村內', cat: 'rest' })).toBeNull()
+    expect(mapLink({ place: '尼曼路', cat: 'rest', mapSearch: true })).not.toBeNull()
+    // 貼了連結的不受勾選影響
+    expect(mapLink({ place: '', cat: 'rest', mapSearch: false, mapUrl: 'https://maps.app.goo.gl/x' })!.exact).toBe(true)
   })
 })

@@ -3,6 +3,16 @@ import type { Actor, HistoryEntry, HistoryOp, Meta } from './types'
 
 export const newId = (): string => crypto.randomUUID()
 
+/**
+ * 建立時間，保證同一支手機上每筆都比前一筆晚至少 1 毫秒。
+ * 一口氣建很多筆（貼上一整份清單、還原、複製）時，才不會因為時間相同而亂了先後順序。
+ */
+let lastStamp = 0
+function nextStamp(): number {
+  lastStamp = Math.max(Date.now(), lastStamp + 1)
+  return lastStamp
+}
+
 type Rec = Y.Map<unknown>
 
 interface Tombstone {
@@ -41,7 +51,7 @@ export class Table<T extends object> {
     this.doc.transact(() => {
       const rec: Rec = new Y.Map()
       this.map.set(id, rec)
-      const now = Date.now()
+      const now = nextStamp()
       rec.set('id', id)
       rec.set('createdAt', now)
       rec.set('createdBy', this.actor.pubkey)
