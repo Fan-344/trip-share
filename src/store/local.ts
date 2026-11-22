@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import { IndexeddbPersistence } from 'y-indexeddb'
+import { IndexeddbPersistence, clearDocument } from 'y-indexeddb'
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure'
 import { newId } from '../model/table'
 import { Trip, newTripDocs, type TripDocs } from '../model/trip'
@@ -110,6 +110,11 @@ export class Registry {
     return this.doc.getMap<TripRef>('trips').get(id)
   }
 
+  /** 從登記簿拿掉一份行程（連同它的金鑰）。文件本身由 removeTrip 清。 */
+  forgetTrip(id: string): void {
+    this.doc.getMap('trips').delete(id)
+  }
+
   /** 新增行程，或更新首頁顯示用的標題與日期。金鑰一旦記下就不會被這裡改掉。 */
   upsertTrip(ref: Omit<TripRef, 'addedAt' | 'key'> & { key?: string }): void {
     const trips = this.doc.getMap<TripRef>('trips')
@@ -172,6 +177,21 @@ export async function openTrip(reg: Registry, tripId: string, withSync = true): 
     })
   }
   return { trip, sync, close: () => closers.forEach((f) => f()) }
+}
+
+/**
+ * 把一份行程從這支手機移除：登記簿、金鑰、四個文件（含私人清單與訂位代號）全部清掉。
+ * 只影響這支手機，其他成員不受影響；之後要再看，得重新被邀請或從備份還原。
+ * 呼叫前要先離開那份行程的畫面（文件還開著的話，瀏覽器會等它關閉才真的刪）。
+ */
+export async function removeTrip(reg: Registry, tripId: string): Promise<void> {
+  reg.forgetTrip(tripId)
+  try {
+    localStorage.removeItem(`lastSync:${tripId}`)
+  } catch {
+    // 沒有 localStorage（測試環境）就略過。
+  }
+  await Promise.all(Object.keys(newTripDocs()).map((n) => clearDocument(`trip:${tripId}:${n}`)))
 }
 
 export async function createTrip(

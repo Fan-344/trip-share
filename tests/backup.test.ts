@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Item } from '../src/model/types'
 import { BackupError, createBackup, readBackup, restoreBackup } from '../src/store/backup'
-import { Registry, createTrip, openTrip } from '../src/store/local'
+import { Registry, createTrip, openTrip, removeTrip } from '../src/store/local'
 
 // 每個測試一支全新的手機（清空的瀏覽器儲存）。
 const newPhone = () => { globalThis.indexedDB = new IDBFactory() }
@@ -145,5 +145,47 @@ describe('還原', () => {
     expect(result.identity).toBe('kept')
     expect(reg.me()).toMatchObject({ nickname: '媽媽', pubkey: mine })
     expect(reg.trips()).toHaveLength(1)
+  })
+})
+
+describe('移除與刪除行程', () => {
+  it('從這支手機移除：登記簿和所有內容都清掉，包含私人清單與訂位代號', async () => {
+    const { reg, id, flight } = await usedPhone()
+    await removeTrip(reg, id)
+    expect(reg.trips()).toHaveLength(0)
+    expect(reg.trip(id)).toBeUndefined()
+
+    // 用同一個 ID 再打開，看到的是空的
+    reg.upsertTrip({ id, key: 'x'.repeat(43), title: '', startDate: '', endDate: '' })
+    const { trip, close } = await openTrip(reg, id, false)
+    expect(trip.meta.id).toBeUndefined()
+    expect(trip.items.all()).toHaveLength(0)
+    expect(trip.allLists()).toHaveLength(0)
+    expect(trip.getPnr(flight)).toBeUndefined()
+    close()
+  })
+
+  it('移除一份不影響其他行程，備份裡也不再有它', async () => {
+    const { reg, id } = await usedPhone()
+    const other = await createTrip(reg, { title: '東京', startDate: '2027-06-01', endDate: '2027-06-05' })
+    await removeTrip(reg, id)
+    expect(reg.trips().map((t) => t.id)).toEqual([other])
+    const data = await readBackup(await createBackup(reg))
+    expect(data.trips.map((t) => t.title)).toEqual(['東京'])
+  })
+
+  it('管理員刪除行程：做記號、留紀錄，可以取消', async () => {
+    const { reg, id, itemId } = await usedPhone()
+    const { trip, close } = await openTrip(reg, id, false)
+    expect(trip.meta.deleted ?? null).toBeNull()
+    trip.setDeleted(true)
+    expect(trip.meta.deleted).toMatchObject({ by: reg.me()!.pubkey })
+    // 內容沒有真的清掉
+    expect(trip.items.get(itemId)?.title).toBe('晚餐')
+    const entry = trip.historyEntries().at(-1)!
+    expect(entry).toMatchObject({ coll: 'trip', op: 'delete' })
+    trip.revert(entry)
+    expect(trip.meta.deleted ?? null).toBeNull()
+    close()
   })
 })

@@ -88,6 +88,22 @@ export class Trip {
     })
   }
 
+  /**
+   * 刪除整份行程（對所有成員）或取消刪除。只是做記號：每個人的 App 看到記號就不再顯示內容，
+   * 並請他把行程從手機移除。中繼站上加密過的資料清不掉，所以這不是「銷毀」，而是「大家都收起來」。
+   */
+  setDeleted(deleted: boolean): void {
+    const old = this.meta.deleted ?? null
+    if (!!old === deleted) return
+    this.docs.main.transact(() => {
+      this.metaMap.set('deleted', deleted ? { by: this.actor.pubkey, at: Date.now() } : null)
+      this.history.push([{
+        id: newId(), at: Date.now(), by: this.actor.pubkey,
+        coll: 'trip', recId: this.meta.id, op: deleted ? 'delete' : 'restore',
+      }])
+    })
+  }
+
   updateMeta(patch: Partial<Pick<TripMeta, 'title' | 'startDate' | 'endDate' | 'theme' | 'desc'>>): void {
     this.docs.main.transact(() => {
       for (const [k, v] of Object.entries(patch)) {
@@ -190,7 +206,9 @@ export class Trip {
   /** 還原一筆修改紀錄。還原本身也是一次修改，會再留下一筆紀錄。 */
   revert(e: HistoryEntry): void {
     if (e.coll === 'trip') {
-      if (e.field) this.updateMeta({ [e.field]: e.old })
+      if (e.op === 'delete') this.setDeleted(false)
+      else if (e.op === 'restore') this.setDeleted(true)
+      else if (e.field) this.updateMeta({ [e.field]: e.old })
       return
     }
     const table = this.mainTables()[e.coll]

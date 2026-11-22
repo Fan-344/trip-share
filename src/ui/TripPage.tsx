@@ -1,7 +1,7 @@
 // 一份行程的外框：頂端的名稱、同步狀態與分頁。
 import { useEffect, useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
-import { openTrip, type OpenTrip, type Registry } from '../store/local'
+import { openTrip, removeTrip, type OpenTrip, type Registry } from '../store/local'
 import type { TripSync } from '../sync/engine'
 import { resolveTheme, type ThemeId } from '../themes'
 import { Icon } from './Icons'
@@ -78,6 +78,28 @@ function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: str
     )
   }
 
+  // 管理員把行程刪除了：不再顯示內容，請每個人把它從手機移除。管理員可以取消。
+  if (meta.deleted) {
+    const iAmAdmin = trip.members.get(trip.actor.pubkey)?.role === 'admin'
+    return (
+      <div class="page top">
+        <p><a class="row" href="#" style="text-decoration:none"><Icon id="back" size={20} />我的行程</a></p>
+        <div class="card">
+          <h1>這份行程已經刪除</h1>
+          <p>
+            「{meta.title}」在 {ago(meta.deleted.at)}被 {trip.nicknameOf(meta.deleted.by)} 刪除。
+            內容還留在這支手機上，按下面的按鈕可以清掉。
+          </p>
+          <div class="row wrap">
+            <button class="primary" onClick={() => leaveTrip(reg, meta.id)}>從這支手機移除</button>
+            {iAmAdmin && <button onClick={() => trip.setDeleted(false)}>取消刪除</button>}
+          </div>
+          <p class="muted"><SyncBadge sync={sync} /></p>
+        </div>
+      </div>
+    )
+  }
+
   const props = { trip, reg, sync, theme }
   return (
     <div>
@@ -98,6 +120,15 @@ function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: str
       </div>
     </div>
   )
+}
+
+/**
+ * 離開並把行程從這支手機移除。先回首頁讓行程的畫面關掉（文件跟著關閉），再清資料；
+ * 還開著的話瀏覽器不會真的刪。
+ */
+export function leaveTrip(reg: Registry, tripId: string): void {
+  location.hash = '#'
+  setTimeout(() => void removeTrip(reg, tripId), 400)
 }
 
 /** 右上角的「已同步／同步中／離線中」。 */

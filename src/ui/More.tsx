@@ -7,7 +7,7 @@ import { themeName } from '../themes'
 import { ago } from '../time'
 import { CopyButton, Qr, useNow } from './kit'
 import { BUILD } from './Start'
-import type { TabProps } from './TripPage'
+import { leaveTrip, type TabProps } from './TripPage'
 
 const COLL: Record<string, string> = {
   trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', days: '每日標題', lists: '清單', listItems: '清單項目',
@@ -141,6 +141,30 @@ export function More({ trip, reg, sync }: TabProps) {
           </div>
         ) : <p>這份行程沒有金鑰，無法同步。</p>}
       </div>
+
+      <h2>移除與刪除</h2>
+      <div class="card flat">
+        <b>從這支手機移除</b>
+        <p class="muted">
+          只清掉這支手機上的這份行程（包含你的私人清單和訂位代號），其他成員不受影響。之後想再看，要請家人重新邀請。
+        </p>
+        <button onClick={() => {
+          if (confirm(`把「${trip.meta.title}」從這支手機移除？\n\n其他成員不受影響。你的私人清單和訂位代號會一起清掉，無法復原。`)) {
+            leaveTrip(reg, trip.meta.id)
+          }
+        }}>從這支手機移除</button>
+      </div>
+      {iAmAdmin && (
+        <div class="card flat" style="background:var(--coral-l)">
+          <b>刪除整份行程</b>
+          <p class="muted">
+            所有成員都會看到「這份行程已經刪除」，內容不再顯示。管理員之後還可以取消刪除。
+          </p>
+          <button class="danger" style="background:#fff" onClick={() => {
+            if (confirm(`刪除「${trip.meta.title}」？\n\n所有成員都會看不到這份行程的內容。`)) trip.setDeleted(true)
+          }}>刪除整份行程</button>
+        </div>
+      )}
 
       <p class="muted center" style="margin-top:28px">版本 {BUILD}</p>
     </div>

@@ -38,6 +38,8 @@ export interface TripMeta {
   theme?: string
   /** 一兩句話的行程簡介，顯示在總覽。 */
   desc?: string
+  /** 管理員把整份行程刪除時寫入；null 或沒有這個欄位代表行程還在。內容不會真的清掉，可以取消刪除。 */
+  deleted?: { by: string; at: number } | null
 }
 
 /** 某一天的標題與圖示（例如「抵達清邁」）。以日期當 ID。 */
