@@ -67,5 +67,7 @@ export const b64 = {
 /** 放在網址裡用的寫法（不含 + / =）。 */
 export const b64url = {
   enc: (u: Uint8Array): string => b64.enc(u).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
-  dec: (s: string): Uint8Array => b64.dec(s.replace(/-/g, '+').replace(/_/g, '/')),
+  // 補回 = ：不是每個瀏覽器的 atob 都接受沒有補齊的寫法。
+  dec: (s: string): Uint8Array =>
+    b64.dec(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4)),
 }

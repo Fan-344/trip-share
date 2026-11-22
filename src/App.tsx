@@ -3,7 +3,10 @@ import { useEffect, useState } from 'preact/hooks'
 import type * as Y from 'yjs'
 import type { Trip } from './model/trip'
 import type { HistoryEntry, ListKind } from './model/types'
-import { Registry, acceptInvite, createTrip, inviteLink, openTrip, type OpenTrip } from './store/local'
+import { Registry, acceptInvite, createTrip, inviteLink, openTrip, parseInvite, type OpenTrip } from './store/local'
+
+/** 打包時間，由 vite.config.ts 帶入；用來確認手機拿到的是不是最新版。 */
+declare const __BUILD__: string
 import type { TripSync } from './sync/engine'
 
 /** 文件有任何改動（本機或之後同步進來的）就重畫。 */
@@ -39,11 +42,42 @@ export function App() {
 function Loaded({ reg, hash }: { reg: Registry; hash: string }) {
   useDocs([reg.ydoc])
   const me = reg.me()
-  if (!me) return <Nickname onSave={(n) => reg.setNickname(n)} />
-  const join = hash.match(/^#\/join\/([^/]+)\/([^/]+)$/)
-  if (join) return <Join reg={reg} id={join[1]} tripKey={join[2]} />
+  const wantsJoin = /^#\/?join/i.test(hash)
+  if (!me) return <Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} />
+  if (wantsJoin) {
+    const invite = parseInvite(hash)
+    if (invite) return <Join reg={reg} id={invite.id} tripKey={invite.key} />
+    return (
+      <div>
+        <h1>邀請連結不完整</h1>
+        <p>連結可能在傳送時被截斷。請對方按「複製邀請連結」重新傳一次，或把整段連結貼在下面。</p>
+        <PasteInvite />
+        <p><a href="#">回首頁</a></p>
+      </div>
+    )
+  }
   const tripId = hash.match(/^#\/t\/(.+)$/)?.[1]
   return tripId ? <TripPage key={tripId} reg={reg} tripId={tripId} /> : <Home reg={reg} />
+}
+
+/** 貼上邀請連結加入：連結點不開、或被通訊軟體改過時的備用入口。 */
+function PasteInvite() {
+  const [text, setText] = useState('')
+  const [error, setError] = useState('')
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      const invite = parseInvite(text)
+      if (!invite) return setError('找不到邀請內容，請確認貼上的是完整連結。')
+      setError('')
+      setText('')
+      location.hash = `#/join/${invite.id}/${invite.key}`
+    }}>
+      <input value={text} onInput={(e) => setText(value(e))} placeholder="貼上邀請連結" style="width:70%" />
+      <button disabled={!text.trim()}>加入</button>
+      {error && <div class="muted">{error}</div>}
+    </form>
+  )
 }
 
 function Join({ reg, id, tripKey }: { reg: Registry; id: string; tripKey: string }) {
@@ -110,11 +144,12 @@ function SyncBadge({ sync }: { sync: TripSync | null }) {
   )
 }
 
-function Nickname({ onSave }: { onSave: (n: string) => void }) {
+function Nickname({ invited, onSave }: { invited: boolean; onSave: (n: string) => void }) {
   const [n, setN] = useState('')
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (n.trim()) onSave(n.trim()) }}>
-      <h1>你的暱稱</h1>
+      <h1>{invited ? '你收到一份行程邀請' : '你的暱稱'}</h1>
+      {invited && <p>先取一個暱稱，讓家人知道是誰；按「開始」後就會加入行程。</p>}
       <input value={n} onInput={(e) => setN(value(e))} placeholder="例如：爸爸" />
       <button>開始</button>
     </form>
@@ -144,6 +179,9 @@ function Home({ reg }: { reg: Registry }) {
         <input type="date" value={f.endDate} onInput={(e) => setF({ ...f, endDate: value(e) })} />
         <button disabled={!ok}>建立</button>
       </form>
+      <h2>加入別人的行程</h2>
+      <PasteInvite />
+      <p class="muted">版本 {__BUILD__}</p>
     </div>
   )
 }

@@ -166,8 +166,30 @@ export function inviteLink(ref: TripRef): string {
   return `${location.origin}${location.pathname}#/join/${ref.id}/${ref.key}`
 }
 
+/**
+ * 從一段文字裡找出邀請（行程 ID 與金鑰）。接受完整連結、只有 # 之後的部分，
+ * 也容忍通訊軟體加上的前後文字、換行或把符號轉成 %xx。金鑰長度不對就當成沒有。
+ */
+export function parseInvite(text: string): { id: string; key: string } | null {
+  let s = text
+  try {
+    s = decodeURIComponent(text)
+  } catch {
+    // 不是合法的 %xx 就照原樣找。
+  }
+  const m = s.replace(/\s+/g, '').match(/#\/join\/([0-9a-fA-F-]{36})\/([A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/)
+  return m ? { id: m[1].toLowerCase(), key: m[2] } : null
+}
+
 /** 從邀請連結加入：先記下金鑰，內容等同步層從中繼站抓回來。 */
 export function acceptInvite(reg: Registry, id: string, key: string): void {
-  if (b64url.dec(key).length !== 32) throw new Error('邀請連結不完整')
+  let ok = false
+  try {
+    ok = b64url.dec(key).length === 32
+  } catch {
+    // 下面一併當成不完整。
+  }
+  if (!ok) throw new Error('邀請連結不完整，請對方重新複製一次')
+  if (reg.trip(id)) return
   reg.upsertTrip({ id, key, title: '（同步中的行程）', startDate: '', endDate: '' })
 }

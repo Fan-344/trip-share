@@ -5,5 +5,11 @@ import preact from '@preact/preset-vite'
 export default defineConfig({
   base: './',
   plugins: [preact()],
+  define: {
+    // 台灣時間的打包時刻，顯示在首頁底部。
+    __BUILD__: JSON.stringify(
+      new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 16),
+    ),
+  },
   test: { environment: 'node' },
 })
