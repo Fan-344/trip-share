@@ -261,22 +261,30 @@ describe('現場詢問', () => {
     expect(a.shopItems()[0]).toMatchObject({ wants: {}, declined: [], total: 1 })
   })
 
-  it('照片放在留言文件，不在行程主文件；換照片只留一張', () => {
+  it("文件裡只留照片的索引，不放照片本身；換照片只留一筆", () => {
     const { a, b } = twoPhones()
     const id = a.shop.create(ask)
-    const first = new Uint8Array(3000).fill(7)
-    const second = new Uint8Array(3000).fill(9)
-    a.setPhoto(id, first)
-    a.setPhoto(id, second)
+    a.setPhotoRef(id, { hash: "a".repeat(64), size: 60000 })
+    a.setPhotoRef(id, { hash: "b".repeat(64), size: 70000 })
     sync(a, b)
-    expect(b.photoOf(id)).toEqual(second)
+    expect(b.photoRecord(id)).toMatchObject({ hash: "b".repeat(64), size: 70000 })
     expect(b.photos.all()).toHaveLength(1)
-    expect(Y.encodeStateAsUpdate(a.docs.main).length).toBeLessThan(3000)
-    expect(Y.encodeStateAsUpdate(a.docs.comments).length).toBeGreaterThan(3000)
-    a.setPhoto(id, null)
+    expect(Y.encodeStateAsUpdate(a.docs.comments).length).toBeLessThan(1500)
+    a.setPhotoRef(id, null)
     sync(a, b)
-    expect(b.photoOf(id)).toBeUndefined()
+    expect(b.photoRecord(id)).toBeUndefined()
   })
+
+  it("舊版塞在文件裡的照片：換掉之後文件會瘦回來", () => {
+    const { a } = twoPhones()
+    const id = a.shop.create(ask)
+    a.photos.create({ ref: id, data: new Uint8Array(50000).fill(7) })
+    expect(a.photoRecord(id)?.data).toHaveLength(50000)
+    expect(Y.encodeStateAsUpdate(a.docs.comments).length).toBeGreaterThan(50000)
+    a.setPhotoRef(id, { hash: "c".repeat(64), size: 50000 })
+    expect(Y.encodeStateAsUpdate(a.docs.comments).length).toBeLessThan(2000)
+  })
+
 })
 
 describe('移出成員（不換金鑰）', () => {

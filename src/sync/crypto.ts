@@ -71,3 +71,36 @@ export const b64url = {
   dec: (s: string): Uint8Array =>
     b64.dec(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4)),
 }
+
+// ---- 照片檔用 ----
+
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  return hex.enc(new Uint8Array(await crypto.subtle.digest('SHA-256', buf(bytes))))
+}
+
+async function derive(key: TripKey, label: string): Promise<Uint8Array> {
+  const l = new TextEncoder().encode(label)
+  const input = new Uint8Array(l.length + key.raw.length)
+  input.set(l)
+  input.set(key.raw, l.length)
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', buf(input)))
+}
+
+/** 一張照片在中繼站上的標籤。由金鑰和照片內容的雜湊算出，中繼站看不出是哪份行程、也看不出內容。 */
+export async function blobTag(key: TripKey, tripId: string, hash: string): Promise<string> {
+  return hex.enc(await derive(key, `blob:${tripId}:${hash}:`)).slice(0, 32)
+}
+
+/**
+ * 加密一張照片。跟一般訊息不同，這裡的 IV 是由金鑰和照片內容算出來的，所以同一張照片每次加密的結果都一樣：
+ * 重傳不會產生另一份、不同手機傳的切塊可以互相拼。
+ * （同一把金鑰下，同一個 IV 只會配同一份內容，所以沒有 IV 重複使用的問題。）
+ */
+export async function encryptBlob(key: TripKey, hash: string, plain: Uint8Array): Promise<Uint8Array> {
+  const iv = (await derive(key, `blob-iv:${hash}:`)).subarray(0, 12)
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: buf(iv) }, key.aes, buf(plain)))
+  const out = new Uint8Array(12 + ct.length)
+  out.set(iv)
+  out.set(ct, 12)
+  return out
+}

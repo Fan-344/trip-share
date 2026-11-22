@@ -1,7 +1,7 @@
 // 購物。兩種情境：
 // 1. 事先計畫（代購）：想買或想請人代買的東西，依預計購買的日子排列。
 // 2. 現場詢問：在店裡看到東西，拍張照問大家要不要；每個人回覆要幾個或不用。
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import type { ShopItem, ShopItemView } from '../model/types'
 import { ago, daysBetween, fullDay, today } from '../time'
@@ -10,13 +10,14 @@ import { Chevron, Fold } from './fold'
 import { Icon } from './Icons'
 import { Field, Sheet, useNow, value } from './kit'
 import { CURRENCIES, detectCurrency, formatPrice, parsePrice } from '../money'
-import { Lightbox, PhotoField, usePhotoUrl } from './photo'
+import type { PhotoStore } from '../store/photos'
+import { Lightbox, PhotoField, usePhoto } from './photo'
 import { Stepper } from './Stepper'
 import type { TabProps } from './TripPage'
 
 type SheetState = { id?: string; ask: boolean } | null
 
-export function Shop({ trip, theme }: TabProps) {
+export function Shop({ trip, theme, photos }: TabProps) {
   const me = trip.actor.pubkey
   const [sheet, setSheet] = useState<SheetState>(null)
   const items = trip.shopItems()
@@ -50,7 +51,7 @@ export function Shop({ trip, theme }: TabProps) {
       {items.length === 0 && <Empty icon="bag">還沒有要買的東西。</Empty>}
 
       {asking.length > 0 && <h2>正在問大家</h2>}
-      {asking.map((i) => <AskCard key={i.id} trip={trip} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
+      {asking.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
 
       {dates.map((date) => {
         const n = range.indexOf(date)
@@ -65,7 +66,7 @@ export function Shop({ trip, theme }: TabProps) {
               </span>
             </div>
             {planned.filter((i) => i.date === date).map((i) => (
-              <PlanCard key={i.id} trip={trip} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: false })} />
+              <PlanCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: false })} />
             ))}
           </div>
         )
@@ -73,21 +74,29 @@ export function Shop({ trip, theme }: TabProps) {
 
       {asked.length > 0 && (
         <Fold title="問過、已經買了的" summary={`${asked.length} 樣`}>
-          {asked.map((i) => <AskCard key={i.id} trip={trip} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
+          {asked.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
         </Fold>
       )}
 
       <Farewell theme={theme} title={trip.meta.title} />
-      {sheet && <ShopSheet trip={trip} id={sheet.id} ask={sheet.ask} days={range} onClose={() => setSheet(null)} />}
+      {sheet && <ShopSheet trip={trip} photos={photos} id={sheet.id} ask={sheet.ask} days={range} onClose={() => setSheet(null)} />}
     </div>
   )
 }
 
-/** 卡片上的照片：點一下看大圖。 */
-function Photo({ trip, id, name }: { trip: Trip; id: string; name: string }) {
-  const url = usePhotoUrl(trip.photoOf(id))
+/** 卡片上的照片：點一下看大圖。照片是看到才抓的，還沒抓到時先顯示一個框。 */
+function Photo({ trip, photos, id, name }: { trip: Trip; photos: PhotoStore; id: string; name: string }) {
+  const { state, url } = usePhoto(photos, id, trip.photoRecord(id)?.id)
   const [big, setBig] = useState(false)
-  if (!url) return null
+  if (state === "none") return null
+  if (!url) {
+    return (
+      <div class="photo wait">
+        <Icon id="camera" size={28} />
+        <span>{state === "missing" ? "照片還沒同步到，稍後會再試" : "照片載入中…"}</span>
+      </div>
+    )
+  }
   return (
     <div>
       <img class="photo tap" src={url} alt={name} onClick={() => setBig(true)} />
@@ -109,7 +118,7 @@ function Answers({ trip, item, pending }: { trip: Trip; item: ShopItemView; pend
 }
 
 /** 現場詢問的卡片。問的人看到的是統計與「買到了」；其他人看到的是回覆按鈕。 */
-function AskCard({ trip, item, me, onEdit }: { trip: Trip; item: ShopItemView; me: string; onEdit: () => void }) {
+function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: PhotoStore; item: ShopItemView; me: string; onEdit: () => void }) {
   const now = useNow(60_000)
   const mine = item.wants[me]
   const iDeclined = item.declined.includes(me)
@@ -145,7 +154,7 @@ function AskCard({ trip, item, me, onEdit }: { trip: Trip; item: ShopItemView; m
 
   return (
     <div class={`card ${item.bought ? 'bought' : 'asking'}`}>
-      <Photo trip={trip} id={item.id} name={item.name} />
+      <Photo trip={trip} photos={photos} id={item.id} name={item.name} />
       <div class="row">
         <h3 class="grow">{item.name}</h3>
         {item.price && <span class="chip yellow">{item.price}</span>}
@@ -198,7 +207,7 @@ function AskCard({ trip, item, me, onEdit }: { trip: Trip; item: ShopItemView; m
 }
 
 /** 事先計畫的東西。 */
-function PlanCard({ trip, item, me, onEdit }: { trip: Trip; item: ShopItemView; me: string; onEdit: () => void }) {
+function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: PhotoStore; item: ShopItemView; me: string; onEdit: () => void }) {
   const linked = item.itemId ? trip.items.get(item.itemId) : undefined
   const wants = Object.entries(item.wants)
   const proxy = item.total - item.qty
@@ -217,7 +226,7 @@ function PlanCard({ trip, item, me, onEdit }: { trip: Trip; item: ShopItemView; 
   }
   return (
     <div class={`card ${item.bought ? 'bought' : ''}`}>
-      <Photo trip={trip} id={item.id} name={item.name} />
+      <Photo trip={trip} photos={photos} id={item.id} name={item.name} />
       <div class="row">
         <h3 class="grow">{item.name}</h3>
         {item.price && <span class="chip yellow">{item.price}</span>}
@@ -254,7 +263,7 @@ function PlanCard({ trip, item, me, onEdit }: { trip: Trip; item: ShopItemView; 
   )
 }
 
-function ShopSheet({ trip, id, ask, days, onClose }: { trip: Trip; id?: string; ask: boolean; days: string[]; onClose: () => void }) {
+function ShopSheet({ trip, photos, id, ask, days, onClose }: { trip: Trip; photos: PhotoStore; id?: string; ask: boolean; days: string[]; onClose: () => void }) {
   const old = id ? trip.shop.get(id) : undefined
   const t = today()
   const [f, setF] = useState<ShopItem>({
@@ -264,7 +273,14 @@ function ShopSheet({ trip, id, ask, days, onClose }: { trip: Trip; id?: string; 
     itemId: old?.itemId ?? '', place: old?.place ?? '', owner: old?.owner ?? trip.actor.pubkey,
     qty: old?.qty ?? 1, bought: old?.bought ?? false, ask: old?.ask ?? ask, price: old?.price ?? '',
   })
-  const [photo, setPhoto] = useState<Uint8Array | null>(() => (id ? trip.photoOf(id) ?? null : null))
+  const [photo, setPhoto] = useState<Uint8Array | null>(null)
+  // 修改既有的東西：把原本的照片讀進來（要去資料庫或中繼站拿，所以是之後才到）
+  useEffect(() => {
+    if (!id) return
+    let gone = false
+    void photos.get(id).then((r) => { if (!gone && r.state === "ready") setPhoto((cur) => cur ?? r.data) })
+    return () => { gone = true }
+  }, [id])
   const [photoChanged, setPhotoChanged] = useState(false)
   const set = (patch: Partial<ShopItem>) => setF({ ...f, ...patch })
   const dateOptions = [...new Set([...days, ...(f.date ? [f.date] : [])])].sort()
@@ -321,7 +337,10 @@ function ShopSheet({ trip, id, ask, days, onClose }: { trip: Trip; id?: string; 
         }
         const itemId = id ?? trip.shop.create(data)
         if (id) trip.shop.update(id, data)
-        if (photoChanged) trip.setPhoto(itemId, photo)
+        if (photoChanged) {
+          if (photo) void photos.add(itemId, photo)
+          else photos.remove(itemId)
+        }
         onClose()
       }}>
         <PhotoField value={photo} onChange={(v) => { setPhoto(v); setPhotoChanged(true) }} />
@@ -380,7 +399,7 @@ function ShopSheet({ trip, id, ask, days, onClose }: { trip: Trip; id?: string; 
         )}
         <div class="actions">
           {id && (
-            <button type="button" class="danger" onClick={() => { trip.setPhoto(id, null); trip.shop.remove(id); onClose() }}>
+            <button type="button" class="danger" onClick={() => { photos.remove(id); trip.shop.remove(id); onClose() }}>
               {ask ? '不買了，刪掉' : '刪除'}
             </button>
           )}

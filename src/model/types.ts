@@ -165,10 +165,20 @@ export type ShopItemView = ShopItem & Meta & {
   total: number
 }
 
-/** 照片（縮小過的 JPEG）。放在留言文件，跟行程主文件分開同步。ref 是它屬於哪一筆（例如購物項目的 ID）。 */
+/**
+ * 一張照片的索引。ref 是它屬於哪一筆（例如購物項目的 ID）。
+ *
+ * 文件裡只記照片的雜湊與大小；照片本身（縮小過的 JPEG）另外存、另外傳（store/blobs.ts、sync/blobs.ts）。
+ * data 是舊版的做法——把整張照片塞在同步文件裡。舊資料還讀得到，拍的人下次打開行程時會自動搬成新的存法。
+ */
 export interface Photo {
   ref: string
-  data: Uint8Array
+  /** 照片內容的 SHA-256（十六進位），也是它的檔名。 */
+  hash?: string
+  /** 位元組數。 */
+  size?: number
+  /** 舊版：照片直接放在這裡。 */
+  data?: Uint8Array | null
 }
 
 export interface CheckState {

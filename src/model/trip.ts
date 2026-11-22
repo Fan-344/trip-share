@@ -281,17 +281,25 @@ export class Trip {
     })
   }
 
-  // ---- 照片（在留言文件，不在主文件）----
+  // ---- 照片的索引（照片本身不在同步文件裡，見 types.ts 的 Photo）----
 
-  /** 換掉或拿掉某一筆的照片。每筆最多一張。 */
-  setPhoto(ref: string, data: Uint8Array | null): void {
-    for (const p of this.photos.all()) if (p.ref === ref) this.photos.remove(p.id)
-    if (data) this.photos.create({ ref, data })
+  /** 某一筆現在的照片索引；沒有照片就是 undefined。 */
+  photoRecord(ref: string): (Photo & Meta) | undefined {
+    // 兩個人同時換照片會留下兩筆，取比較新的那筆
+    return this.photos.all().filter((p) => p.ref === ref).pop()
   }
 
-  photoOf(ref: string): Uint8Array | undefined {
-    // 兩個人同時換照片會留下兩張，取比較新的那張
-    return this.photos.all().filter((p) => p.ref === ref).pop()?.data
+  /** 換掉或拿掉某一筆的照片。每筆最多一張。 */
+  setPhotoRef(ref: string, photo: { hash: string; size: number } | null): void {
+    this.docs.comments.transact(() => {
+      for (const p of this.photos.all()) {
+        if (p.ref !== ref) continue
+        // 舊版把整張照片放在紀錄裡；標記刪除不會把內容清掉，要先把那一格清空，文件才會變小
+        if (p.data) this.photos.update(p.id, { data: null })
+        this.photos.remove(p.id)
+      }
+      if (photo) this.photos.create({ ref, hash: photo.hash, size: photo.size })
+    })
   }
 
   // ---- 訂位代號（只在 device 文件）----

@@ -1,5 +1,6 @@
 // 照片：拍照或選圖後先在手機上縮小，再存進行程。原圖不會離開手機。
 import { useEffect, useRef, useState } from 'preact/hooks'
+import type { PhotoStore } from '../store/photos'
 import { Icon } from './Icons'
 import { Overlay, useEscape, useScrollLock } from './kit'
 
@@ -97,4 +98,39 @@ export function PhotoField({ value, onChange }: { value: Uint8Array | null; onCh
       {error && <p class="muted">{error}</p>}
     </div>
   )
+}
+
+/**
+ * 讀一筆的照片。照片可能要去資料庫或中繼站拿，所以會先經過「載入中」。
+ * version：照片換了就給不同的值（例如照片索引的 ID），才會重讀。
+ * 抓不到的話每 15 秒再試一次，最多試幾次——可能只是對方還沒上傳完。
+ */
+export function usePhoto(photos: PhotoStore, ref: string, version: unknown): { state: 'none' | 'loading' | 'ready' | 'missing'; url: string | null } {
+  const [data, setData] = useState<Uint8Array | null>(null)
+  const [state, setState] = useState<'none' | 'loading' | 'ready' | 'missing'>(photos.has(ref) ? 'loading' : 'none')
+  useEffect(() => {
+    let gone = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let tries = 0
+    setData(null)
+    if (!photos.has(ref)) {
+      setState('none')
+      return
+    }
+    setState('loading')
+    const attempt = () => {
+      void photos.get(ref).then((r) => {
+        if (gone) return
+        if (r.state === 'ready') setData(r.data)
+        setState(r.state)
+        if (r.state === 'missing' && ++tries < 8) timer = setTimeout(attempt, 15_000)
+      })
+    }
+    attempt()
+    return () => {
+      gone = true
+      clearTimeout(timer)
+    }
+  }, [ref, version])
+  return { state, url: usePhotoUrl(data) }
 }

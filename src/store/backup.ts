@@ -5,7 +5,7 @@
 // 設了密碼就整包加密；沒設的話，拿到檔案的人可以看到所有行程，並以你的身分修改。
 import * as Y from 'yjs'
 import { newId } from '../model/table'
-import { b64, b64url, newKeyBytes } from '../sync/crypto'
+import { b64, b64url, newKeyBytes, sha256Hex } from '../sync/crypto'
 import { openTrip, type Registry } from './local'
 
 const FORMAT = 'trip-share-backup'
@@ -22,6 +22,8 @@ export interface BackupTrip {
   main: string
   comments: string
   priv: string
+  /** 照片檔（雜湊 → base64）。行程裡沒有照片就沒有這個欄位。 */
+  blobs?: Record<string, string>
 }
 
 export interface BackupData {
@@ -69,14 +71,22 @@ export async function createBackup(reg: Registry, password = '', onlyTrip = ''):
   const trips: BackupTrip[] = []
   for (const ref of reg.trips()) {
     if (onlyTrip && ref.id !== onlyTrip) continue
-    const { trip, close } = await openTrip(reg, ref.id, false)
+    const { trip, photos, close } = await openTrip(reg, ref.id, false)
     const { main, comments, priv } = trip.docs
+    // 照片檔不在同步文件裡，要另外帶：只帶目前還有被用到、而且手機上有的
+    const blobs: Record<string, string> = {}
+    for (const p of trip.photos.all()) {
+      if (!p.hash || blobs[p.hash]) continue
+      const data = await photos.blobs.get(p.hash)
+      if (data) blobs[p.hash] = b64.enc(data)
+    }
     trips.push({
       id: ref.id, title: ref.title, startDate: ref.startDate, endDate: ref.endDate, key: ref.key,
       ...(ref.theme && { theme: ref.theme }),
       main: b64.enc(Y.encodeStateAsUpdate(main)),
       comments: b64.enc(Y.encodeStateAsUpdate(comments)),
       priv: b64.enc(Y.encodeStateAsUpdate(priv)),
+      ...(Object.keys(blobs).length > 0 && { blobs }),
     })
     close()
   }
@@ -178,10 +188,18 @@ export async function restoreBackup(reg: Registry, data: BackupData, mode: Resto
         key: asCopy ? b64url.enc(newKeyBytes()) : t.key,
       })
     }
-    const { trip, close } = await openTrip(reg, id, false)
+    const { trip, photos, close } = await openTrip(reg, id, false)
     Y.applyUpdate(trip.docs.main, b64.dec(t.main))
     Y.applyUpdate(trip.docs.comments, b64.dec(t.comments))
     Y.applyUpdate(trip.docs.priv, b64.dec(t.priv))
+    for (const [hash, data] of Object.entries(t.blobs ?? {})) {
+      const bytes = b64.dec(data)
+      // 檔名就是內容的雜湊；對不上的（檔案被改過或壞掉）不收
+      if ((await sha256Hex(bytes)) !== hash) continue
+      await photos.blobs.put(hash, bytes)
+      // 副本是新的行程、新的金鑰，中繼站上沒有這些照片：記成還沒送，打開後會補傳
+      if (asCopy) await photos.blobs.setPending(hash, true)
+    }
     if (asCopy) trip.rebrand(id, title)
     close()
     ;(asCopy ? result.copied : exists ? result.merged : result.added).push(title)

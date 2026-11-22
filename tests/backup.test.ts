@@ -257,3 +257,66 @@ describe('更改顯示名稱', () => {
     expect(await renameEverywhere(reg, '把拔')).toBe(0)
   })
 })
+
+describe('備份裡的照片', () => {
+  const pic = new Uint8Array(40_000).map((_, i) => (i * 13) % 251)
+
+  it('完整備份帶著照片；換新手機還原後不用網路也看得到', async () => {
+    const { reg, id } = await usedPhone()
+    const a = await openTrip(reg, id, false)
+    await a.photos.add('item1', pic)
+    a.close()
+    const text = await createBackup(reg)
+    const data = await readBackup(text)
+    expect(Object.keys(data.trips[0].blobs ?? {})).toHaveLength(1)
+
+    newPhone()
+    const fresh = await Registry.open()
+    await restoreBackup(fresh, data, 'merge')
+    const b = await openTrip(fresh, id, false)
+    expect(await b.photos.get('item1')).toEqual({ state: 'ready', data: pic })
+    b.close()
+  })
+
+  it('備份檔裡被動過手腳的照片不收', async () => {
+    const { reg, id } = await usedPhone()
+    const a = await openTrip(reg, id, false)
+    await a.photos.add('item1', pic)
+    a.close()
+    const data = await readBackup(await createBackup(reg))
+    const hash = Object.keys(data.trips[0].blobs!)[0]
+    data.trips[0].blobs![hash] = btoa('not the original photo')
+
+    newPhone()
+    const fresh = await Registry.open()
+    await restoreBackup(fresh, data, 'merge')
+    const b = await openTrip(fresh, id, false)
+    expect(await b.photos.get('item1')).toEqual({ state: 'missing' })
+    b.close()
+  })
+
+  it('另存成副本：照片跟著過去，並記成要補傳（副本是新的金鑰）', async () => {
+    const { reg, id } = await usedPhone()
+    const a = await openTrip(reg, id, false)
+    await a.photos.add('item1', pic)
+    a.close()
+    await restoreBackup(reg, await readBackup(await createBackup(reg)), 'copy')
+    const copy = reg.trips().find((t) => t.id !== id)!
+    const c = await openTrip(reg, copy.id, false)
+    expect(await c.photos.get('item1')).toEqual({ state: 'ready', data: pic })
+    expect(await c.photos.blobs.pending()).toHaveLength(1)
+    c.close()
+  })
+
+  it('從手機移除行程：照片檔也清掉', async () => {
+    const { reg, id } = await usedPhone()
+    const a = await openTrip(reg, id, false)
+    await a.photos.add('item1', pic)
+    a.close()
+    await removeTrip(reg, id)
+    reg.upsertTrip({ id, key: 'x'.repeat(43), title: '', startDate: '', endDate: '' })
+    const b = await openTrip(reg, id, false)
+    expect(await b.photos.blobs.keys()).toHaveLength(0)
+    b.close()
+  })
+})

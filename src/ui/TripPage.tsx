@@ -4,6 +4,7 @@ import { followChain, type ChainResult } from '../model/rekey'
 import type { Trip } from '../model/trip'
 import { hex } from '../sync/crypto'
 import { openTrip, removeTrip, type OpenTrip, type Registry } from '../store/local'
+import type { PhotoStore } from '../store/photos'
 import type { TripSync } from '../sync/engine'
 import { resolveTheme, type ThemeId } from '../themes'
 import { Icon } from './Icons'
@@ -21,6 +22,8 @@ export interface TabProps {
   sync: TripSync | null
   /** 這份行程現在用的佈景主題。 */
   theme: ThemeId
+  /** 這份行程的照片。 */
+  photos: PhotoStore
 }
 
 const TABS: [string, string][] = [['home', '總覽'], ['plan', '行程'], ['lists', '準備'], ['shop', '購物'], ['more', '更多']]
@@ -42,10 +45,10 @@ export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; 
     return () => { gone = true; close() }
   }, [tripId, key])
   if (!opened) return <p class="page top muted">載入中…</p>
-  return <TripView reg={reg} trip={opened.trip} sync={opened.sync} tab={tab} />
+  return <TripView reg={reg} trip={opened.trip} sync={opened.sync} photos={opened.photos} tab={tab} />
 }
 
-function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: string }) {
+function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { tab: string }) {
   useDocs([trip.docs.main, trip.docs.comments, trip.docs.priv, trip.docs.device])
   const meta = trip.meta
   // 佈景主題設在 <html> 上，整頁（含底色）一起換；離開行程時拿掉，首頁用預設配色。
@@ -156,7 +159,7 @@ function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: str
     )
   }
 
-  const props = { trip, reg, sync, theme }
+  const props = { trip, reg, sync, theme, photos }
   return (
     <div>
       <div class="topbar">

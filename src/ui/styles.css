@@ -424,3 +424,6 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 
 /* 成員名單的列可以點 */
 .tapRow { cursor: pointer; min-height: 44px; }
+
+/* 照片還沒抓到時的佔位框 */
+.photo.wait { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 120px; color: var(--muted); font-size: 0.85rem; border-style: dashed; }

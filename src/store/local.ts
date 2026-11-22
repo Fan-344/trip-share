@@ -6,8 +6,11 @@ import { newId } from '../model/table'
 import { Trip, newTripDocs, type TripDocs } from '../model/trip'
 import type { Actor } from '../model/types'
 import { b64url, hex, importKey, newKeyBytes } from '../sync/crypto'
+import { BlobNet } from '../sync/blobs'
 import { TripSync } from '../sync/engine'
 import { WsRelay } from '../sync/relay'
+import { BlobStore } from './blobs'
+import { PhotoStore } from './photos'
 
 // 本機儲存（規格書第 5 節）：每個 Yjs 文件各自存進 IndexedDB。
 
@@ -159,6 +162,8 @@ export class Registry {
 export interface OpenTrip {
   trip: Trip
   sync: TripSync | null
+  /** 這份行程的照片（手機上的檔案＋中繼站上的檔案）。 */
+  photos: PhotoStore
   close: () => void
 }
 
@@ -171,14 +176,27 @@ export async function openTrip(reg: Registry, tripId: string, withSync = true): 
   const trip = new Trip(docs, { pubkey: me.pubkey, device: me.device })
   const closers: (() => void)[] = [() => ps.forEach((p) => void p.destroy())]
 
+  const blobs = await BlobStore.open(tripId)
+  closers.push(() => blobs.close())
+
   let sync: TripSync | null = null
+  let photos = new PhotoStore(trip, blobs, null)
   const ref = reg.trip(tripId)
   if (withSync && ref) {
     const relays = DEFAULT_RELAYS.map((url) => new WsRelay(url))
     const lastKey = `lastSync:${tripId}`
+    const key = await importKey(b64url.dec(ref.key))
+    const verifyKey = `photoVerify:${tripId}`
+    // 照片走同一批中繼站連線，但跟行程內容分開傳
+    photos = new PhotoStore(trip, blobs, new BlobNet({ tripId, key, secretKey: hex.dec(me.sk), relays }), {
+      get: () => Number(localStorage.getItem(verifyKey)) || 0,
+      set: (t) => localStorage.setItem(verifyKey, String(t)),
+    })
+    photos.start()
+    closers.push(() => photos.stop())
     sync = new TripSync({
       tripId,
-      key: await importKey(b64url.dec(ref.key)),
+      key,
       // 只有這兩個文件交給同步層；priv 與 device 永遠不會進到這裡。
       docs: { main: docs.main, comments: docs.comments },
       secretKey: hex.dec(me.sk),
@@ -205,11 +223,11 @@ export async function openTrip(reg: Registry, tripId: string, withSync = true): 
       relays.forEach((r) => r.close())
     })
   }
-  return { trip, sync, close: () => closers.forEach((f) => f()) }
+  return { trip, sync, photos, close: () => closers.forEach((f) => f()) }
 }
 
 /**
- * 把一份行程從這支手機移除：登記簿、金鑰、四個文件（含私人清單與訂位代號）全部清掉。
+ * 把一份行程從這支手機移除：登記簿、金鑰、四個文件（含私人清單與訂位代號）、照片檔全部清掉。
  * 只影響這支手機，其他成員不受影響；之後要再看，得重新被邀請或從備份還原。
  * 呼叫前要先離開那份行程的畫面（文件還開著的話，瀏覽器會等它關閉才真的刪）。
  */
@@ -217,10 +235,14 @@ export async function removeTrip(reg: Registry, tripId: string): Promise<void> {
   reg.forgetTrip(tripId)
   try {
     localStorage.removeItem(`lastSync:${tripId}`)
+    localStorage.removeItem(`photoVerify:${tripId}`)
   } catch {
     // 沒有 localStorage（測試環境）就略過。
   }
-  await Promise.all(Object.keys(newTripDocs()).map((n) => clearDocument(`trip:${tripId}:${n}`)))
+  await Promise.all([
+    ...Object.keys(newTripDocs()).map((n) => clearDocument(`trip:${tripId}:${n}`)),
+    BlobStore.destroy(tripId),
+  ])
 }
 
 export async function createTrip(
