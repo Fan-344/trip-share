@@ -6,6 +6,9 @@ import {
   AIRPORTS, ago, airportName, countdown, daysBetween, fullDay, nightsBetween, placeName, safeUrl,
   toInstant, today, zoneOptions,
 } from '../time'
+import { THEMES, autoTheme, themeName } from '../themes'
+import { Art, RouteArc } from './Art'
+import { Empty, Farewell } from './bits'
 import { Field, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
 
@@ -19,7 +22,7 @@ function EditedNotice({ rec, trip, now }: { rec: Meta; trip: Trip; now: number }
 
 const hm = (local: string) => local.slice(11, 16)
 
-export function Overview({ trip }: TabProps) {
+export function Overview({ trip, theme }: TabProps) {
   const now = useNow(1000)
   const [sheet, setSheet] = useState<
     { kind: 'trip' } | { kind: 'flight'; id?: string } | { kind: 'stay'; id?: string } | null
@@ -36,6 +39,8 @@ export function Overview({ trip }: TabProps) {
   return (
     <div>
       <div class="card hero">
+        <Art theme={theme} />
+        <div class="body">
         <div class="row">
           <span class="muted grow">
             {meta.startDate.slice(0, 4)}　{fullDay(meta.startDate)} ～ {fullDay(meta.endDate)}
@@ -43,6 +48,7 @@ export function Overview({ trip }: TabProps) {
           <button class="small" onClick={() => setSheet({ kind: 'trip' })}>編輯</button>
         </div>
         <h1>{meta.title}</h1>
+        {meta.desc && <p class="desc">{meta.desc}</p>}
         <div class="row wrap">
           {days.length > 0 && <span class="chip yellow">{days.length} 天 {days.length - 1} 夜</span>}
           {trip.members.all().map((m) => <span class="chip" key={m.id}>{m.nickname}</span>)}
@@ -55,6 +61,7 @@ export function Overview({ trip }: TabProps) {
         ) : meta.startDate > t ? (
           <Countdown ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label="距離出發" />
         ) : null}
+        </div>
       </div>
 
       <h2>航班</h2>
@@ -79,7 +86,8 @@ export function Overview({ trip }: TabProps) {
                 <div class="time">{hm(f.dep.local)}</div>
                 <div class="muted">{placeName(f.dep.tz, flights)}當地時間</div>
               </div>
-              <div class="mid">✈</div>
+              {/* 航線：飛機從出發地飛向目的地 */}
+              <div class="mid"><RouteArc /></div>
               <div class="to">
                 <div class="code">{f.to}</div>
                 <div class="muted">{airportName(f.to)}</div>
@@ -94,7 +102,7 @@ export function Overview({ trip }: TabProps) {
           </div>
         )
       })}
-      {flights.length === 0 && <p class="empty">還沒有航班。</p>}
+      {flights.length === 0 && <Empty icon="plane">還沒有航班。</Empty>}
       <button class="add" onClick={() => setSheet({ kind: 'flight' })}>＋ 新增航班</button>
 
       <h2>住宿</h2>
@@ -115,8 +123,10 @@ export function Overview({ trip }: TabProps) {
           </div>
         )
       })}
-      {stays.length === 0 && <p class="empty">還沒有住宿。</p>}
+      {stays.length === 0 && <Empty icon="house">還沒有住宿。</Empty>}
       <button class="add" onClick={() => setSheet({ kind: 'stay' })}>＋ 新增住宿</button>
+
+      <Farewell theme={theme} title={meta.title} />
 
       {sheet?.kind === 'trip' && <TripSheet trip={trip} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'flight' && <FlightSheet trip={trip} id={sheet.id} onClose={() => setSheet(null)} />}
@@ -141,20 +151,40 @@ function Countdown({ ms, label }: { ms: number; label: string }) {
 }
 
 function TripSheet({ trip, onClose }: { trip: Trip; onClose: () => void }) {
-  const [f, setF] = useState({ title: trip.meta.title, startDate: trip.meta.startDate, endDate: trip.meta.endDate })
+  const [f, setF] = useState({
+    title: trip.meta.title, startDate: trip.meta.startDate, endDate: trip.meta.endDate, theme: trip.meta.theme ?? '',
+    desc: trip.meta.desc ?? '',
+  })
   const ok = f.title.trim() && f.startDate && f.endDate && f.startDate <= f.endDate
+  const auto = autoTheme(trip.flights.all())
   return (
     <Sheet title="編輯行程" onClose={onClose}>
       <form onSubmit={(e) => {
         e.preventDefault()
         if (!ok) return
-        trip.updateMeta({ ...f, title: f.title.trim() })
+        trip.updateMeta({ ...f, title: f.title.trim(), desc: f.desc.trim() })
         onClose()
       }}>
         <Field label="行程名稱"><input value={f.title} onInput={(e) => setF({ ...f, title: value(e) })} /></Field>
+        <Field label="一句話簡介（可不填）">
+          <input value={f.desc} onInput={(e) => setF({ ...f, desc: value(e) })} placeholder="例如：大象、夜間動物園，還有泳池時光" />
+        </Field>
         <div class="two">
           <Field label="出發日"><input type="date" value={f.startDate} onInput={(e) => setF({ ...f, startDate: value(e) })} /></Field>
           <Field label="回程日"><input type="date" value={f.endDate} min={f.startDate} onInput={(e) => setF({ ...f, endDate: value(e) })} /></Field>
+        </div>
+        <span class="muted">佈景主題（全家人看到的都一樣）</span>
+        <div class="swatches">
+          <button type="button" class={f.theme === '' ? 'on' : ''} onClick={() => setF({ ...f, theme: '' })}>
+            <i style={`background:${THEMES.find((t) => t.id === auto)!.accent}`} />
+            <span>自動<br /><small class="muted">依目的地：{themeName(auto)}</small></span>
+          </button>
+          {THEMES.map((t) => (
+            <button type="button" key={t.id} class={f.theme === t.id ? 'on' : ''} onClick={() => setF({ ...f, theme: t.id })}>
+              <i style={`background:${t.accent}`} />
+              <span>{t.name}<br /><small class="muted">{t.hint}</small></span>
+            </button>
+          ))}
         </div>
         <div class="actions"><button class="primary" disabled={!ok}>儲存</button></div>
       </form>

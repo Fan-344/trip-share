@@ -1,7 +1,7 @@
 import * as Y from 'yjs'
 import { Table, newId } from './table'
 import type {
-  Actor, CheckState, Comment, Flight, HistoryEntry, Item, List, ListItem, ListKind,
+  Actor, CheckState, Comment, DayInfo, Flight, HistoryEntry, Item, List, ListItem, ListKind,
   Member, Meta, Pnr, Role, Stay, TripMeta,
 } from './types'
 
@@ -40,6 +40,7 @@ export class Trip {
   readonly flights: Table<Flight>
   readonly stays: Table<Stay>
   readonly items: Table<Item>
+  readonly days: Table<DayInfo>
   readonly lists: Table<List>
   readonly listItems: Table<ListItem>
   readonly comments: Table<Comment>
@@ -56,6 +57,7 @@ export class Trip {
     this.flights = new Table(main, 'flights', actor, this.history)
     this.stays = new Table(main, 'stays', actor, this.history)
     this.items = new Table(main, 'items', actor, this.history)
+    this.days = new Table(main, 'days', actor, this.history)
     this.lists = new Table(main, 'lists', actor, this.history)
     this.listItems = new Table(main, 'listItems', actor, this.history, ['checks'])
     this.comments = new Table(comments, 'comments', actor)
@@ -78,7 +80,7 @@ export class Trip {
     return this.metaMap.toJSON() as TripMeta
   }
 
-  updateMeta(patch: Partial<Pick<TripMeta, 'title' | 'startDate' | 'endDate'>>): void {
+  updateMeta(patch: Partial<Pick<TripMeta, 'title' | 'startDate' | 'endDate' | 'theme' | 'desc'>>): void {
     this.docs.main.transact(() => {
       for (const [k, v] of Object.entries(patch)) {
         const old = this.metaMap.get(k)
@@ -90,6 +92,15 @@ export class Trip {
         }])
       }
     })
+  }
+
+  // ---- 每天的標題與圖示（以日期當 ID）----
+
+  setDay(date: string, info: DayInfo): void {
+    if (this.days.raw(date)) {
+      this.days.restore(date)
+      this.days.update(date, info)
+    } else this.days.create(info, date)
   }
 
   // ---- 成員（以公鑰當 ID）----
@@ -184,7 +195,7 @@ export class Trip {
 
   private mainTables(): Record<string, Table<any>> {
     return {
-      members: this.members, flights: this.flights, stays: this.stays,
+      members: this.members, flights: this.flights, stays: this.stays, days: this.days,
       items: this.items, lists: this.lists, listItems: this.listItems,
     }
   }

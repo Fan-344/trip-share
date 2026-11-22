@@ -2,6 +2,8 @@
 import { useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import type { List, ListKind, Meta } from '../model/types'
+import { Empty, Farewell } from './bits'
+import { Icon } from './Icons'
 import { Field, Seg, Sheet, value } from './kit'
 import type { TabProps } from './TripPage'
 
@@ -12,7 +14,7 @@ const KIND_HINT: Record<ListKind, string> = {
   private: '只存在這支手機，其他人看不到。',
 }
 
-export function Lists({ trip }: TabProps) {
+export function Lists({ trip, theme }: TabProps) {
   const me = trip.actor.pubkey
   const lists = trip.allLists()
   // 鎖定只是畫面上的保護，避免手滑改到別人的清單；這裡記的是「這次開啟時手動切換過」的清單。
@@ -27,7 +29,7 @@ export function Lists({ trip }: TabProps) {
 
   return (
     <div>
-      {lists.length === 0 && <p class="empty">還沒有清單。先建一份「共用行李」吧。</p>}
+      {lists.length === 0 && <Empty icon="luggage">還沒有清單。先建一份「共用行李」吧。</Empty>}
       {groups.map(([kind, ls]) => ls.length > 0 && (
         <div key={kind}>
           <h2>{KIND_NAME[kind]}清單</h2>
@@ -39,6 +41,7 @@ export function Lists({ trip }: TabProps) {
         </div>
       ))}
       <button class="add" onClick={() => setCreating(true)}>＋ 新增清單</button>
+      <Farewell theme={theme} title={trip.meta.title} />
       {creating && <CreateList trip={trip} onClose={() => setCreating(false)} />}
     </div>
   )
@@ -72,6 +75,8 @@ function ListCard({ trip, list, locked, canLock, onToggleLock }: {
       </div>
       {list.kind === 'personal' && owners && <div class="muted">{owners} 的清單</div>}
       <div class="bar"><i style={`width:${items.length ? (done / items.length) * 100 : 0}%`} /></div>
+      {/* 全部勾完蓋一個章 */}
+      {items.length > 0 && done === items.length && <div class="stamp"><Icon id="star" size={18} />都準備好了！</div>}
 
       {menu && !locked && (
         <div class="row wrap" style="margin:8px 0">

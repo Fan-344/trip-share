@@ -34,6 +34,17 @@ export interface TripMeta {
   endDate: string
   /** 資料結構版本，之後改結構時用來升級。 */
   schema: number
+  /** 佈景主題；沒選（空白或沒有這個欄位）就依目的地自動決定。見 src/themes.ts。 */
+  theme?: string
+  /** 一兩句話的行程簡介，顯示在總覽。 */
+  desc?: string
+}
+
+/** 某一天的標題與圖示（例如「抵達清邁」）。以日期當 ID。 */
+export interface DayInfo {
+  title: string
+  /** 圖示代號，見 src/ui/Icons.tsx；空白就用主題預設的。 */
+  icon: string
 }
 
 export interface Member {
@@ -78,7 +89,13 @@ export interface Item {
   place: string
   transport: string
   kind: ItemKind
+  /** 類別（交通、用餐、景點…），決定時間軸上的圖示；舊資料沒有這個欄位。 */
+  cat?: ItemCat
+  /** 時間是大約的（顯示「約」）。 */
+  approx?: boolean
 }
+
+export type ItemCat = '' | 'flight' | 'transport' | 'food' | 'sight' | 'activity' | 'rest' | 'shop' | 'stay'
 
 export type ListKind = 'shared' | 'personal' | 'private'
 

@@ -13,7 +13,17 @@
   --green-l: #e9f3e3;
   --line: 2.5px solid var(--ink);
   --r: 20px;
+  /* 主題會換掉的三個顏色：重點色（按鈕、選中的分頁）、它的淺色版、紙底。 */
+  --accent: var(--yellow);
+  --accent-l: var(--yellow-l);
 }
+
+/* 佈景主題（src/themes.ts）。進到行程時由 TripPage 設在 <html> 上；沒設就是預設的奶油黃。 */
+:root[data-theme="thai"] { --accent: #f6d27a; --accent-l: #fdf2d5; --paper: #fffcf6; }
+:root[data-theme="japan"] { --accent: #f2a497; --accent-l: #fce6e1; --paper: #fffaf8; }
+:root[data-theme="island"] { --accent: #a8d3e6; --accent-l: #e3f1f7; --paper: #fbfdfc; }
+:root[data-theme="city"] { --accent: #c9c3e6; --accent-l: #eeebf8; --paper: #fcfbff; }
+:root[data-theme="general"] { --accent: #b9daa5; --accent-l: #e9f3e3; --paper: #fdfdf7; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -34,7 +44,7 @@ body {
 
 h1 { font-size: 1.5rem; margin: 0 0 4px; line-height: 1.3; }
 h2 { font-size: 1.15rem; margin: 28px 0 12px; display: flex; align-items: center; gap: 8px; }
-h2::before { content: ""; width: 12px; height: 12px; border: var(--line); border-radius: 50%; background: var(--yellow); flex: none; }
+h2::before { content: ""; width: 12px; height: 12px; border: var(--line); border-radius: 50%; background: var(--accent); flex: none; }
 h2.plain::before { display: none; }
 h3 { font-size: 1rem; margin: 0; }
 p { margin: 8px 0; }
@@ -55,7 +65,7 @@ button, .btn {
 }
 button:active, .btn:active { transform: translateY(1px); }
 button:disabled { opacity: 0.45; cursor: default; }
-.primary { background: var(--yellow); box-shadow: 0 3px 0 var(--ink); }
+.primary { background: var(--accent); box-shadow: 0 3px 0 var(--ink); }
 .danger { background: var(--coral-l); }
 .small { min-height: 32px; padding: 3px 10px; font-size: 0.85rem; border-width: 2px; }
 .ghost { border-color: transparent; background: transparent; padding-inline: 6px; }
@@ -88,14 +98,20 @@ button:disabled { opacity: 0.45; cursor: default; }
   flex: 1; text-align: center; text-decoration: none; border: var(--line); border-radius: 999px;
   padding: 5px 0; background: #fff; font-size: 0.95rem;
 }
-.tabs a.on { background: var(--yellow); box-shadow: 0 3px 0 var(--ink); }
+.tabs a.on { background: var(--accent); box-shadow: 0 3px 0 var(--ink); }
 .sync { font-size: 0.75rem; color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
 .sync i { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ink); background: var(--green); }
 .sync.busy i { background: var(--yellow); } .sync.off i { background: var(--coral); }
 .banner { background: var(--mizu-l); border-bottom: var(--line); padding: 8px 14px; display: flex; align-items: center; gap: 10px; }
 
 /* 總覽 */
-.hero { background: var(--yellow-l); }
+.hero { background: var(--accent-l); padding: 0; overflow: hidden; }
+.hero .body { padding: 14px 16px; }
+.art { display: block; width: 100%; height: auto; aspect-ratio: 400 / 210; border-bottom: var(--line); }
+.swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 4px; }
+.swatches button { justify-content: flex-start; border-radius: 14px; padding: 8px 10px; text-align: left; line-height: 1.3; }
+.swatches button.on { box-shadow: 0 3px 0 var(--ink); background: var(--accent-l); }
+.swatches i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--ink); flex: none; }
 .count { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 6px; }
 .count div { border: var(--line); border-radius: 14px; text-align: center; padding: 6px 0; background: #fff; }
 .count div:nth-child(1) { background: var(--coral-l); } .count div:nth-child(2) { background: var(--yellow-l); }
@@ -116,7 +132,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 }
 .day small { font-size: 0.7rem; color: var(--muted); }
 .day b { font-size: 1.05rem; }
-.day.on { background: var(--yellow); box-shadow: 0 3px 0 var(--ink); }
+.day.on { background: var(--accent); box-shadow: 0 3px 0 var(--ink); }
 .day.today small { color: var(--ink); font-weight: 700; }
 .timeline { position: relative; padding-left: 22px; }
 .timeline::before { content: ""; position: absolute; left: 6px; top: 8px; bottom: 8px; border-left: 2.5px dashed var(--ink); opacity: 0.35; }
@@ -159,7 +175,7 @@ select {
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .seg { display: flex; gap: 6px; }
 .seg button { flex: 1; }
-.seg button.on { background: var(--yellow); }
+.seg button.on { background: var(--accent); }
 .sheet-wrap { position: fixed; inset: 0; z-index: 20; background: rgba(62, 58, 57, 0.45); display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
   background: var(--paper); width: 100%; max-width: 560px; max-height: 92dvh; overflow-y: auto;
@@ -177,3 +193,133 @@ ul.plain li:first-child { border-top: 0; }
 /* QR 一律黑白、四周留白，掃描才穩。 */
 .qr { display: block; width: min(100%, 280px); margin: 10px auto; border: var(--line); border-radius: 14px; background: #fff; }
 .empty {text-align: center; color: var(--muted); padding: 22px 0 6px; }
+
+/* ================= 主題版位 ================= */
+.icon { flex: none; vertical-align: middle; }
+
+/* 頂端分頁下方的花邊：每個主題一種圖樣（三角旗、青海波、海浪、天際線、航線）。 */
+.topbar::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -14px; height: 11px;
+  background: var(--garland, none) repeat-x left top; pointer-events: none;
+}
+.topbar + .page { padding-top: 26px; }
+:root[data-theme="thai"] { --garland: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='11'%3E%3Cpath d='M3 0l4 8 4-8z' fill='%23f2a497' stroke='%233e3a39' stroke-width='1.5' stroke-linejoin='round'/%3E%3Cpath d='M17 0l4 8 4-8z' fill='%23f6d27a' stroke='%233e3a39' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+:root[data-theme="japan"] { --garland: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='11'%3E%3Cpath d='M0 0a12 11 0 0 0 24 0M6 0a6 6 0 0 0 12 0' fill='none' stroke='%23f2a497' stroke-width='2'/%3E%3C/svg%3E"); }
+:root[data-theme="island"] { --garland: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='11'%3E%3Cpath d='M0 4q6 8 12 0t12 0' fill='none' stroke='%23a8d3e6' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"); }
+:root[data-theme="city"] { --garland: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='11'%3E%3Cpath d='M1 0v6h6V0M9 0v9h7V0M18 0v5h5V0M25 0v8h4V0M31 0v4h4V0' fill='%23eeebf8' stroke='%233e3a39' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+:root[data-theme="general"] { --garland: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='11'%3E%3Cpath d='M2 5h8' stroke='%23b9daa5' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='18' cy='5' r='2.5' fill='%23b9daa5'/%3E%3C/svg%3E"); }
+
+/* 每日標頭：大圓圖示＋當天標題 */
+.dayhead { display: flex; align-items: center; gap: 12px; margin: 6px 0 16px; }
+.dayhead .badge {
+  width: 66px; height: 66px; flex: none; display: grid; place-items: center; position: relative;
+  border: var(--line); border-radius: 50%; background: var(--accent-l);
+}
+.dayhead .badge .spark { position: absolute; right: -4px; top: -2px; }
+.dayhead h3 { font-size: 1.2rem; line-height: 1.3; }
+.dayhead .ghost { margin-left: auto; }
+
+/* 時間軸：有類別的項目，圓點換成類別圖示 */
+.timeline { padding-left: 44px; }
+.timeline::before { left: 15px; }
+.stop::before { left: -37px; }
+.stop.cat::before { display: none; }
+.stop .catdot {
+  position: absolute; left: -46px; top: 8px; width: 34px; height: 34px;
+  display: grid; place-items: center; border: var(--line); border-radius: 50%;
+}
+.approx { font-size: 0.72rem; border: 2px solid var(--ink); border-radius: 6px; padding: 0 4px; line-height: 1.4; background: #fff; }
+
+/* 圖示與類別的選擇格 */
+.icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 6px 0; }
+.icons button { padding: 0; min-height: 46px; border-radius: 12px; }
+.cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.cats button { gap: 4px; padding: 3px 10px 3px 6px; min-height: 36px; font-size: 0.85rem; }
+.icons button.on, .cats button.on { background: var(--accent-l); box-shadow: 0 3px 0 var(--ink); }
+
+/* 空白畫面、頁尾、完成章、首頁的行程卡 */
+.empty .icon { display: block; margin: 0 auto 8px; }
+.farewell { text-align: center; margin-top: 40px; color: var(--muted); font-size: 0.85rem; }
+.farewell .row { justify-content: center; gap: 12px; margin-bottom: 8px; }
+.stamp {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 2px 12px;
+  border: var(--line); border-radius: 999px; background: var(--green-l); transform: rotate(-2deg);
+}
+.tripcard { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.tripcard .badge { width: 50px; height: 50px; flex: none; display: grid; place-items: center; border: var(--line); border-radius: 50%; }
+.desc { margin: 2px 0 8px; }
+
+/* ================= 動態效果 ================= */
+/* 插畫（a- 開頭）。fill-box 讓旋轉、縮放以圖形自己的中心為準。 */
+@keyframes drift { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes float { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
+@keyframes rise {
+  0% { transform: translate(0, 12px); opacity: 0; } 15% { opacity: 1; }
+  50% { transform: translate(5px, -8px); } 85% { opacity: 1; }
+  100% { transform: translate(-2px, -28px); opacity: 0; }
+}
+@keyframes sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(3px) rotate(2deg); } }
+@keyframes flap { 0%, 70%, 100% { transform: scaleX(1); } 80% { transform: scaleX(0.7); } 90% { transform: scaleX(1.05); } }
+@keyframes trunk { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-9deg); } }
+@keyframes drive { from { transform: translateX(-8px); } to { transform: translateX(8px); } }
+@keyframes fall { 0% { transform: translate(0, -20px); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(-30px, 90px); opacity: 0; } }
+@keyframes twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.85); } }
+@keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-9px); } }
+@keyframes dash { to { stroke-dashoffset: -22; } }
+.a-drift { animation: drift 9s ease-in-out infinite alternate; }
+.a-spin { animation: spin 24s linear infinite; transform-box: fill-box; transform-origin: center; }
+.a-spin.slow { animation-duration: 70s; }
+.a-float { animation: float 3.6s ease-in-out infinite; }
+.a-rise { animation: rise 7s ease-in-out infinite; }
+.a-sway { animation: sway 3.4s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+.a-bob { animation: bob 3s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.a-flap { animation: flap 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 100% 50%; }
+.a-trunk { animation: trunk 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 0 0; }
+.a-wag { animation: sway 1.1s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 100% 0; }
+.a-drive { animation: drive 5s ease-in-out infinite alternate; }
+.a-wave { animation: drive 3.5s ease-in-out infinite alternate; }
+.a-fall { animation: fall 6s linear infinite; }
+.a-twinkle { animation: twinkle 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.a-bounce { animation: bounce 2.2s ease-in-out infinite; }
+.a-dash { animation: dash 1.2s linear infinite; }
+
+/* 介面 */
+@keyframes up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes sheetup { from { transform: translateY(100%); } }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes tick { 0% { transform: scale(1.14); } 35%, 100% { transform: scale(1); } }
+@keyframes stampin { 0% { transform: rotate(-2deg) scale(1.6); opacity: 0; } 100% { transform: rotate(-2deg) scale(1); opacity: 1; } }
+.page .card, .dayhead, .stop, .farewell { animation: up 0.38s ease both; }
+.card:nth-of-type(2), .stop:nth-child(2) { animation-delay: 0.05s; }
+.card:nth-of-type(3), .stop:nth-child(3) { animation-delay: 0.1s; }
+.card:nth-of-type(4), .stop:nth-child(4) { animation-delay: 0.15s; }
+.stop:nth-child(5) { animation-delay: 0.2s; }
+.stop:nth-child(n + 6) { animation-delay: 0.25s; }
+.stop .card { animation: none; }
+.sheet-wrap { animation: fadein 0.2s ease; }
+.sheet { animation: sheetup 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.banner { animation: up 0.3s ease; }
+.day.on, .tabs a.on { animation: pop 0.25s ease; }
+.check input:checked { animation: pop 0.25s ease; }
+.stamp { animation: stampin 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.bar i { transition: width 0.45s ease; }
+.count div:last-child b { animation: tick 1s ease-out infinite; }
+.dayhead .badge .icon { animation: float 3s ease-in-out infinite; }
+.dayhead .badge .spark { animation: twinkle 2.2s ease-in-out infinite; }
+.farewell .icon:nth-child(odd) { animation: float 3.2s ease-in-out infinite; }
+.farewell .icon:nth-child(even) { animation: float 3.2s ease-in-out -1.6s infinite; }
+button, .btn, .tabs a, .card.tap { transition: transform 0.08s ease, background-color 0.2s ease, box-shadow 0.2s ease; }
+.card.tap:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+
+/* 手機設定了「減少動態效果」的人：全部停掉。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---- 航班卡中間的弧形航線（飛機沿弧線飛的動畫在 Art.tsx 的 RouteArc） ---- */
+.route { grid-template-columns: auto 1fr auto; gap: 8px; }
+.route .mid { align-self: center; min-width: 70px; }
+.arc { display: block; width: 100%; max-width: 190px; height: auto; margin: 0 auto; overflow: visible; }

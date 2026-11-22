@@ -2,7 +2,10 @@
 import { useEffect, useState } from 'preact/hooks'
 import { currentPlatform, needsInstall, registerServiceWorker } from '../pwa'
 import { Registry, acceptInvite, createTrip, parseInvite } from '../store/local'
+import { THEMES } from '../themes'
 import { fullDay } from '../time'
+import { Art } from './Art'
+import { Icon } from './Icons'
 import { Field, PasteInvite, Sheet, useDocs, useHash, value } from './kit'
 import { TripPage } from './TripPage'
 
@@ -30,8 +33,24 @@ export function App() {
   )
 }
 
+/** 只在開發版有：#/themes 一次看完所有主題的插畫與配色，改圖時用。 */
+function ThemeGallery() {
+  return (
+    <div class="page top">
+      <h1>佈景主題一覽</h1>
+      {THEMES.map((t) => (
+        <div key={t.id} style={`--accent:${t.accent};--accent-l:color-mix(in srgb, ${t.accent} 30%, white)`}>
+          <h2>{t.name}<span class="muted">{t.id}・{t.hint}</span></h2>
+          <div class="card hero"><Art theme={t.id} /><div class="body"><button class="primary small">按鈕</button></div></div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   useDocs([reg.ydoc])
+  if (import.meta.env.DEV && hash === '#/themes') return <ThemeGallery />
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
   if (!me) return <Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} />
@@ -50,6 +69,17 @@ function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   const m = hash.match(/^#\/t\/([^/]+)(?:\/(\w+))?$/)
   return m ? <TripPage key={m[1]} reg={reg} tripId={m[1]} tab={m[2] ?? 'home'} /> : <Home reg={reg} />
 }
+
+const cardTheme = (id: string | undefined) => THEMES.find((t) => t.id === id) ?? THEMES[0]
+
+/**
+ * 開發用的範例行程。檔案放在 src/dev/*.local.ts，不進版本庫（裡面可以是真實行程），
+ * 正式打包時沒有這些檔案，按鈕就不會出現。
+ */
+const seeds: [string, () => Promise<{ seed: (reg: Registry) => Promise<string> }>][] = import.meta.env.DEV
+  ? Object.entries(import.meta.glob<{ seed: (reg: Registry) => Promise<string> }>('../dev/*.local.ts'))
+      .map(([path, load]) => [path.replace(/^.*\/|\.local\.ts$/g, ''), load])
+  : []
 
 const HINT_KEY = 'installHintDismissed'
 
@@ -139,14 +169,23 @@ function Home({ reg }: { reg: Registry }) {
       <InstallHint />
       {trips.length === 0 && <p class="empty">還沒有行程。建立一個，或貼上家人給你的邀請。</p>}
       {trips.map((t) => (
-        <a class="card tap" key={t.id} href={`#/t/${t.id}`} style="display:block;text-decoration:none">
-          <h3>{t.title}</h3>
-          <span class="muted">
-            {t.startDate && t.endDate ? `${t.startDate.slice(0, 4)}　${fullDay(t.startDate)} ～ ${fullDay(t.endDate)}` : '同步中…'}
+        <a class="card tap tripcard" key={t.id} href={`#/t/${t.id}`}>
+          {/* 行程卡用它上次開啟時的主題上色 */}
+          <span class="badge" style={`background:${cardTheme(t.theme).accent}`}><Icon id={cardTheme(t.theme).motifs[0]} size={30} /></span>
+          <span class="grow">
+            <b style="display:block;font-size:1.05rem">{t.title}</b>
+            <span class="muted">
+              {t.startDate && t.endDate ? `${t.startDate.slice(0, 4)}　${fullDay(t.startDate)} ～ ${fullDay(t.endDate)}` : '同步中…'}
+            </span>
           </span>
         </a>
       ))}
       <button class="primary block" onClick={() => setCreating(true)}>＋ 建立行程</button>
+      {seeds.map(([name, load]) => (
+        <button class="add" key={name} onClick={async () => { location.hash = `#/t/${await (await load()).seed(reg)}` }}>
+          開發用：載入範例（{name}）
+        </button>
+      ))}
 
       <h2>加入別人的行程</h2>
       <PasteInvite />

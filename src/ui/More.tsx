@@ -3,16 +3,18 @@ import { useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import type { HistoryEntry } from '../model/types'
 import { inviteLink } from '../store/local'
+import { themeName } from '../themes'
 import { ago } from '../time'
 import { CopyButton, Qr, useNow } from './kit'
 import { BUILD } from './Start'
 import type { TabProps } from './TripPage'
 
 const COLL: Record<string, string> = {
-  trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', lists: '清單', listItems: '清單項目',
+  trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', days: '每日標題', lists: '清單', listItems: '清單項目',
 }
 const FIELD: Record<string, string> = {
-  title: '名稱', startDate: '出發日', endDate: '回程日', nickname: '暱稱', role: '角色',
+  title: '名稱', startDate: '出發日', endDate: '回程日', theme: '佈景主題', desc: '簡介', nickname: '暱稱', role: '角色',
+  cat: '類別', approx: '大約時間', icon: '圖示',
   code: '航班代號', from: '出發機場', to: '抵達機場', dep: '起飛時間', arr: '抵達時間', cabin: '艙等', aircraft: '機型',
   name: '名稱', checkIn: '入住', checkOut: '退房', mapUrl: '地圖連結', confirmed: '確認狀態',
   date: '日期', time: '時間', tz: '時區', note: '說明', place: '地點', transport: '交通', kind: '類型',
@@ -29,6 +31,7 @@ function recordName(trip: Trip, e: HistoryEntry): string {
     case 'flights': return trip.flights.get(e.recId)?.code ?? ''
     case 'stays': return trip.stays.get(e.recId)?.name ?? ''
     case 'items': return trip.items.get(e.recId)?.title ?? ''
+    case 'days': return e.recId.slice(5).replace('-', '/')
     case 'lists': return trip.lists.get(e.recId)?.title ?? ''
     case 'listItems': return trip.listItems.get(e.recId)?.name ?? ''
     default: return ''
@@ -50,6 +53,7 @@ function describe(trip: Trip, e: HistoryEntry): string {
   const what = `${COLL[e.coll] ?? e.coll}${name ? `「${name}」` : ''}`
   if (e.op !== 'update') return `${OP[e.op]}${what}`
   if (e.field === 'checked') return `${e.old ? '取消勾選' : '勾選了'}${what}`
+  if (e.field === 'theme') return `${OP.update}佈景主題（原本：${themeName(e.old)}）`
   return `${OP.update}${what}的${FIELD[e.field ?? ''] ?? e.field}（原本：${showValue(e.old)}）`
 }
 

@@ -42,6 +42,8 @@ export interface TripRef {
   /** 行程金鑰（網址用的 base64）。只存本機，靠邀請連結傳給家人。 */
   key: string
   addedAt: number
+  /** 上次開啟時用的佈景主題，首頁的行程卡用它上色。 */
+  theme?: string
 }
 
 /** 這支手機的登記簿：我是誰、參加過哪些行程與它們的金鑰。只存本機。 */
@@ -94,8 +96,9 @@ export class Registry {
     const old = trips.get(ref.id)
     const key = old?.key ?? ref.key
     if (!key) return
-    if (old && old.title === ref.title && old.startDate === ref.startDate && old.endDate === ref.endDate) return
-    trips.set(ref.id, { ...ref, key, addedAt: old?.addedAt ?? Date.now() })
+    const theme = ref.theme ?? old?.theme
+    if (old && old.title === ref.title && old.startDate === ref.startDate && old.endDate === ref.endDate && old.theme === theme) return
+    trips.set(ref.id, { ...ref, key, addedAt: old?.addedAt ?? Date.now(), ...(theme && { theme }) })
   }
 }
 

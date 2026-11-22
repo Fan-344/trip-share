@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import { openTrip, type OpenTrip, type Registry } from '../store/local'
 import type { TripSync } from '../sync/engine'
+import { resolveTheme, type ThemeId } from '../themes'
 import { ago } from '../time'
 import { useDocs } from './kit'
 import { Lists } from './Lists'
@@ -14,6 +15,8 @@ export interface TabProps {
   trip: Trip
   reg: Registry
   sync: TripSync | null
+  /** 這份行程現在用的佈景主題。 */
+  theme: ThemeId
 }
 
 const TABS: [string, string][] = [['home', '總覽'], ['plan', '行程'], ['lists', '清單'], ['more', '更多']]
@@ -35,16 +38,31 @@ export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; 
   return <TripView reg={reg} trip={opened.trip} sync={opened.sync} tab={tab} />
 }
 
-function TripView({ reg, trip, sync, tab }: TabProps & { tab: string }) {
+function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: string }) {
   useDocs([trip.docs.main, trip.docs.priv, trip.docs.device])
   const meta = trip.meta
+  // 佈景主題設在 <html> 上，整頁（含底色）一起換；離開行程時拿掉，首頁用預設配色。
+  const theme = resolveTheme(meta.theme, trip.flights.all())
   useEffect(() => {
     if (!meta.id) return
-    reg.upsertTrip({ id: meta.id, title: meta.title, startDate: meta.startDate, endDate: meta.endDate })
+    reg.upsertTrip({ id: meta.id, title: meta.title, startDate: meta.startDate, endDate: meta.endDate, theme })
     // 從邀請連結進來的人：行程內容同步到之後，把自己加進成員。
     trip.join(reg.me()!.nickname)
-  }, [meta.id, meta.title, meta.startDate, meta.endDate])
+  }, [meta.id, meta.title, meta.startDate, meta.endDate, theme])
   useEffect(() => window.scrollTo(0, 0), [tab])
+
+  useEffect(() => {
+    if (!meta.id) return
+    const root = document.documentElement
+    root.dataset.theme = theme
+    const bar = document.querySelector('meta[name="theme-color"]')
+    const before = bar?.getAttribute('content')
+    bar?.setAttribute('content', getComputedStyle(root).getPropertyValue('--paper').trim())
+    return () => {
+      delete root.dataset.theme
+      if (before) bar?.setAttribute('content', before)
+    }
+  }, [meta.id, theme])
 
   if (!meta.id) {
     return (
@@ -59,7 +77,7 @@ function TripView({ reg, trip, sync, tab }: TabProps & { tab: string }) {
     )
   }
 
-  const props = { trip, reg, sync }
+  const props = { trip, reg, sync, theme }
   return (
     <div>
       <div class="topbar">
