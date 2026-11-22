@@ -278,3 +278,34 @@ describe('現場詢問', () => {
     expect(b.photoOf(id)).toBeUndefined()
   })
 })
+
+describe('移出成員（不換金鑰）', () => {
+  it('被移出的人從名單消失，查得到是誰、什麼時候移的', () => {
+    const { a, b } = twoPhones()
+    expect(a.removalOf('pubB')).toBeNull()
+    a.members.remove('pubB')
+    sync(a, b)
+    expect(b.members.all().map((m) => m.id)).toEqual(['pubA'])
+    expect(b.removalOf('pubB')).toMatchObject({ by: 'pubA' })
+    // 名字還查得到，修改紀錄才不會變成「未知成員」
+    expect(a.nicknameOf('pubB')).toBe('媽媽')
+  })
+
+  it('重新加入：回到名單上，是一般成員', () => {
+    const { a, b } = twoPhones()
+    a.members.update('pubB', { role: 'admin' })
+    a.members.remove('pubB')
+    sync(a, b)
+    b.join('媽咪')
+    sync(a, b)
+    expect(a.removalOf('pubB')).toBeNull()
+    expect(a.members.get('pubB')).toMatchObject({ nickname: '媽咪', role: 'member', deleted: false })
+  })
+
+  it('不用手機的成員不算在「有手機的成員」裡', () => {
+    const { a } = twoPhones()
+    const kid = a.addManaged('大女兒')
+    expect(a.members.get(kid)).toMatchObject({ nickname: '大女兒', managed: true })
+    expect(a.phoneMembers().sort()).toEqual(['pubA', 'pubB'])
+  })
+})

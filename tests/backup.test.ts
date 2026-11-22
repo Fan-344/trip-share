@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Item } from '../src/model/types'
 import { BackupError, createBackup, readBackup, restoreBackup } from '../src/store/backup'
-import { Registry, createTrip, openTrip, removeTrip } from '../src/store/local'
+import { Registry, createTrip, openTrip, removeTrip, renameEverywhere } from '../src/store/local'
 
 // 每個測試一支全新的手機（清空的瀏覽器儲存）。
 const newPhone = () => { globalThis.indexedDB = new IDBFactory() }
@@ -51,7 +51,7 @@ describe('備份檔', () => {
     expect(text).not.toContain(reg.me()!.sk)
     await expect(readBackup(text)).rejects.toMatchObject({ code: 'need-password' })
     await expect(readBackup(text, '錯的')).rejects.toMatchObject({ code: 'bad-password' })
-    expect((await readBackup(text, '芒果糯米飯')).me.nickname).toBe('爸爸')
+    expect((await readBackup(text, '芒果糯米飯')).me?.nickname).toBe('爸爸')
   })
 
   it('不是備份檔會被擋下', async () => {
@@ -187,5 +187,73 @@ describe('移除與刪除行程', () => {
     trip.revert(entry)
     expect(trip.meta.deleted ?? null).toBeNull()
     close()
+  })
+})
+
+describe('單趟行程的檔案', () => {
+  it('只有那一趟，沒有身分金鑰，也沒有訂位代號；私人清單有帶', async () => {
+    const { reg, id } = await usedPhone()
+    await createTrip(reg, { title: '東京', startDate: '2027-06-01', endDate: '2027-06-05' })
+    const text = await createBackup(reg, '', id)
+    expect(text).not.toContain(reg.me()!.sk)
+    expect(text).not.toContain('PNRSECRET')
+    const data = await readBackup(text)
+    expect(data.me).toBeUndefined()
+    expect(data.trips.map((t) => t.title)).toEqual(['清邁'])
+    expect(data.trips[0].key).toBe(reg.trip(id)!.key)
+  })
+
+  it('在另一支手機載入：行程回來，用那支手機原本的身分', async () => {
+    const old = await usedPhone()
+    const text = await createBackup(old.reg, '', old.id)
+
+    newPhone()
+    const reg = await Registry.open()
+    reg.setNickname('媽媽')
+    const mine = reg.me()!.pubkey
+    const result = await restoreBackup(reg, await readBackup(text), 'merge')
+    expect(result).toMatchObject({ identity: 'none', added: ['清邁'] })
+    expect(reg.me()).toMatchObject({ nickname: '媽媽', pubkey: mine })
+
+    const { trip, close } = await openTrip(reg, old.id, false)
+    expect(trip.items.get(old.itemId)?.title).toBe('晚餐')
+    expect(trip.allLists().map((l) => l.title)).toEqual(['私人清單'])
+    // 還不是成員；打開行程後畫面會以這支手機的身分加入
+    expect(trip.members.get(mine)).toBeUndefined()
+    close()
+  })
+
+  it('手機上還沒有身分時不能載入單趟檔案，並說明原因', async () => {
+    const old = await usedPhone()
+    const text = await createBackup(old.reg, '', old.id)
+    newPhone()
+    const reg = await Registry.open()
+    await expect(restoreBackup(reg, await readBackup(text), 'merge')).rejects.toThrow('先取一個暱稱')
+    expect(reg.trips()).toHaveLength(0)
+  })
+
+  it('設密碼、另存成副本都跟完整備份一樣能用', async () => {
+    const { reg, id } = await usedPhone()
+    const text = await createBackup(reg, '密碼', id)
+    await expect(readBackup(text)).rejects.toMatchObject({ code: 'need-password' })
+    const result = await restoreBackup(reg, await readBackup(text, '密碼'), 'copy')
+    expect(result.copied).toHaveLength(1)
+    expect(reg.trips()).toHaveLength(2)
+  })
+})
+
+describe('更改顯示名稱', () => {
+  it('套用到手機上每一份行程裡的自己', async () => {
+    const { reg, id } = await usedPhone()
+    const other = await createTrip(reg, { title: '東京', startDate: '2027-06-01', endDate: '2027-06-05' })
+    expect(await renameEverywhere(reg, '把拔')).toBe(2)
+    expect(reg.me()!.nickname).toBe('把拔')
+    for (const tripId of [id, other]) {
+      const { trip, close } = await openTrip(reg, tripId, false)
+      expect(trip.nicknameOf(reg.me()!.pubkey)).toBe('把拔')
+      close()
+    }
+    // 再改成一樣的名字：沒有東西要改
+    expect(await renameEverywhere(reg, '把拔')).toBe(0)
   })
 })

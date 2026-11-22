@@ -115,7 +115,8 @@ function AskCard({ trip, item, me, onEdit }: { trip: Trip; item: ShopItemView; m
   const iDeclined = item.declined.includes(me)
   const iAsked = item.owner === me
   const answered = new Set([...Object.keys(item.wants), ...item.declined])
-  const pending = trip.members.all().map((m) => m.id).filter((id) => id !== item.owner && !answered.has(id))
+  // 不用手機的成員沒辦法自己回覆，不列入「還沒回」
+  const pending = trip.members.all().filter((m) => !m.managed).map((m) => m.id).filter((id) => id !== item.owner && !answered.has(id))
   const others = item.total - item.qty
   const [open, setOpen] = useState(false)
 

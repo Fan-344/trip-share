@@ -1,7 +1,7 @@
 // 進入行程之前的畫面：加到主畫面的引導、暱稱、加入、首頁。
 import { useEffect, useState } from 'preact/hooks'
 import { currentPlatform, needsInstall, registerServiceWorker } from '../pwa'
-import { Registry, acceptInvite, createTrip, parseInvite } from '../store/local'
+import { Registry, acceptInvite, createTrip, parseInvite, renameEverywhere, type Invite } from '../store/local'
 import { THEMES } from '../themes'
 import { fullDay } from '../time'
 import { Art } from './Art'
@@ -58,7 +58,7 @@ function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><Recover reg={reg} /></div></div>
   if (wantsJoin) {
     const invite = parseInvite(hash)
-    if (invite) return <Join reg={reg} id={invite.id} tripKey={invite.key} />
+    if (invite) return <Join reg={reg} invite={invite} />
     return (
       <div class="page top">
         <h1>邀請連結不完整</h1>
@@ -145,28 +145,34 @@ function Nickname({ invited, onSave }: { invited: boolean; onSave: (n: string) =
   )
 }
 
-function Join({ reg, id, tripKey }: { reg: Registry; id: string; tripKey: string }) {
+function Join({ reg, invite }: { reg: Registry; invite: Invite }) {
   const [error, setError] = useState('')
   useEffect(() => {
     try {
-      acceptInvite(reg, id, tripKey)
+      acceptInvite(reg, invite)
       // 用 replace：金鑰不留在瀏覽紀錄裡。
-      location.replace(`#/t/${id}`)
+      location.replace(`#/t/${invite.id}`)
     } catch (e) {
       setError(String((e as Error).message))
     }
-  }, [id, tripKey])
-  return <p class="page top">{error || '加入中…'} {error && <a href="#">回首頁</a>}</p>
+  }, [invite.id, invite.key])
+  return (
+    <div class="page top">
+      {error ? <div class="card"><h1>沒辦法加入</h1><p>{error}</p><p><a href="#">回首頁</a></p></div> : <p>加入中…</p>}
+    </div>
+  )
 }
 
 function Home({ reg }: { reg: Registry }) {
   const [creating, setCreating] = useState(false)
+  const [renaming, setRenaming] = useState(false)
   const trips = reg.trips()
   return (
     <div class="page top">
       <div class="row">
         <h1 class="grow">我的行程</h1>
-        <span class="chip mizu">{reg.me()!.nickname}</span>
+        {/* 點自己的名字可以改顯示名稱 */}
+        <button class="small" aria-label="更改顯示名稱" onClick={() => setRenaming(true)}>{reg.me()!.nickname}<Icon id="pencil" size={14} /></button>
       </div>
       <InstallHint />
       {trips.length === 0 && <p class="empty">還沒有行程。建立一個，或貼上家人給你的邀請。</p>}
@@ -197,6 +203,7 @@ function Home({ reg }: { reg: Registry }) {
 
       <p class="muted center" style="margin-top:32px">版本 {BUILD}</p>
       {creating && <CreateTrip reg={reg} onClose={() => setCreating(false)} />}
+      {renaming && <RenameSheet reg={reg} onClose={() => setRenaming(false)} />}
     </div>
   )
 }
@@ -226,6 +233,47 @@ function CreateTrip({ reg, onClose }: { reg: Registry; onClose: () => void }) {
           <button class="primary" disabled={!ok}>建立</button>
         </div>
       </form>
+    </Sheet>
+  )
+}
+
+/** 更改顯示名稱：改完會套用到這支手機上的每一份行程。 */
+function RenameSheet({ reg, onClose }: { reg: Registry; onClose: () => void }) {
+  const old = reg.me()!.nickname
+  const [name, setName] = useState(old)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState<number | null>(null)
+  const trips = reg.trips().length
+  return (
+    <Sheet title="更改顯示名稱" onClose={onClose}>
+      {done !== null ? (
+        <div>
+          <p class="row"><Icon id="check" size={22} />已經改成「{name.trim()}」。</p>
+          <p class="muted">
+            {done > 0
+              ? `${done} 份行程裡你的名字也改了。其他人會在你下次打開那份行程、同步之後看到新名字。`
+              : '之後建立或加入的行程都會用這個名字。'}
+          </p>
+          <div class="actions"><button class="primary" onClick={onClose}>完成</button></div>
+        </div>
+      ) : (
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          const n = name.trim()
+          if (!n || n === old || busy) return
+          setBusy(true)
+          setDone(await renameEverywhere(reg, n))
+        }}>
+          <Field label="顯示名稱"><input value={name} onInput={(e) => setName(value(e))} /></Field>
+          <p class="muted">
+            其他成員在成員名單、修改紀錄、購物回覆裡看到的就是這個名字。
+            {trips > 0 && `會一起改掉這支手機上 ${trips} 份行程裡的名字。`}
+          </p>
+          <div class="actions">
+            <button class="primary" disabled={!name.trim() || name.trim() === old || busy}>{busy ? '修改中…' : '儲存'}</button>
+          </div>
+        </form>
+      )}
     </Sheet>
   )
 }

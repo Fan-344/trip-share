@@ -28,7 +28,11 @@ export interface BackupData {
   format: typeof FORMAT
   version: 1
   createdAt: number
-  me: { pubkey: string; sk: string; nickname: string }
+  /**
+   * 身分金鑰。完整備份才有；單趟行程的檔案沒有——
+   * 那種檔案可能會傳給別人或長期留著，不該帶著「能以我的身分修改所有行程」的鑰匙。
+   */
+  me?: { pubkey: string; sk: string; nickname: string }
   trips: BackupTrip[]
 }
 
@@ -54,12 +58,17 @@ async function passwordKey(password: string, salt: Uint8Array): Promise<CryptoKe
   )
 }
 
-/** 產生備份檔的內容。（備份時間由介面在檔案真的存出去之後才記。） */
-export async function createBackup(reg: Registry, password = ''): Promise<string> {
+/**
+ * 產生備份檔的內容。（備份時間由介面在檔案真的存出去之後才記。）
+ * - 不給 onlyTrip：完整備份，含身分與所有行程。
+ * - 給 onlyTrip（行程 ID）：只有那一趟，含它的金鑰和我的私人清單，不含身分。
+ */
+export async function createBackup(reg: Registry, password = '', onlyTrip = ''): Promise<string> {
   const me = reg.me()
   if (!me) throw new Error('尚未設定暱稱')
   const trips: BackupTrip[] = []
   for (const ref of reg.trips()) {
+    if (onlyTrip && ref.id !== onlyTrip) continue
     const { trip, close } = await openTrip(reg, ref.id, false)
     const { main, comments, priv } = trip.docs
     trips.push({
@@ -73,9 +82,10 @@ export async function createBackup(reg: Registry, password = ''): Promise<string
   }
   const data: BackupData = {
     format: FORMAT, version: 1, createdAt: Date.now(),
-    me: { pubkey: me.pubkey, sk: me.sk, nickname: me.nickname },
+    ...(!onlyTrip && { me: { pubkey: me.pubkey, sk: me.sk, nickname: me.nickname } }),
     trips,
   }
+  if (onlyTrip && trips.length === 0) throw new Error('找不到這份行程')
   if (!password) return JSON.stringify(data)
 
   const salt = crypto.getRandomValues(new Uint8Array(16))
@@ -95,7 +105,7 @@ const isStr = (v: unknown): v is string => typeof v === 'string'
 function validate(d: unknown): BackupData {
   const x = d as Partial<BackupData>
   const ok = x?.format === FORMAT && x.version === 1 && typeof x.createdAt === 'number' &&
-    x.me && isStr(x.me.pubkey) && isStr(x.me.sk) && isStr(x.me.nickname) && Array.isArray(x.trips) &&
+    (x.me === undefined || (x.me && isStr(x.me.pubkey) && isStr(x.me.sk) && isStr(x.me.nickname))) && Array.isArray(x.trips) &&
     x.trips.every((t) => t && isStr(t.id) && isStr(t.title) && isStr(t.key) && isStr(t.main) && isStr(t.comments) && isStr(t.priv))
   if (!ok) throw new BackupError('bad-file')
   return x as BackupData
@@ -136,8 +146,11 @@ export async function readBackup(text: string, password = ''): Promise<BackupDat
 export type RestoreMode = 'merge' | 'copy'
 
 export interface RestoreResult {
-  /** adopted：手機上沒有身分，用了備份裡的；same：本來就是同一個；kept：手機上已有別的身分，沒有換。 */
-  identity: 'adopted' | 'same' | 'kept'
+  /**
+   * adopted：手機上沒有身分，用了備份裡的；same：本來就是同一個；
+   * kept：手機上已有別的身分，沒有換；none：檔案裡沒有身分（單趟行程的檔案），用手機上原本的。
+   */
+  identity: 'adopted' | 'same' | 'kept' | 'none'
   added: string[]
   merged: string[]
   copied: string[]
@@ -145,8 +158,9 @@ export interface RestoreResult {
 
 export async function restoreBackup(reg: Registry, data: BackupData, mode: RestoreMode): Promise<RestoreResult> {
   const before = reg.me()
-  const identity = !before ? 'adopted' : before.pubkey === data.me.pubkey ? 'same' : 'kept'
-  if (!before) reg.adoptIdentity(data.me)
+  if (!before && !data.me) throw new Error('這是單趟行程的檔案，裡面沒有身分。請先取一個暱稱，再從首頁載入。')
+  const identity = !data.me ? 'none' : !before ? 'adopted' : before.pubkey === data.me.pubkey ? 'same' : 'kept'
+  if (!before && data.me) reg.adoptIdentity(data.me)
 
   const result: RestoreResult = { identity, added: [], merged: [], copied: [] }
   const stamp = new Date(data.createdAt)

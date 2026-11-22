@@ -53,6 +53,8 @@ export interface Member {
   nickname: string
   role: Role
   joinedAt: number
+  /** 不用手機的成員（小孩、長輩）：沒有金鑰，由其他人代管。 */
+  managed?: boolean
 }
 
 export interface Flight {

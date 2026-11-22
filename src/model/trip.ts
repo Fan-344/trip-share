@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { Table, newId } from './table'
+import type { Rekey } from './rekey'
 import type {
   Actor, CheckState, Comment, DayInfo, Flight, HistoryEntry, Item, List, ListItem, ListKind,
   Member, Meta, Note, Photo, Pnr, Role, ShopItem, ShopItemView, Stay, TripMeta,
@@ -51,6 +52,7 @@ export class Trip {
   readonly privListItems: Table<ListItem>
   private readonly metaMap: Y.Map<unknown>
   private readonly pnrs: Y.Map<Pnr>
+  private readonly rekeys: Y.Array<Rekey>
 
   constructor(readonly docs: TripDocs, readonly actor: Actor) {
     const { main, comments, priv, device } = docs
@@ -70,6 +72,7 @@ export class Trip {
     this.privLists = new Table(priv, 'lists', actor)
     this.privListItems = new Table(priv, 'listItems', actor, null, ['checks'])
     this.pnrs = device.getMap('pnrs')
+    this.rekeys = main.getArray('rekeys')
   }
 
   // ---- 行程本身 ----
@@ -135,13 +138,61 @@ export class Trip {
 
   // ---- 成員（以公鑰當 ID）----
 
+  /**
+   * 把自己加進成員。已經是成員就不動；之前退出或被移出、現在用新的邀請回來的，恢復成一般成員。
+   * （被移出的人手上是舊金鑰，畫面會先擋下來，不會走到這裡。）
+   */
   join(nickname: string, role: Role = 'member'): void {
-    if (this.members.raw(this.actor.pubkey)) return
-    this.members.create({ nickname, role, joinedAt: Date.now() }, this.actor.pubkey)
+    const mine = this.members.get(this.actor.pubkey)
+    if (mine && !mine.deleted) return
+    if (mine) {
+      this.members.restore(this.actor.pubkey)
+      this.members.update(this.actor.pubkey, { nickname, role: 'member', joinedAt: Date.now() })
+    } else this.members.create({ nickname, role, joinedAt: Date.now() }, this.actor.pubkey)
   }
 
   nicknameOf(pubkey: string): string {
     return this.members.get(pubkey)?.nickname ?? '（未知成員）'
+  }
+
+  /** 這個成員如果已經不在名單上：是誰、什麼時候把他拿掉的。還在名單上就是 null。 */
+  removalOf(pubkey: string): { by: string; at: number } | null {
+    if (!this.members.get(pubkey)?.deleted) return null
+    const stone = this.members.raw(pubkey)?.get("deleted") as { by: string; at: number } | null | undefined
+    return stone ? { by: stone.by, at: stone.at } : null
+  }
+
+  /** 不用手機的成員（小孩、長輩）：沒有金鑰、不會自己登入，由其他人代管他的清單。 */
+  addManaged(nickname: string): string {
+    return this.members.create({ nickname, role: 'member', joinedAt: Date.now(), managed: true })
+  }
+
+  /** 有手機、現在還在行程裡的成員。換金鑰時新金鑰要給這些人。 */
+  phoneMembers(): string[] {
+    return this.members.all().filter((m) => !m.managed).map((m) => m.id)
+  }
+
+  // ---- 移出成員與換金鑰（見 rekey.ts）----
+
+  rekeyEntries(): Rekey[] {
+    return this.rekeys.toArray()
+  }
+
+  /** 把人移出，並記下換金鑰的紀錄。兩件事一起寫，別人不會只看到一半。 */
+  kick(pubkey: string, entry: Rekey): void {
+    this.docs.main.transact(() => {
+      this.members.remove(pubkey)
+      this.rekeys.push([entry])
+    })
+  }
+
+  /** 換金鑰的紀錄送不出去時，把剛才的移出收回來。 */
+  undoKick(pubkey: string, entryId: string): void {
+    this.docs.main.transact(() => {
+      const i = this.rekeys.toArray().findIndex((e) => e.id === entryId)
+      if (i >= 0) this.rekeys.delete(i, 1)
+      this.members.restore(pubkey)
+    })
   }
 
   // ---- 清單 ----

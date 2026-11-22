@@ -2,11 +2,12 @@
 import { useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import type { HistoryEntry } from '../model/types'
-import { inviteLink } from '../store/local'
+import { DownloadSheet } from './Backup'
+import { InviteSection, MembersSection } from './Members'
 import { themeName } from '../themes'
 import { ago } from '../time'
 import { Fold } from './fold'
-import { CopyButton, Qr, useNow } from './kit'
+import { useNow } from './kit'
 import { BUILD } from './Start'
 import { leaveTrip, type TabProps } from './TripPage'
 
@@ -65,45 +66,18 @@ function describe(trip: Trip, e: HistoryEntry): string {
 export function More({ trip, reg, sync }: TabProps) {
   const now = useNow(60_000)
   const [shown, setShown] = useState(10)
+  const [exporting, setExporting] = useState(false)
   const [showRelays, setShowRelays] = useState(false)
   const me = trip.actor.pubkey
-  const ref = reg.trip(trip.meta.id)
-  const members = trip.members.all()
   const iAmAdmin = trip.members.get(me)?.role === 'admin'
-  const admins = members.filter((m) => m.role === 'admin').length
   const history = trip.historyEntries()
 
   return (
     <div>
       {/* 各區塊都可以收合。只有自己一個人時邀請預設展開，其他時候預設只開成員。 */}
-      <Fold title="邀請家人" summary="QR Code" open={members.length <= 1}>
-      {ref && (
-        <div class="card center">
-          <p>請家人用手機相機掃這個 QR Code，打開後就會加入。</p>
-          <Qr text={inviteLink(ref)} label="邀請 QR Code" />
-          <p class="muted"><b>掃到或拿到連結的人就能看、也能改這份行程</b>，不要截圖貼到公開的地方。</p>
-          <CopyButton text={inviteLink(ref)} label="人不在旁邊？複製連結用私訊傳" cls="small" />
-        </div>
-      )}
-      </Fold>
+      <InviteSection trip={trip} reg={reg} sync={sync} />
+      <MembersSection trip={trip} reg={reg} sync={sync} />
 
-      <Fold title="成員" summary={`${members.length} 人`} open>
-      <div class="card">
-        <ul class="plain">
-          {members.map((m) => (
-            <li class="row" key={m.id}>
-              <span class="grow">{m.nickname}{m.id === me && <span class="muted">（我）</span>}</span>
-              {m.role === 'admin'
-                ? <span class="chip yellow">管理員</span>
-                : iAmAdmin && <button class="small" onClick={() => trip.members.update(m.id, { role: 'admin' })}>設為管理員</button>}
-            </li>
-          ))}
-        </ul>
-        {admins < 2 && members.length > 1 && iAmAdmin && (
-          <p class="muted">建議至少兩位管理員，其中一人換手機或遺失資料時，另一人還能管理行程。</p>
-        )}
-      </div>
-      </Fold>
 
       <Fold title="修改紀錄" summary={`${history.length} 筆`}>
       <div class="card">
@@ -151,6 +125,18 @@ export function More({ trip, reg, sync }: TabProps) {
         ) : <p>這份行程沒有金鑰，無法同步。</p>}
       </div>
       </Fold>
+
+      <Fold title="備份這趟行程">
+        <div class="card flat">
+          <p class="muted" style="margin-top:0">
+            把這一趟存成一個檔案：留著當紀錄，或拿到另一支手機上載入。檔案裡有行程內容、行程金鑰和你在這趟的私人清單，沒有你的身分。
+          </p>
+          <button onClick={() => setExporting(true)}>下載這趟行程的檔案</button>
+          <p class="muted" style="margin-bottom:0">要載入檔案，請回首頁的「備份」按「載入備份檔」。</p>
+        </div>
+      </Fold>
+      {exporting && <DownloadSheet reg={reg} only={{ id: trip.meta.id, title: trip.meta.title }} onClose={() => setExporting(false)} />}
+
 
       <Fold title="移除與刪除">
       <div class="card flat">

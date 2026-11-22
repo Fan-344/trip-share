@@ -421,3 +421,6 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 /* 手機瀏覽器預設「快速點兩下」會放大畫面，連按加號、減號或勾選時很容易誤觸。
    manipulation：保留捲動和兩指縮放，只關掉點兩下放大。 */
 *, *::before, *::after { touch-action: manipulation; }
+
+/* 成員名單的列可以點 */
+.tapRow { cursor: pointer; min-height: 44px; }

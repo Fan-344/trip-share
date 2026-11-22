@@ -45,6 +45,7 @@ function ResultSheet({ result, onClose }: { result: RestoreResult; onClose: () =
     result.copied.length > 0 && `另存了 ${result.copied.length} 份副本：${result.copied.join('、')}`,
     result.identity === 'adopted' && '身分已還原，你還是原本的那個成員。',
     result.identity === 'kept' && '這份備份是另一個身分的；你目前的身分沒有變。',
+    result.identity === 'none' && '這是單趟行程的檔案，沒有帶身分；你用的是這支手機上原本的身分。',
   ].filter(Boolean)
   return (
     <Sheet title="還原完成" onClose={onClose}>
@@ -79,7 +80,7 @@ export function BackupCard({ reg }: { reg: Registry }) {
           <button class={stale ? 'primary' : ''} disabled={reg.trips().length === 0} onClick={() => setSheet('download')}>
             下載備份檔
           </button>
-          <button onClick={() => setSheet('restore')}>從備份檔還原</button>
+          <button onClick={() => setSheet("restore")}>載入備份檔</button>
         </div>
       </div>
       </Fold>
@@ -90,7 +91,10 @@ export function BackupCard({ reg }: { reg: Registry }) {
   )
 }
 
-function DownloadSheet({ reg, onClose }: { reg: Registry; onClose: () => void }) {
+/**
+ * 下載備份檔。不給 only 是完整備份（身分＋所有行程）；給了就是只備份那一趟（不含身分）。
+ */
+export function DownloadSheet({ reg, only, onClose }: { reg: Registry; only?: { id: string; title: string }; onClose: () => void }) {
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
   const [busy, setBusy] = useState(false)
@@ -99,11 +103,15 @@ function DownloadSheet({ reg, onClose }: { reg: Registry; onClose: () => void })
   const save = async () => {
     setBusy(true)
     try {
-      const text = await createBackup(reg, pw)
+      const text = await createBackup(reg, pw, only?.id ?? '')
       const d = new Date()
-      const name = `旅遊共編備份-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`
+      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      // 檔名裡的行程名稱只留安全的字，避免奇怪的符號讓檔案存不了
+      const safe = (only?.title ?? '').replace(/[\\/:*?"<>|\s]+/g, '').slice(0, 20)
+      const name = only ? `旅遊共編-${safe || '行程'}-${day}.json` : `旅遊共編備份-${day}.json`
       if (await saveFile(name, text)) {
-        reg.setLastBackup(Date.now())
+        // 只有完整備份才算「備份過了」：單趟的檔案救不回身分和其他行程
+        if (!only) reg.setLastBackup(Date.now())
         setDone(true)
       }
     } finally {
@@ -111,7 +119,7 @@ function DownloadSheet({ reg, onClose }: { reg: Registry; onClose: () => void })
     }
   }
   return (
-    <Sheet title="下載備份檔" onClose={onClose}>
+    <Sheet title={only ? '備份這趟行程' : '下載備份檔'} onClose={onClose}>
       {done ? (
         <div>
           <p class="row"><Icon id="check" size={22} />備份檔已經存出去了。</p>
@@ -120,7 +128,14 @@ function DownloadSheet({ reg, onClose }: { reg: Registry; onClose: () => void })
         </div>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); if (!mismatch && !busy) void save() }}>
-          <p>備份檔包含你的身分、{reg.trips().length} 份行程的完整內容和私人清單。<b>不包含訂位代號。</b></p>
+          {only ? (
+            <p>
+              只包含「{only.title}」這一趟：行程的完整內容、行程金鑰和你在這趟的私人清單。
+              <b>不包含你的身分，也不包含訂位代號。</b>
+            </p>
+          ) : (
+            <p>備份檔包含你的身分、{reg.trips().length} 份行程的完整內容和私人清單。<b>不包含訂位代號。</b></p>
+          )}
           <Field label="密碼（可不設）">
             <input type="password" value={pw} onInput={(e) => setPw(value(e))} autocomplete="new-password" />
           </Field>
@@ -130,9 +145,11 @@ function DownloadSheet({ reg, onClose }: { reg: Registry; onClose: () => void })
             </Field>
           )}
           <div class="notice" style="display:block">
-            {pw === ''
-              ? '沒有設密碼：拿到這個檔案的人可以看到所有行程，並以你的身分修改。請自己收好，不要傳給別人。'
-              : '有設密碼：忘記密碼就打不開這份備份，沒有任何方法復原。'}
+            {pw !== ''
+              ? '有設密碼：忘記密碼就打不開這份備份，沒有任何方法復原。'
+              : only
+                ? '沒有設密碼：拿到這個檔案的人可以看、也可以改這趟行程（跟拿到邀請連結一樣），而且看得到你在這趟的私人清單。'
+                : '沒有設密碼：拿到這個檔案的人可以看到所有行程，並以你的身分修改。請自己收好，不要傳給別人。'}
           </div>
           <div class="actions">
             <button class="primary" disabled={mismatch || busy}>{busy ? '準備中…' : '下載'}</button>
@@ -177,8 +194,8 @@ export function RestoreSheet({ reg, onClose }: { reg: Registry; onClose: () => v
 
   const existing = data ? data.trips.filter((t) => reg.trip(t.id)).length : 0
   return (
-    <Sheet title="從備份檔還原" onClose={onClose}>
-      <Field label="選擇備份檔（旅遊共編備份-日期.json）">
+    <Sheet title="載入備份檔" onClose={onClose}>
+      <Field label="選擇檔案：完整備份，或單趟行程的檔案">
         <input type="file" accept=".json,application/json" onChange={pick} style="padding:8px" />
       </Field>
       {needPw && (
@@ -194,7 +211,7 @@ export function RestoreSheet({ reg, onClose }: { reg: Registry; onClose: () => v
       {data && (
         <div>
           <p>
-            <b>{data.me.nickname}</b> 在 {new Date(data.createdAt).toLocaleString('zh-TW', { hour12: false })} 的備份，
+            {data.me ? <span><b>{data.me.nickname}</b> 在 {new Date(data.createdAt).toLocaleString("zh-TW", { hour12: false })} 的完整備份，</span> : <span>{new Date(data.createdAt).toLocaleString("zh-TW", { hour12: false })} 存的單趟行程檔，</span>}
             共 {data.trips.length} 份行程：
           </p>
           <ul class="plain">
@@ -226,8 +243,8 @@ export function RestoreSheet({ reg, onClose }: { reg: Registry; onClose: () => v
                 const running = restoreBackup(reg, data, mode)
                 if (firstRun) pendingRestore = running
                 setResult(await running)
-              } catch {
-                setError('還原時發生錯誤，沒有完成。')
+              } catch (e) {
+                setError(e instanceof Error && e.message ? e.message : '還原時發生錯誤，沒有完成。')
               } finally {
                 setBusy(false)
               }

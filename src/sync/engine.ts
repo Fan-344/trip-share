@@ -172,6 +172,31 @@ export class TripSync {
     this.enqueue(() => this.tick())
   }
 
+  /**
+   * 現在就把行程主文件的完整快照送到每一台連得上的中繼站，並等它們回覆。
+   * 回傳有幾台收下了。換金鑰之前用：要確定「換金鑰的紀錄」留在舊的位置上（快照不會過期），
+   * 之後才上線的成員才找得到新金鑰。
+   */
+  async publishSnapshotNow(channel = 'main'): Promise<number> {
+    await this.queue
+    const ch = this.channels.find((c) => c.name === channel)
+    if (!ch) return 0
+    ch.buffer = []
+    const events = await this.build(ch, Y.encodeStateAsUpdate(ch.doc), 's')
+    const results = await Promise.all([...this.states].map(async ([relay, st]) => {
+      if (!relay.connected()) return false
+      for (const ev of events) {
+        this.published++
+        if (!(await relay.publish(ev))) return false
+      }
+      st.dirty.delete(ch.name)
+      st.mySnapAt.set(ch.name, nowSec())
+      return true
+    }))
+    this.emit()
+    return results.filter(Boolean).length
+  }
+
   /** 等目前排隊中的處理做完（測試用）。 */
   idle(): Promise<void> {
     return this.queue

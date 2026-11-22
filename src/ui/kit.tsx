@@ -172,7 +172,7 @@ export function PasteInvite() {
     if (!invite) return setError(notFound)
     setError('')
     setText('')
-    location.hash = `#/join/${invite.id}/${invite.key}`
+    location.hash = `#/join/${invite.id}/${invite.key}${invite.expiresAt ? `/${Math.floor(invite.expiresAt / 1000)}` : ""}`
   }
   return (
     <form onSubmit={(e) => {

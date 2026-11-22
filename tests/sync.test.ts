@@ -252,3 +252,32 @@ describe('同步', () => {
     expect(b.trip.meta.title).toBe('清邁')
   })
 })
+
+describe('移出成員', () => {
+  it('馬上把完整快照送到每台連得上的中繼站', async () => {
+    const key = await newKey()
+    const s1 = new FakeServer()
+    const s2 = new FakeServer()
+    const a = await phone('A', key, [s1, s2])
+    a.relays[1].setOnline(false)
+    a.trip.init({ id: 't1', title: '清邁', startDate: '2027-03-05', endDate: '2027-03-09' }, '爸爸')
+    expect(await a.sync.publishSnapshotNow()).toBe(1)
+    const snaps = [...s1.events.values()].filter((e) => e.tags.some((t) => t[0] === 't' && t[1].endsWith('s')))
+    expect(snaps.length).toBeGreaterThan(0)
+    expect(s2.events.size).toBe(0)
+
+    // 之後才上線的新手機，光靠這份快照就拿得到內容
+    const b = await phone('B', key, [s1])
+    await settle(a, b)
+    expect(b.trip.meta.title).toBe('清邁')
+  })
+
+  it('完全沒連線時回報 0，讓呼叫的人知道沒送出去', async () => {
+    const key = await newKey()
+    const server = new FakeServer()
+    const a = await phone('A', key, [server])
+    a.relays[0].setOnline(false)
+    a.trip.init({ id: 't1', title: '清邁', startDate: '2027-03-05', endDate: '2027-03-09' }, '爸爸')
+    expect(await a.sync.publishSnapshotNow()).toBe(0)
+  })
+})
