@@ -3,7 +3,8 @@ import { useEffect, useState } from 'preact/hooks'
 import type * as Y from 'yjs'
 import type { Trip } from './model/trip'
 import type { HistoryEntry, ListKind } from './model/types'
-import { Registry, createTrip, openTrip } from './store/local'
+import { Registry, acceptInvite, createTrip, inviteLink, openTrip, type OpenTrip } from './store/local'
+import type { TripSync } from './sync/engine'
 
 /** 文件有任何改動（本機或之後同步進來的）就重畫。 */
 function useDocs(docs: Y.Doc[]) {
@@ -39,8 +40,44 @@ function Loaded({ reg, hash }: { reg: Registry; hash: string }) {
   useDocs([reg.ydoc])
   const me = reg.me()
   if (!me) return <Nickname onSave={(n) => reg.setNickname(n)} />
+  const join = hash.match(/^#\/join\/([^/]+)\/([^/]+)$/)
+  if (join) return <Join reg={reg} id={join[1]} tripKey={join[2]} />
   const tripId = hash.match(/^#\/t\/(.+)$/)?.[1]
   return tripId ? <TripPage key={tripId} reg={reg} tripId={tripId} /> : <Home reg={reg} />
+}
+
+function Join({ reg, id, tripKey }: { reg: Registry; id: string; tripKey: string }) {
+  const [error, setError] = useState('')
+  useEffect(() => {
+    try {
+      acceptInvite(reg, id, tripKey)
+      // 用 replace：金鑰不留在瀏覽紀錄裡。
+      location.replace(`#/t/${id}`)
+    } catch (e) {
+      setError(String((e as Error).message))
+    }
+  }, [id, tripKey])
+  return <p>{error || '加入中…'} {error && <a href="#">回首頁</a>}</p>
+}
+
+function SyncBadge({ sync }: { sync: TripSync | null }) {
+  const [, set] = useState(0)
+  useEffect(() => {
+    if (!sync) return
+    const off = sync.onStatus(() => set((n) => n + 1))
+    const t = setInterval(() => set((n) => n + 1), 30_000)
+    return () => { off(); clearInterval(t) }
+  }, [sync])
+  if (!sync) return <span class="muted">未同步</span>
+  const s = sync.status()
+  const mins = s.lastSyncAt ? Math.floor((Date.now() - s.lastSyncAt) / 60_000) : null
+  const text = s.connected === 0 ? '離線中' : s.pending ? '同步中…' : '已同步'
+  return (
+    <span class="muted">
+      {text}・中繼站 {s.connected}/{s.total}
+      {mins !== null && `・${mins === 0 ? '剛剛' : `${mins} 分鐘前`}收到更新`}
+    </span>
+  )
 }
 
 function Nickname({ onSave }: { onSave: (n: string) => void }) {
@@ -82,28 +119,42 @@ function Home({ reg }: { reg: Registry }) {
 }
 
 function TripPage({ reg, tripId }: { reg: Registry; tripId: string }) {
-  const [trip, setTrip] = useState<Trip | null>(null)
+  const [opened, setOpened] = useState<OpenTrip | null>(null)
   useEffect(() => {
     let close = () => {}
     let gone = false
-    void openTrip(tripId, reg.me()!).then((o) => {
+    void openTrip(reg, tripId).then((o) => {
       if (gone) return o.close()
       close = o.close
-      setTrip(o.trip)
+      if (import.meta.env.DEV) (globalThis as Record<string, unknown>).__sync = o.sync
+      setOpened(o)
     })
     return () => { gone = true; close() }
   }, [tripId])
-  if (!trip) return <p>載入中…</p>
-  return <TripView reg={reg} trip={trip} />
+  if (!opened) return <p>載入中…</p>
+  return <TripView reg={reg} trip={opened.trip} sync={opened.sync} />
 }
 
-function TripView({ reg, trip }: { reg: Registry; trip: Trip }) {
+function TripView({ reg, trip, sync }: { reg: Registry; trip: Trip; sync: TripSync | null }) {
   useDocs([trip.docs.main, trip.docs.priv])
+  const [showInvite, setShowInvite] = useState(false)
   const meta = trip.meta
+  const ref = meta.id ? reg.trip(meta.id) : undefined
   useEffect(() => {
-    if (meta.id) reg.upsertTrip({ id: meta.id, title: meta.title, startDate: meta.startDate, endDate: meta.endDate })
-  }, [meta.title, meta.startDate, meta.endDate])
-  if (!meta.id) return <p>這支手機上沒有這份行程。<a href="#">回首頁</a></p>
+    if (!meta.id) return
+    reg.upsertTrip({ id: meta.id, title: meta.title, startDate: meta.startDate, endDate: meta.endDate })
+    // 從邀請連結進來的人：行程內容同步到之後，把自己加進成員。
+    trip.join(reg.me()!.nickname)
+  }, [meta.id, meta.title, meta.startDate, meta.endDate])
+  if (!meta.id) {
+    return (
+      <div>
+        <p><a href="#">← 我的行程</a></p>
+        <p>{sync ? '正在從中繼站取得行程內容…' : '這支手機上沒有這份行程。'}</p>
+        <p><SyncBadge sync={sync} /></p>
+      </div>
+    )
+  }
 
   const who = (pubkey: string) => trip.nicknameOf(pubkey)
   const when = (at: number) => new Date(at).toLocaleString('zh-TW', { hour12: false })
@@ -112,8 +163,19 @@ function TripView({ reg, trip }: { reg: Registry; trip: Trip }) {
 
   return (
     <div>
-      <p><a href="#">← 我的行程</a></p>
+      <p><a href="#">← 我的行程</a>　<SyncBadge sync={sync} /></p>
       <h1>{meta.title}</h1>
+      {ref && (
+        <p>
+          <button onClick={() => setShowInvite(!showInvite)}>邀請</button>
+          {showInvite && (
+            <span>
+              <input readOnly value={inviteLink(ref)} onFocus={(e) => (e.target as HTMLInputElement).select()} style="width:100%" />
+              <span class="muted">拿到這個連結的人就能讀寫這份行程，只用私訊傳。</span>
+            </span>
+          )}
+        </p>
+      )}
       <p class="muted">
         {meta.startDate} – {meta.endDate}・成員：
         {trip.members.all().map((m) => `${m.nickname}${m.role === 'admin' ? '（管理員）' : ''}`).join('、')}

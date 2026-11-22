@@ -1,10 +1,26 @@
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
+import { generateSecretKey, getPublicKey } from 'nostr-tools/pure'
 import { newId } from '../model/table'
 import { Trip, newTripDocs, type TripDocs } from '../model/trip'
 import type { Actor } from '../model/types'
+import { b64url, hex, importKey, newKeyBytes } from '../sync/crypto'
+import { TripSync } from '../sync/engine'
+import { WsRelay } from '../sync/relay'
 
 // 本機儲存（規格書第 5 節）：每個 Yjs 文件各自存進 IndexedDB。
+
+/**
+ * 內建的公共中繼站。2026-11-22 在台灣用 scripts/relay-probe.mjs 實測：
+ * 五台都能寫入並讀回 40 KB 的事件；泰國的連線品質尚未實測。
+ */
+export const DEFAULT_RELAYS = [
+  'wss://nos.lol',
+  'wss://relay.primal.net',
+  'wss://nostr.mom',
+  'wss://offchain.pub',
+  'wss://relay.nostr.net',
+]
 
 async function persist(name: string, doc: Y.Doc): Promise<IndexeddbPersistence> {
   const p = new IndexeddbPersistence(name, doc)
@@ -14,6 +30,8 @@ async function persist(name: string, doc: Y.Doc): Promise<IndexeddbPersistence> 
 
 export interface Me extends Actor {
   nickname: string
+  /** Nostr 私鑰（十六進位）。只存本機。 */
+  sk: string
 }
 
 export interface TripRef {
@@ -21,13 +39,12 @@ export interface TripRef {
   title: string
   startDate: string
   endDate: string
+  /** 行程金鑰（網址用的 base64）。只存本機，靠邀請連結傳給家人。 */
+  key: string
   addedAt: number
 }
 
-const randomHex = (bytes: number) =>
-  [...crypto.getRandomValues(new Uint8Array(bytes))].map((b) => b.toString(16).padStart(2, '0')).join('')
-
-/** 這支手機的登記簿：我是誰、參加過哪些行程。只存本機。 */
+/** 這支手機的登記簿：我是誰、參加過哪些行程與它們的金鑰。只存本機。 */
 export class Registry {
   private constructor(private readonly doc: Y.Doc) {}
 
@@ -45,15 +62,18 @@ export class Registry {
 
   me(): Me | null {
     const m = this.doc.getMap('me').toJSON() as Partial<Me>
-    return m.pubkey && m.device && m.nickname ? (m as Me) : null
+    return m.pubkey && m.device && m.nickname && m.sk ? (m as Me) : null
   }
 
   setNickname(nickname: string): void {
     const m = this.doc.getMap('me')
     this.doc.transact(() => {
-      // TODO（同步層）：pubkey 改成真正的 Nostr 金鑰對；目前是同樣長度的隨機佔位值。
-      if (!m.get('pubkey')) m.set('pubkey', randomHex(32))
-      if (!m.get('device')) m.set('device', randomHex(8))
+      if (!m.get('sk')) {
+        const sk = generateSecretKey()
+        m.set('sk', hex.enc(sk))
+        m.set('pubkey', getPublicKey(sk))
+      }
+      if (!m.get('device')) m.set('device', hex.enc(crypto.getRandomValues(new Uint8Array(8))))
       m.set('nickname', nickname)
     })
   }
@@ -64,27 +84,67 @@ export class Registry {
     )
   }
 
-  upsertTrip(ref: Omit<TripRef, 'addedAt'>): void {
+  trip(id: string): TripRef | undefined {
+    return this.doc.getMap<TripRef>('trips').get(id)
+  }
+
+  /** 新增行程，或更新首頁顯示用的標題與日期。金鑰一旦記下就不會被這裡改掉。 */
+  upsertTrip(ref: Omit<TripRef, 'addedAt' | 'key'> & { key?: string }): void {
     const trips = this.doc.getMap<TripRef>('trips')
     const old = trips.get(ref.id)
+    const key = old?.key ?? ref.key
+    if (!key) return
     if (old && old.title === ref.title && old.startDate === ref.startDate && old.endDate === ref.endDate) return
-    trips.set(ref.id, { ...ref, addedAt: old?.addedAt ?? Date.now() })
+    trips.set(ref.id, { ...ref, key, addedAt: old?.addedAt ?? Date.now() })
   }
 }
 
 export interface OpenTrip {
   trip: Trip
+  sync: TripSync | null
   close: () => void
 }
 
-export async function openTrip(tripId: string, me: Actor): Promise<OpenTrip> {
+export async function openTrip(reg: Registry, tripId: string, withSync = true): Promise<OpenTrip> {
+  const me = reg.me()
+  if (!me) throw new Error('尚未設定暱稱')
   const docs = newTripDocs()
   const names = Object.keys(docs) as (keyof TripDocs)[]
   const ps = await Promise.all(names.map((n) => persist(`trip:${tripId}:${n}`, docs[n])))
-  return {
-    trip: new Trip(docs, { pubkey: me.pubkey, device: me.device }),
-    close: () => ps.forEach((p) => void p.destroy()),
+  const trip = new Trip(docs, { pubkey: me.pubkey, device: me.device })
+  const closers: (() => void)[] = [() => ps.forEach((p) => void p.destroy())]
+
+  let sync: TripSync | null = null
+  const ref = reg.trip(tripId)
+  if (withSync && ref) {
+    const relays = DEFAULT_RELAYS.map((url) => new WsRelay(url))
+    const lastKey = `lastSync:${tripId}`
+    sync = new TripSync({
+      tripId,
+      key: await importKey(b64url.dec(ref.key)),
+      // 只有這兩個文件交給同步層；priv 與 device 永遠不會進到這裡。
+      docs: { main: docs.main, comments: docs.comments },
+      secretKey: hex.dec(me.sk),
+      device: me.device,
+      relays,
+      lastSync: {
+        get: () => Number(localStorage.getItem(lastKey)) || null,
+        set: (t) => localStorage.setItem(lastKey, String(t)),
+      },
+    })
+    await sync.start()
+    // 手機切回畫面或恢復網路時，立刻重連，不等重試計時。
+    const kick = () => { if (document.visibilityState === 'visible') relays.forEach((r) => r.kick()) }
+    document.addEventListener('visibilitychange', kick)
+    addEventListener('online', kick)
+    closers.push(() => {
+      document.removeEventListener('visibilitychange', kick)
+      removeEventListener('online', kick)
+      sync!.stop()
+      relays.forEach((r) => r.close())
+    })
   }
+  return { trip, sync, close: () => closers.forEach((f) => f()) }
 }
 
 export async function createTrip(
@@ -94,9 +154,20 @@ export async function createTrip(
   const me = reg.me()
   if (!me) throw new Error('尚未設定暱稱')
   const id = newId()
-  const { trip, close } = await openTrip(id, me)
+  reg.upsertTrip({ id, ...input, key: b64url.enc(newKeyBytes()) })
+  const { trip, close } = await openTrip(reg, id, false)
   trip.init({ id, ...input }, me.nickname)
-  reg.upsertTrip({ id, ...input })
   close()
   return id
+}
+
+/** 邀請連結：行程 ID 與金鑰都放在 # 後面，瀏覽器不會把這段送給任何伺服器。 */
+export function inviteLink(ref: TripRef): string {
+  return `${location.origin}${location.pathname}#/join/${ref.id}/${ref.key}`
+}
+
+/** 從邀請連結加入：先記下金鑰，內容等同步層從中繼站抓回來。 */
+export function acceptInvite(reg: Registry, id: string, key: string): void {
+  if (b64url.dec(key).length !== 32) throw new Error('邀請連結不完整')
+  reg.upsertTrip({ id, key, title: '（同步中的行程）', startDate: '', endDate: '' })
 }
