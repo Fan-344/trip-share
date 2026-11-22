@@ -10,7 +10,9 @@ import { THEMES, autoTheme, themeName } from '../themes'
 import { Art, RouteArc } from './Art'
 import { Empty, Farewell } from './bits'
 import { Chevron } from './fold'
+import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
+import { ImportSheet, type ImportState } from './Import'
 import { Field, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
 
@@ -27,8 +29,10 @@ const hm = (local: string) => local.slice(11, 16)
 export function Overview({ trip, theme }: TabProps) {
   const now = useNow(1000)
   const [sheet, setSheet] = useState<
-    { kind: 'trip' } | { kind: 'flight'; id?: string } | { kind: 'stay'; id?: string } | null
+    { kind: 'trip' } | { kind: 'flight'; id?: string; ticket?: number } | { kind: 'stay'; id?: string } | { kind: 'import' } | null
   >(null)
+  // 匯入機票讀到的航班；放在這裡，確認完一班回到清單時還在。
+  const [ticket, setTicket] = useState<ImportState | null>(null)
   const meta = trip.meta
   const flights = trip.flights.all().sort((a, b) => toInstant(a.dep) - toInstant(b.dep))
   const stays = trip.stays.all().sort((a, b) => a.checkIn.localeCompare(b.checkIn))
@@ -128,7 +132,10 @@ export function Overview({ trip, theme }: TabProps) {
         )
       })}
       {flights.length === 0 && <Empty icon="plane">還沒有航班。</Empty>}
-      <button class="add" onClick={() => setSheet({ kind: 'flight' })}><Icon id="plus" size={18} />新增航班</button>
+      <div class="two">
+        <button class="add" onClick={() => setSheet({ kind: 'flight' })}><Icon id="plus" size={18} />新增航班</button>
+        <button class="add" onClick={() => { setTicket(null); setSheet({ kind: 'import' }) }}><Icon id="camera" size={18} />匯入機票</button>
+      </div>
 
       <h2>住宿</h2>
       {stays.map((s) => {
@@ -154,7 +161,22 @@ export function Overview({ trip, theme }: TabProps) {
       <Farewell theme={theme} title={meta.title} />
 
       {sheet?.kind === 'trip' && <TripSheet trip={trip} onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'flight' && <FlightSheet trip={trip} id={sheet.id} onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'flight' && (
+        <FlightSheet
+          trip={trip} id={sheet.id}
+          initial={sheet.ticket === undefined ? undefined : ticket?.flights[sheet.ticket]}
+          onSaved={() => { if (ticket && sheet.ticket !== undefined) setTicket({ ...ticket, added: [...ticket.added, sheet.ticket] }) }}
+          // 從匯入清單點進來的：關掉後回到清單，還有別班可以繼續確認
+          onClose={() => setSheet(sheet.ticket === undefined ? null : { kind: 'import' })}
+        />
+      )}
+      {sheet?.kind === 'import' && (
+        <ImportSheet
+          near={meta.startDate} state={ticket} onState={setTicket}
+          onPick={(i) => setSheet({ kind: 'flight', ticket: i })}
+          onClose={() => setSheet(null)}
+        />
+      )}
       {sheet?.kind === 'stay' && <StaySheet trip={trip} id={sheet.id} onClose={() => setSheet(null)} />}
     </div>
   )
@@ -217,11 +239,23 @@ function TripSheet({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   )
 }
 
-function FlightSheet({ trip, id, onClose }: { trip: Trip; id?: string; onClose: () => void }) {
+function FlightSheet({ trip, id, initial, onSaved, onClose }: {
+  trip: Trip
+  id?: string
+  /** 從機票讀到的內容：先填進表單，使用者核對後才存。 */
+  initial?: TicketFlight
+  onSaved?: () => void
+  onClose: () => void
+}) {
   const old = id ? trip.flights.get(id) : undefined
   const flights = trip.flights.all()
   const start = trip.meta.startDate
-  const [f, setF] = useState({
+  const [f, setF] = useState(initial ? {
+    code: initial.code, from: initial.from, to: initial.to,
+    depDate: initial.depDate || start, depTime: initial.depTime, depTz: AIRPORTS[initial.from]?.tz ?? '',
+    arrDate: initial.arrDate || initial.depDate || start, arrTime: initial.arrTime, arrTz: AIRPORTS[initial.to]?.tz ?? '',
+    cabin: initial.cabin, aircraft: '', pnr: initial.pnr,
+  } : {
     code: old?.code ?? '', from: old?.from ?? '', to: old?.to ?? '',
     depDate: old?.dep.local.slice(0, 10) ?? start, depTime: old ? hm(old.dep.local) : '', depTz: old?.dep.tz ?? '',
     arrDate: old?.arr.local.slice(0, 10) ?? start, arrTime: old ? hm(old.arr.local) : '', arrTz: old?.arr.tz ?? '',
@@ -250,6 +284,7 @@ function FlightSheet({ trip, id, onClose }: { trip: Trip; id?: string; onClose: 
     else fid = trip.flights.create(data)
     const pnr = f.pnr.trim().toUpperCase()
     trip.setPnr(fid, pnr ? { airline: data.code.slice(0, 2), code: pnr } : null)
+    onSaved?.()
     onClose()
   }
 
@@ -267,8 +302,9 @@ function FlightSheet({ trip, id, onClose }: { trip: Trip; id?: string; onClose: 
   )
 
   return (
-    <Sheet title={id ? '編輯航班' : '新增航班'} onClose={onClose}>
+    <Sheet title={id ? '編輯航班' : initial ? '核對航班' : '新增航班'} onClose={onClose}>
       <form onSubmit={(e) => { e.preventDefault(); if (ok) save() }}>
+        {initial && <div class="notice" style="display:block">這些是從機票讀出來的，請對照機票核對每一欄，空的要自己補。</div>}
         <div class="two">
           <Field label="航班代號"><input value={f.code} onInput={(e) => set({ code: value(e) })} placeholder="JX1751" autocapitalize="characters" /></Field>
           <Field label="艙等"><input value={f.cabin} onInput={(e) => set({ cabin: value(e) })} placeholder="經濟艙" /></Field>
