@@ -5,6 +5,7 @@ import { Registry, acceptInvite, createTrip, parseInvite } from '../store/local'
 import { THEMES } from '../themes'
 import { fullDay } from '../time'
 import { Art } from './Art'
+import { BackupCard, Recover } from './Backup'
 import { Icon } from './Icons'
 import { Field, PasteInvite, Sheet, useDocs, useHash, value } from './kit'
 import { TripPage } from './TripPage'
@@ -53,7 +54,7 @@ function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   if (import.meta.env.DEV && hash === '#/themes') return <ThemeGallery />
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
-  if (!me) return <Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} />
+  if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><Recover reg={reg} /></div></div>
   if (wantsJoin) {
     const invite = parseInvite(hash)
     if (invite) return <Join reg={reg} id={invite.id} tripKey={invite.key} />
@@ -189,6 +190,8 @@ function Home({ reg }: { reg: Registry }) {
 
       <h2>加入別人的行程</h2>
       <PasteInvite />
+
+      <BackupCard reg={reg} />
 
       <p class="muted center" style="margin-top:32px">版本 {BUILD}</p>
       {creating && <CreateTrip reg={reg} onClose={() => setCreating(false)} />}

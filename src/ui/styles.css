@@ -161,7 +161,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 /* 表單與底部面板 */
 label.field { display: block; margin: 10px 0; font-size: 0.85rem; }
 label.field > span { display: block; margin-bottom: 3px; color: var(--muted); }
-input[type="text"], input[type="date"], input[type="time"], input[type="url"], input:not([type]), select, textarea {
+input[type="text"], input[type="date"], input[type="time"], input[type="url"], input[type="password"], input:not([type]), select, textarea {
   /* 字級固定 16px：iPhone 在輸入框字小於 16px 時，點進去會自動放大整個畫面。 */
   font: inherit; font-size: 16px; color: var(--ink); width: 100%; min-height: 42px;
   border: var(--line); border-radius: 12px; padding: 6px 10px; background: #fff;
@@ -334,3 +334,6 @@ button, .btn, .tabs a, .card.tap { transition: transform 0.08s ease, background-
 .a-flag { animation: flag 1.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0 50%; }
 .a-float.slow { animation-duration: 5.5s; }
 .a-drive.fast { animation-duration: 2.4s; }
+
+/* 選檔案的輸入框：字級一樣固定 16px，避免 iPhone 點進去放大。 */
+input[type="file"] { font: inherit; font-size: 16px; width: 100%; }

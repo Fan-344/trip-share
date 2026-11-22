@@ -80,6 +80,26 @@ export class Registry {
     })
   }
 
+  /** 從備份還原身分（手機上還沒有身分時）。裝置代號一律用新的：它代表「這次安裝」，不該跟著備份走。 */
+  adoptIdentity(id: { sk: string; pubkey: string; nickname: string }): void {
+    const m = this.doc.getMap('me')
+    this.doc.transact(() => {
+      m.set('sk', id.sk)
+      m.set('pubkey', id.pubkey)
+      m.set('nickname', id.nickname)
+      if (!m.get('device')) m.set('device', hex.enc(crypto.getRandomValues(new Uint8Array(8))))
+    })
+  }
+
+  /** 上次下載備份檔的時間（毫秒）；沒備份過是 null。 */
+  lastBackupAt(): number | null {
+    return (this.doc.getMap('settings').get('lastBackupAt') as number | undefined) ?? null
+  }
+
+  setLastBackup(at: number): void {
+    this.doc.getMap('settings').set('lastBackupAt', at)
+  }
+
   trips(): TripRef[] {
     return (Object.values(this.doc.getMap('trips').toJSON()) as TripRef[]).sort((a, b) =>
       b.startDate.localeCompare(a.startDate),

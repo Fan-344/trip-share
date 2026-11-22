@@ -80,6 +80,14 @@ export class Trip {
     return this.metaMap.toJSON() as TripMeta
   }
 
+  /** 把這份內容變成另一份獨立的行程（從備份另存成舊版副本時用）。不留修改紀錄。 */
+  rebrand(id: string, title: string): void {
+    this.docs.main.transact(() => {
+      this.metaMap.set('id', id)
+      this.metaMap.set('title', title)
+    })
+  }
+
   updateMeta(patch: Partial<Pick<TripMeta, 'title' | 'startDate' | 'endDate' | 'theme' | 'desc'>>): void {
     this.docs.main.transact(() => {
       for (const [k, v] of Object.entries(patch)) {
