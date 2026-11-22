@@ -4,8 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>旅遊共編</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#17616b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="旅遊共編" />
     <style>
-      body { font-family: -apple-system, "PingFang TC", sans-serif; margin: 0; padding: 16px; max-width: 640px; margin-inline: auto; line-height: 1.5; }
+      body { font-family: -apple-system, "PingFang TC", sans-serif; margin: 0; padding: 16px; max-width: 640px; margin-inline: auto; line-height: 1.5;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+      .banner { background: #17616b; color: #fff; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; }
+      .banner button { margin-left: 8px; }
+      ol.steps { padding-left: 1.4em; } ol.steps li { border: 0; padding: 4px 0; list-style: decimal; }
       h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; border-bottom: 1px solid #ccc; }
       input, select, button { font-size: 1rem; padding: 6px 8px; margin: 2px; }
       ul { padding-left: 0; list-style: none; } li { padding: 6px 0; border-bottom: 1px solid #eee; }

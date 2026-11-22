@@ -4,6 +4,7 @@ import type * as Y from 'yjs'
 import type { Trip } from './model/trip'
 import type { HistoryEntry, ListKind } from './model/types'
 import { Registry, acceptInvite, createTrip, inviteLink, openTrip, parseInvite, type OpenTrip } from './store/local'
+import { currentPlatform, needsInstall, registerServiceWorker } from './pwa'
 
 /** 打包時間，由 vite.config.ts 帶入；用來確認手機拿到的是不是最新版。 */
 declare const __BUILD__: string
@@ -35,14 +36,54 @@ export function App() {
   const [reg, setReg] = useState<Registry | null>(null)
   useEffect(() => void Registry.open().then(setReg), [])
   const hash = useHash()
+  const [applyUpdate, setApplyUpdate] = useState<(() => void) | null>(null)
+  useEffect(() => registerServiceWorker((apply) => setApplyUpdate(() => apply)), [])
   if (!reg) return <p>載入中…</p>
-  return <Loaded reg={reg} hash={hash} />
+  return (
+    <div>
+      {applyUpdate && (
+        <div class="banner">
+          有新版本
+          <button onClick={applyUpdate}>點此更新</button>
+        </div>
+      )}
+      <Loaded reg={reg} hash={hash} />
+    </div>
+  )
+}
+
+/** iPhone／iPad 還沒加到主畫面時顯示。資料要存在主畫面的 App 裡，所以這裡不讓人建立或加入行程。 */
+function InstallGuide({ hasInvite }: { hasInvite: boolean }) {
+  return (
+    <div>
+      <h1>先把它加到主畫面</h1>
+      <p>
+        iPhone 會自動清掉 7 天沒開的網頁資料。加到主畫面之後，行程才會一直留在手機裡，沒網路也打得開。
+      </p>
+      <ol class="steps">
+        {hasInvite && (
+          <li>
+            先複製邀請，等一下要用：<br />
+            <CopyButton text={location.href} label="複製邀請" />
+          </li>
+        )}
+        <li>點 Safari 下方的「分享」按鈕（方框加向上箭頭）。</li>
+        <li>往下找到「加入主畫面」，按「加入」。</li>
+        <li>回到主畫面，打開「旅遊共編」。</li>
+        {hasInvite && <li>在 App 裡按「貼上邀請」。</li>}
+      </ol>
+      <p class="muted">
+        找不到「加入主畫面」？你可能是在 LINE 或其他 App 裡打開的。請點右上角或右下角的選單，選「用 Safari 開啟」再試一次。
+      </p>
+    </div>
+  )
 }
 
 function Loaded({ reg, hash }: { reg: Registry; hash: string }) {
   useDocs([reg.ydoc])
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
+  if (needsInstall(currentPlatform())) return <InstallGuide hasInvite={wantsJoin} />
   if (!me) return <Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} />
   if (wantsJoin) {
     const invite = parseInvite(hash)
@@ -64,16 +105,29 @@ function Loaded({ reg, hash }: { reg: Registry; hash: string }) {
 function PasteInvite() {
   const [text, setText] = useState('')
   const [error, setError] = useState('')
+  const join = (raw: string, notFound: string) => {
+    const invite = parseInvite(raw)
+    if (!invite) return setError(notFound)
+    setError('')
+    setText('')
+    location.hash = `#/join/${invite.id}/${invite.key}`
+  }
   return (
     <form onSubmit={(e) => {
       e.preventDefault()
-      const invite = parseInvite(text)
-      if (!invite) return setError('找不到邀請內容，請確認貼上的是完整連結。')
-      setError('')
-      setText('')
-      location.hash = `#/join/${invite.id}/${invite.key}`
+      join(text, '找不到邀請內容，請確認貼上的是完整連結。')
     }}>
-      <input value={text} onInput={(e) => setText(value(e))} placeholder="貼上邀請連結" style="width:70%" />
+      <p>
+        {/* 讀剪貼簿一定要由使用者按按鈕觸發；iPhone 會再跳一次「貼上」讓人確認。 */}
+        <button type="button" onClick={async () => {
+          try {
+            join(await navigator.clipboard.readText(), '剪貼簿裡沒有邀請連結。請先在邀請連結的頁面按「複製邀請」。')
+          } catch {
+            setError('讀不到剪貼簿。請在下面的格子長按、選「貼上」。')
+          }
+        }}>貼上邀請</button>
+      </p>
+      <input value={text} onInput={(e) => setText(value(e))} placeholder="或把邀請連結貼在這裡" style="width:70%" />
       <button disabled={!text.trim()}>加入</button>
       {error && <div class="muted">{error}</div>}
     </form>
