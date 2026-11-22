@@ -60,6 +60,36 @@ function Join({ reg, id, tripKey }: { reg: Registry; id: string; tripKey: string
   return <p>{error || '加入中…'} {error && <a href="#">回首頁</a>}</p>
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    // 舊瀏覽器或沒有剪貼簿權限時的備用做法。
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    ta.remove()
+    return ok
+  }
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [state, setState] = useState<'idle' | 'ok' | 'fail'>('idle')
+  return (
+    <button onClick={async () => {
+      setState((await copyText(text)) ? 'ok' : 'fail')
+      setTimeout(() => setState('idle'), 2000)
+    }}>
+      {state === 'ok' ? '已複製 ✓' : state === 'fail' ? '複製失敗，請長按下方連結' : label}
+    </button>
+  )
+}
+
 function SyncBadge({ sync }: { sync: TripSync | null }) {
   const [, set] = useState(0)
   useEffect(() => {
@@ -170,6 +200,7 @@ function TripView({ reg, trip, sync }: { reg: Registry; trip: Trip; sync: TripSy
           <button onClick={() => setShowInvite(!showInvite)}>邀請</button>
           {showInvite && (
             <span>
+              <CopyButton text={inviteLink(ref)} label="複製邀請連結" />
               <input readOnly value={inviteLink(ref)} onFocus={(e) => (e.target as HTMLInputElement).select()} style="width:100%" />
               <span class="muted">拿到這個連結的人就能讀寫這份行程，只用私訊傳。</span>
             </span>
