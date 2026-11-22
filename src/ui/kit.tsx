@@ -2,6 +2,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { encode } from 'uqr'
+import { Icon } from './Icons'
 import type * as Y from 'yjs'
 import { parseInvite } from '../store/local'
 
@@ -37,7 +38,7 @@ export function useNow(ms: number): number {
 
 export const value = (e: Event): string => (e.target as HTMLInputElement).value
 
-/** 從畫面底部滑上來的面板，用來新增與編輯。點背景或 ✕ 關閉。 */
+/** 從畫面底部滑上來的面板，用來新增與編輯。點背景或右上角的叉叉關閉。 */
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ComponentChildren }) {
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -49,7 +50,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       <div class="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div class="sheet-head">
           <h2>{title}</h2>
-          <button class="ghost" aria-label="關閉" onClick={onClose}>✕</button>
+          <button class="ghost" aria-label="關閉" onClick={onClose}><Icon id="close" size={20} /></button>
         </div>
         {children}
       </div>
@@ -121,7 +122,8 @@ export function CopyButton({ text, label, cls = 'primary' }: { text: string; lab
       setState((await copyText(text)) ? 'ok' : 'fail')
       setTimeout(() => setState('idle'), 2000)
     }}>
-      {state === 'ok' ? '已複製 ✓' : state === 'fail' ? '複製失敗，請長按連結' : label}
+      {state === 'ok' && <Icon id="check" size={18} />}
+      {state === 'ok' ? '已複製' : state === 'fail' ? '複製失敗，請長按連結' : label}
     </button>
   )
 }

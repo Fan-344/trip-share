@@ -9,6 +9,7 @@ import {
 import { THEMES, autoTheme, themeName } from '../themes'
 import { Art, RouteArc } from './Art'
 import { Empty, Farewell } from './bits'
+import { Icon } from './Icons'
 import { Field, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
 
@@ -103,7 +104,7 @@ export function Overview({ trip, theme }: TabProps) {
         )
       })}
       {flights.length === 0 && <Empty icon="plane">還沒有航班。</Empty>}
-      <button class="add" onClick={() => setSheet({ kind: 'flight' })}>＋ 新增航班</button>
+      <button class="add" onClick={() => setSheet({ kind: 'flight' })}><Icon id="plus" size={18} />新增航班</button>
 
       <h2>住宿</h2>
       {stays.map((s) => {
@@ -124,7 +125,7 @@ export function Overview({ trip, theme }: TabProps) {
         )
       })}
       {stays.length === 0 && <Empty icon="house">還沒有住宿。</Empty>}
-      <button class="add" onClick={() => setSheet({ kind: 'stay' })}>＋ 新增住宿</button>
+      <button class="add" onClick={() => setSheet({ kind: 'stay' })}><Icon id="plus" size={18} />新增住宿</button>
 
       <Farewell theme={theme} title={meta.title} />
 

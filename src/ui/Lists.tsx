@@ -40,7 +40,7 @@ export function Lists({ trip, theme }: TabProps) {
           ))}
         </div>
       ))}
-      <button class="add" onClick={() => setCreating(true)}>＋ 新增清單</button>
+      <button class="add" onClick={() => setCreating(true)}><Icon id="plus" size={18} />新增清單</button>
       <Farewell theme={theme} title={trip.meta.title} />
       {creating && <CreateList trip={trip} onClose={() => setCreating(false)} />}
     </div>
@@ -68,10 +68,10 @@ function ListCard({ trip, list, locked, canLock, onToggleLock }: {
         <span class="muted">{done}／{items.length}</span>
         {canLock && (
           <button class="small" onClick={onToggleLock} aria-label={locked ? '解鎖' : '鎖定'}>
-            {locked ? '🔒 解鎖' : '🔓 鎖定'}
+            <Icon id={locked ? 'lock' : 'unlock'} size={18} />{locked ? '解鎖' : '鎖定'}
           </button>
         )}
-        {!locked && <button class="small ghost" aria-label="更多" onClick={() => setMenu(!menu)}>⋯</button>}
+        {!locked && <button class="small ghost" aria-label="更多" onClick={() => setMenu(!menu)}><Icon id="more" size={20} /></button>}
       </div>
       {list.kind === 'personal' && owners && <div class="muted">{owners} 的清單</div>}
       <div class="bar"><i style={`width:${items.length ? (done / items.length) * 100 : 0}%`} /></div>
@@ -97,7 +97,7 @@ function ListCard({ trip, list, locked, canLock, onToggleLock }: {
           <span class="name">{i.name}</span>
           {i.checked && list.kind === 'shared' && <span class="muted">{i.checkedBy.map((p) => trip.nicknameOf(p)).join('、')}</span>}
           {menu && !locked && (
-            <button class="small ghost" aria-label={`刪除 ${i.name}`} onClick={() => trip.removeListItem(list.kind, i.id)}>✕</button>
+            <button class="small ghost" aria-label={`刪除 ${i.name}`} onClick={() => trip.removeListItem(list.kind, i.id)}><Icon id="close" size={16} /></button>
           )}
         </div>
       ))}

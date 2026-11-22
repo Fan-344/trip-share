@@ -109,7 +109,7 @@ function InstallHint() {
     <div class="card flat" style="background:var(--mizu-l)">
       <div class="row">
         <b class="grow">建議加到主畫面</b>
-        <button class="small ghost" aria-label="不再顯示" onClick={dismiss}>✕</button>
+        <button class="small ghost" aria-label="不再顯示" onClick={dismiss}><Icon id="close" size={16} /></button>
       </div>
       <p class="muted">
         iPhone 的 Safari 會清掉 7 天沒開的網頁資料。加到主畫面後行程會一直留著，沒網路也打得開。
@@ -180,7 +180,7 @@ function Home({ reg }: { reg: Registry }) {
           </span>
         </a>
       ))}
-      <button class="primary block" onClick={() => setCreating(true)}>＋ 建立行程</button>
+      <button class="primary block" onClick={() => setCreating(true)}><Icon id="plus" size={18} />建立行程</button>
       {seeds.map(([name, load]) => (
         <button class="add" key={name} onClick={async () => { location.hash = `#/t/${await (await load()).seed(reg)}` }}>
           開發用：載入範例（{name}）

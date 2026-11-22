@@ -323,3 +323,14 @@ button, .btn, .tabs a, .card.tap { transition: transform 0.08s ease, background-
 .route { grid-template-columns: auto 1fr auto; gap: 8px; }
 .route .mid { align-self: center; min-width: 70px; }
 .arc { display: block; width: 100%; max-width: 190px; height: auto; margin: 0 auto; overflow: visible; }
+
+/* ---- 插畫的補充動畫 ---- */
+/* 穿過整個畫面（新幹線、計程車）：從左邊外面開進來，從右邊開出去。 */
+@keyframes pass { from { transform: translateX(0); } to { transform: translateX(640px); } }
+.a-pass { animation: pass 9s linear infinite; }
+.a-pass.fast { animation-duration: 7s; animation-delay: -3s; }
+/* 旗子飄：以旗桿那一側為軸。 */
+@keyframes flag { from { transform: skewY(-7deg) scaleX(0.94); } to { transform: skewY(7deg) scaleX(1); } }
+.a-flag { animation: flag 1.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0 50%; }
+.a-float.slow { animation-duration: 5.5s; }
+.a-drive.fast { animation-duration: 2.4s; }

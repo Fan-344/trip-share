@@ -4,6 +4,7 @@ import type { Trip } from '../model/trip'
 import { openTrip, type OpenTrip, type Registry } from '../store/local'
 import type { TripSync } from '../sync/engine'
 import { resolveTheme, type ThemeId } from '../themes'
+import { Icon } from './Icons'
 import { ago } from '../time'
 import { useDocs } from './kit'
 import { Lists } from './Lists'
@@ -67,7 +68,7 @@ function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: str
   if (!meta.id) {
     return (
       <div class="page top">
-        <p><a href="#">← 我的行程</a></p>
+        <p><a class="row" href="#" style="text-decoration:none"><Icon id="back" size={20} />我的行程</a></p>
         <div class="card center">
           <p>{sync ? '正在取得行程內容…' : '這支手機上沒有這份行程。'}</p>
           <SyncBadge sync={sync} />
@@ -82,7 +83,7 @@ function TripView({ reg, trip, sync, tab }: Omit<TabProps, 'theme'> & { tab: str
     <div>
       <div class="topbar">
         <div class="row">
-          <a href="#" aria-label="回我的行程" style="text-decoration:none">←</a>
+          <a href="#" aria-label="回我的行程" style="display:flex"><Icon id="back" size={22} /></a>
           <span class="title grow">{meta.title}</span>
           <SyncBadge sync={sync} />
         </div>

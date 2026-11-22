@@ -61,7 +61,7 @@ export function Plan({ trip, theme }: TabProps) {
             <div class="muted">{n >= 0 ? `Day ${n + 1}・` : ''}{fullDay(day)}</div>
             <h3>{dayTitle || <span class="muted">幫這天取個標題</span>}</h3>
           </div>
-          <button class="small ghost" aria-label="編輯這天的標題與圖示" onClick={() => setSheet({ kind: 'day' })}>✏️</button>
+          <button class="small ghost" aria-label="編輯這天的標題與圖示" onClick={() => setSheet({ kind: 'day' })}><Icon id="pencil" size={22} /></button>
         </div>
 
         {list.length === 0 ? (
@@ -85,7 +85,7 @@ export function Plan({ trip, theme }: TabProps) {
                     {i.note && <div class="note">{i.note}</div>}
                     {(i.place || i.transport) && (
                       <div class="row wrap" style="margin-top:6px">
-                        {i.place && <span class="chip mizu">📍 {i.place}</span>}
+                        {i.place && <span class="chip mizu"><Icon id="pin" size={14} />{i.place}</span>}
                         {i.transport && <span class="chip green">{i.transport}</span>}
                       </div>
                     )}
@@ -99,7 +99,7 @@ export function Plan({ trip, theme }: TabProps) {
           </div>
         )}
       </div>
-      <button class="add" onClick={() => setSheet({ kind: 'item' })}>＋ 新增項目</button>
+      <button class="add" onClick={() => setSheet({ kind: 'item' })}><Icon id="plus" size={18} />新增項目</button>
       <Farewell theme={theme} title={meta.title} />
 
       {sheet?.kind === 'item' && <ItemSheet trip={trip} id={sheet.id} day={day} onClose={() => setSheet(null)} />}

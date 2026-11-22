@@ -104,6 +104,37 @@ function Bird({ x, y, delay = 0 }: { x: number; y: number; delay?: number }) {
   )
 }
 
+/** 熱氣球：慢慢上下飄。 */
+function Balloon({ x, y, s = 1, fill, delay = 0 }: { x: number; y: number; s?: number; fill: string; delay?: number }) {
+  return (
+    <At x={x} y={y} s={s}>
+      <g class="a-float slow" style={`animation-delay:${delay}s`}>
+        <path d="M-6 20l1 8M6 20l-1 8" stroke-width="2" />
+        <path fill={fill} d="M-16 0a16 16 0 1 1 32 0c0 9 -8 14 -10 20h-12c-2 -6 -10 -11 -10 -20z" />
+        <path stroke-width="2" d="M0 -16v36M-8 -14q-5 16 3 34M8 -14q5 16 -3 34" />
+        <rect x="-5" y="28" width="10" height="7" rx="1.5" fill="var(--yellow-l)" />
+      </g>
+    </At>
+  )
+}
+
+/** 四角星，一閃一閃。 */
+function Spark({ x, y, s = 1, delay = 0 }: { x: number; y: number; s?: number; delay?: number }) {
+  return (
+    <At x={x} y={y} s={s}>
+      <path class="a-twinkle" style={`animation-delay:${delay}s`} fill="#fff" stroke-width="2" d="M0 -7l2 5l5 2l-5 2l-2 5l-2 -5l-5 -2l5 -2z" />
+    </At>
+  )
+}
+
+function Flowers({ at, fill = 'var(--coral-l)' }: { at: [number, number, number][]; fill?: string }) {
+  return (
+    <g fill={fill} stroke-width="2">
+      {at.map(([x, y, r]) => <circle key={`${x}-${y}`} cx={x} cy={y} r={r} />)}
+    </g>
+  )
+}
+
 function Scene({ sky, ground, children }: { sky: string; ground: string; children: ComponentChildren }) {
   return (
     <svg class="art" viewBox={`0 0 ${W} ${H}`} role="img" aria-hidden="true" preserveAspectRatio="xMidYMax slice">
@@ -119,18 +150,34 @@ function Scene({ sky, ground, children }: { sky: string; ground: string; childre
 function General() {
   return (
     <Scene sky="var(--mizu-l)" ground="var(--yellow-l)">
-      <Sun x={330} y={48} />
-      <Cloud x={40} y={36} s={1.3} />
-      <Cloud x={228} y={92} delay={-6} />
-      <Bird x={120} y={52} /><Bird x={146} y={64} delay={-1.2} />
+      <Sun x={336} y={46} />
+      <Cloud x={40} y={30} s={1.3} />
+      <Cloud x={216} y={96} delay={-6} />
+      <Bird x={150} y={40} /><Bird x={176} y={52} delay={-1.2} />
+      <Plane path="M-70 140Q190 -70 470 110" s={1.05} dur={12} still={[214, 40, -4]} />
+      <Balloon x={72} y={96} fill="var(--coral)" />
+      <Balloon x={176} y={108} s={0.6} fill="var(--yellow)" delay={-1.8} />
       <path fill="var(--green)" d="M-10 186Q70 110 160 150T410 120V186Z" />
       <path fill="var(--green-l)" d="M-10 186Q110 140 210 168T410 156V186Z" />
-      <Plane path="M-70 150Q190 -60 470 120" s={1.4} dur={12} still={[214, 52, -4]} />
       {/* 小樹 */}
       <g fill="var(--green)">
-        <path d="M60 184v-14" /><circle cx="60" cy="162" r="10" />
+        <path d="M40 184v-14" /><circle cx="40" cy="162" r="10" />
         <path d="M250 184v-10" /><circle cx="250" cy="168" r="8" />
+        <path d="M372 184v-16" /><circle cx="372" cy="160" r="11" />
       </g>
+      {/* 路標 */}
+      <path d="M226 186v-40" />
+      <path fill="var(--yellow)" d="M214 146h20l5 5l-5 5h-20z" />
+      <path fill="#fff" d="M238 160h-20l-5 5l5 5h20z" />
+      {/* 載著行李的小車 */}
+      <g class="a-drive">
+        <rect x="124" y="150" width="22" height="9" rx="2" fill="var(--yellow)" />
+        <rect x="150" y="153" width="12" height="6" rx="2" fill="var(--mizu)" />
+        <path fill="var(--coral)" d="M110 180v-12q0 -9 9 -9h44q8 0 12 8l5 13z" />
+        <path fill="#fff" d="M122 164h14v8h-14zM142 164h13l4 8h-17z" stroke-width="2" />
+        <circle cx="126" cy="182" r="7" fill="#fff" /><circle cx="164" cy="182" r="7" fill="#fff" />
+      </g>
+      <Flowers at={[[70, 180, 4], [84, 182, 3], [282, 180, 4], [196, 182, 3]]} />
       {/* 目的地的圖釘 */}
       <g class="a-bounce">
         <path fill="var(--coral)" d="M318 172c-12-16-18-24-18-33a18 18 0 0 1 36 0c0 9-6 17-18 33z" />
@@ -165,7 +212,7 @@ function Thai() {
         <path d="M241 68q11 -34 22 0z" />
         <rect x="237" y="68" width="30" height="7" rx="2" />
       </g>
-      <path class="a-twinkle" fill="#fff" stroke-width="2" d="M276 40l2 5l5 2l-5 2l-2 5l-2 -5l-5 -2l5 -2z" />
+      <Spark x={276} y={47} />
       {/* 天燈 */}
       <Lantern x={69} y={86} />
       <Lantern x={306} y={104} s={0.9} delay={-2.5} />
@@ -197,10 +244,7 @@ function Thai() {
           <circle cx="356" cy="186" r="7" fill="#fff" />
         </g>
       </g>
-      {/* 路邊的花 */}
-      <g fill="var(--coral-l)" stroke-width="2">
-        <circle cx="196" cy="180" r="4" /><circle cx="214" cy="182" r="3" /><circle cx="42" cy="180" r="4" />
-      </g>
+      <Flowers at={[[196, 180, 4], [214, 182, 3], [42, 180, 4]]} />
     </Scene>
   )
 }
@@ -216,23 +260,45 @@ function Petal({ x, y, delay }: { x: number; y: number; delay: number }) {
 function Japan() {
   return (
     <Scene sky="var(--mizu-l)" ground="var(--green-l)">
-      <circle cx="322" cy="50" r="20" fill="var(--coral)" />
-      <Cloud x={30} y={44} s={1.2} />
-      <Cloud x={212} y={26} delay={-5} />
+      <circle cx="326" cy="46" r="20" fill="var(--coral)" />
+      <Cloud x={24} y={40} s={1.2} />
+      <Cloud x={206} y={22} delay={-5} />
+      <Bird x={250} y={58} /><Bird x={272} y={48} delay={-1.4} />
+      <Plane path="M-60 104Q170 -50 460 70" s={0.9} dur={14} still={[120, 30, -14]} />
       {/* 富士山 */}
       <path fill="var(--mizu)" d="M36 186L160 70q10 -8 20 -3q10 -5 20 3L324 186Z" />
       <path fill="#fff" d="M131 97L160 70q10 -8 20 -3q10 -5 20 3L229 97l-13 -9l-12 11l-12 -11l-12 11l-12 -11l-12 11z" />
+      {/* 山腳的五重塔 */}
+      <g fill="var(--coral)">
+        <path d="M222 100v-10" />
+        <rect x="216" y="104" width="12" height="80" fill="var(--yellow-l)" />
+        <path d="M206 108l16 -10l16 10zM204 128l18 -10l18 10zM202 148l20 -10l20 10zM200 168l22 -10l22 10z" />
+      </g>
+      {/* 新幹線：從左邊開進來，穿過畫面 */}
+      <g class="a-pass">
+        <path fill="#fff" d="M-170 182v-16q0 -8 8 -8h96q26 2 44 24z" />
+        <path fill="var(--mizu)" d="M-170 172h134l8 6h-142z" stroke-width="2" />
+        <path fill="var(--mizu-l)" stroke-width="2" d="M-160 162h14v6h-14zM-140 162h14v6h-14zM-120 162h14v6h-14zM-100 162h14v6h-14zM-78 162h16l8 6h-24z" />
+      </g>
+      {/* 鯉魚旗 */}
+      <path d="M258 186v-84" />
+      <g stroke-width="2">
+        <path class="a-flag" fill="var(--coral)" d="M258 104h20l6 5l-6 5h-20z" />
+        <path class="a-flag" style="animation-delay:-0.4s" fill="#fff" d="M258 120h18l5 5l-5 5h-18z" />
+        <path class="a-flag" style="animation-delay:-0.8s" fill="var(--yellow)" d="M258 136h15l4 4l-4 4h-15z" />
+      </g>
       {/* 鳥居 */}
       <g fill="var(--coral)">
-        <rect x="294" y="122" width="10" height="64" />
-        <rect x="346" y="122" width="10" height="64" />
-        <rect x="288" y="134" width="74" height="8" />
-        <path d="M278 108q47 -10 94 0v12q-47 -8 -94 0z" />
+        <rect x="306" y="122" width="10" height="64" />
+        <rect x="358" y="122" width="10" height="64" />
+        <rect x="300" y="134" width="74" height="8" />
+        <path d="M290 108q47 -10 94 0v12q-47 -8 -94 0z" />
       </g>
       {/* 石燈籠 */}
       <g fill="var(--yellow-l)">
-        <rect x="244" y="166" width="8" height="20" /><rect x="238" y="152" width="20" height="14" rx="2" />
-        <path d="M234 152l14 -10l14 10z" />
+        <rect x="140" y="166" width="8" height="20" /><rect x="134" y="152" width="20" height="14" rx="2" />
+        <path d="M130 152l14 -10l14 10z" />
+        <circle class="a-twinkle" cx="144" cy="159" r="3" fill="var(--yellow)" stroke-width="1.5" />
       </g>
       {/* 櫻花樹 */}
       <path d="M72 186q-5 -30 6 -54" stroke-width="5" />
@@ -242,21 +308,39 @@ function Japan() {
         <circle cx="74" cy="100" r="19" />
       </g>
       <Petal x={110} y={96} delay={0} /><Petal x={132} y={84} delay={-1.6} /><Petal x={40} y={90} delay={-3.1} />
-      <Petal x={150} y={110} delay={-4.2} /><Petal x={96} y={70} delay={-2.4} /><Petal x={262} y={70} delay={-0.8} />
+      <Petal x={150} y={110} delay={-4.2} /><Petal x={96} y={70} delay={-2.4} /><Petal x={186} y={120} delay={-0.8} />
+      <Flowers at={[[24, 180, 4], [108, 182, 3], [340, 182, 3]]} />
     </Scene>
   )
 }
 
 function Island() {
+  const still = reducedMotion()
   return (
     <Scene sky="var(--mizu-l)" ground="var(--yellow-l)">
-      <Sun x={318} y={48} />
-      <Cloud x={44} y={28} s={1.2} />
-      <Cloud x={196} y={52} delay={-7} />
-      <Bird x={236} y={36} /><Bird x={258} y={46} delay={-1} />
+      <Sun x={326} y={44} />
+      <Cloud x={44} y={24} s={1.2} />
+      <Cloud x={186} y={66} delay={-7} />
+      <Bird x={236} y={40} /><Bird x={258} y={50} delay={-1} />
+      <Plane path="M-60 96Q180 -40 460 60" s={0.9} dur={14} still={[150, 28, -10]} />
+      {/* 遠方的小島與燈塔 */}
+      <path fill="var(--green)" d="M330 130q26 -22 60 -6l14 6z" />
+      <path fill="#fff" d="M364 122l3 -26h8l3 26z" />
+      <path fill="var(--coral)" d="M366 96h10v-7h-10z" />
+      <circle class="a-twinkle" cx="371" cy="92" r="2.4" fill="var(--yellow)" stroke-width="1.5" />
       {/* 海 */}
       <rect x="-4" y="128" width={W + 8} height="70" fill="var(--mizu)" />
-      <path class="a-wave" stroke="#fff" d="M150 146h22M196 158h16M250 160h18M332 162h22M120 166h14M30 150h18" />
+      <path class="a-wave" stroke="#fff" d="M150 146h22M196 158h16M250 160h18M332 150h22M120 166h14M30 150h18" />
+      {/* 跳出水面的海豚 */}
+      {!still && (
+        <g opacity="0">
+          <animateMotion dur="6s" repeatCount="indefinite" rotate="auto" {...motionPath('M168 150q26 -52 52 0')} keyPoints="0;1;1" keyTimes="0;0.3;1" calcMode="linear" />
+          <animate attributeName="opacity" dur="6s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.04;0.26;0.3;1" />
+          <path fill="var(--mizu-l)" d="M-16 2q8 -12 24 -8q6 2 10 6q-6 -1 -10 2q-12 4 -24 0z" />
+          <path fill="var(--mizu-l)" d="M-2 -6q2 -7 8 -8q-2 5 0 9z" />
+          <path fill="var(--mizu-l)" d="M-16 2l-7 -5l1 6l-2 5z" />
+        </g>
+      )}
       {/* 帆船 */}
       <g class="a-bob">
         <path fill="#fff" d="M286 132v-46l30 46z" />
@@ -264,7 +348,12 @@ function Island() {
         <path fill="var(--coral)" d="M254 136h70l-10 14h-50z" />
       </g>
       {/* 沙灘 */}
-      <path fill="var(--yellow-l)" d="M-10 214V166q90 -22 190 8q80 22 230 6V214Z" />
+      <path fill="var(--yellow-l)" d="M-10 214V166q90 -22 190 0q90 16 230 -2V214Z" />
+      {/* 沙堡 */}
+      <g fill="var(--yellow)">
+        <path d="M186 164v-12" /><path class="a-flag" fill="var(--coral)" stroke-width="2" d="M186 152h10l-3 4l3 4h-10z" />
+        <path d="M166 186v-14h6v-6h6v6h4v-8h8v8h4v-6h6v6h6v14z" />
+      </g>
       {/* 椰子樹 */}
       <path d="M96 176q10 -46 -4 -82" stroke-width="6" />
       <g class="a-sway" fill="var(--green)">
@@ -275,10 +364,23 @@ function Island() {
       </g>
       <circle cx="88" cy="98" r="5" fill="var(--coral)" />
       <circle cx="98" cy="100" r="5" fill="var(--coral)" />
+      {/* 海灘球 */}
+      <g class="a-bounce">
+        <circle cx="42" cy="170" r="10" fill="#fff" />
+        <path fill="var(--coral)" stroke-width="2" d="M42 160a10 10 0 0 1 8.700 5l-8.700 5z" />
+        <path fill="var(--mizu)" stroke-width="2" d="M42 180a10 10 0 0 1 -8.700 -5l8.700 -5z" />
+      </g>
+      {/* 橫著走的螃蟹 */}
+      <g class="a-drive fast">
+        <path stroke-width="2" d="M240 176l-7 -4M240 180l-8 1M262 176l7 -4M262 180l8 1" />
+        <ellipse cx="251" cy="177" rx="10" ry="7" fill="var(--coral)" />
+        <circle cx="236" cy="168" r="3.4" fill="var(--coral)" stroke-width="2" /><circle cx="266" cy="168" r="3.4" fill="var(--coral)" stroke-width="2" />
+        <circle cx="247" cy="174" r="1.2" fill="var(--ink)" /><circle cx="255" cy="174" r="1.2" fill="var(--ink)" />
+      </g>
       {/* 遮陽傘與海星 */}
       <path d="M352 196v-40" />
       <path fill="var(--coral)" d="M322 160q30 -34 60 0z" />
-      <path class="a-twinkle" fill="var(--coral-l)" stroke-width="2" d="M150 174l2.500 5l5.500 0.800l-4 3.800l1 5.400l-5 -2.600l-5 2.600l1 -5.400l-4 -3.800l5.500 -0.800z" />
+      <path class="a-twinkle" fill="var(--coral-l)" stroke-width="2" d="M140 172l2.500 5l5.500 0.800l-4 3.800l1 5.400l-5 -2.600l-5 2.600l1 -5.400l-4 -3.800l5.500 -0.800z" />
     </Scene>
   )
 }
@@ -301,9 +403,12 @@ function City() {
   }
   return (
     <Scene sky="var(--accent-l)" ground="var(--green-l)">
-      <circle cx="338" cy="42" r="16" fill="var(--yellow)" />
-      <Cloud x={34} y={30} s={1.2} />
-      <Cloud x={214} y={20} delay={-6} />
+      <circle cx="344" cy="38" r="16" fill="var(--yellow)" />
+      <Cloud x={30} y={26} s={1.2} />
+      <Cloud x={196} y={14} delay={-6} />
+      <Spark x={104} y={40} s={0.8} /><Spark x={306} y={66} s={0.7} delay={-1.2} />
+      <Plane path="M-60 92Q200 -46 460 64" s={0.85} dur={15} still={[130, 30, -10]} />
+      <Balloon x={98} y={72} s={0.75} fill="var(--coral)" />
       {/* 摩天輪 */}
       <path d="M288 118L268 186M288 118L308 186" />
       <g class="a-spin slow">
@@ -322,10 +427,24 @@ function City() {
       <rect x="124" y="62" width="52" height="124" fill="var(--coral-l)" />{windows(132, 72, 4, 7, [2, 9, 13, 20, 26])}
       <rect x="182" y="110" width="40" height="76" fill="var(--green)" />{windows(190, 120, 2, 4, [3, 4])}
       <rect x="348" y="104" width="42" height="82" fill="var(--mizu-l)" />{windows(356, 114, 3, 4, [0, 7])}
-      {/* 路上的電車 */}
+      {/* 行道樹與路燈 */}
+      <g fill="var(--green)">
+        <path d="M12 186v-16" /><circle cx="12" cy="162" r="10" />
+        <path d="M238 186v-12" /><circle cx="238" cy="168" r="8" />
+      </g>
+      <path d="M336 186v-34q0 -6 -8 -6" /><circle class="a-twinkle" cx="326" cy="148" r="3.500" fill="var(--yellow)" stroke-width="2" />
+      {/* 路上的電車：來回 */}
       <g class="a-drive">
+        <path d="M218 164l8 -10h8" stroke-width="2" />
         <rect x="196" y="164" width="60" height="22" rx="5" fill="var(--coral)" />
         <path fill="#fff" d="M203 169h12v8h-12zM220 169h12v8h-12zM237 169h12v8h-12z" stroke-width="2" />
+      </g>
+      {/* 計程車：從左邊開進來，穿過畫面 */}
+      <g class="a-pass fast">
+        <path fill="var(--yellow)" d="M-70 184v-9q0 -4 4 -4h8l5 -8h20l7 8h8q5 0 5 5v8z" />
+        <path fill="#fff" stroke-width="2" d="M-51 171l3 -5h15l4 5z" />
+        <rect x="-44" y="159" width="8" height="4" rx="1" fill="#fff" stroke-width="1.5" />
+        <circle cx="-56" cy="185" r="5" fill="#fff" /><circle cx="-26" cy="185" r="5" fill="#fff" />
       </g>
     </Scene>
   )

@@ -3,6 +3,44 @@ import type { JSX } from 'preact'
 import type { ItemCat } from '../model/types'
 
 const ICONS: Record<string, JSX.Element> = {
+  // ---- 介面用的符號（按鈕上的鉛筆、鎖、叉叉等；全部自己畫，不用表情符號） ----
+  pencil: (
+    <g>
+      <path fill="var(--yellow)" d="M7 25l1.500 -6.500L20.500 6.500l5 5L13.500 23.500z" />
+      <path d="M17.500 9.500l5 5" />
+      <path fill="var(--ink)" stroke-width="1.5" d="M7 25l1 -4.500l3.500 3.500z" />
+    </g>
+  ),
+  lock: (
+    <g>
+      <path d="M11 14v-4a5 5 0 0 1 10 0v4" />
+      <rect x="7" y="14" width="18" height="13" rx="3" fill="var(--yellow)" />
+      <circle cx="16" cy="20.500" r="1.800" fill="var(--ink)" />
+    </g>
+  ),
+  unlock: (
+    <g>
+      <path d="M11 14v-4a5 5 0 0 1 9.600 -2" />
+      <rect x="7" y="14" width="18" height="13" rx="3" fill="var(--green-l)" />
+      <circle cx="16" cy="20.500" r="1.800" fill="var(--ink)" />
+    </g>
+  ),
+  close: <path stroke-width="3" d="M9 9l14 14M23 9L9 23" />,
+  back: <path stroke-width="3" d="M26 16H7M14 8l-8 8l8 8" />,
+  plus: <path stroke-width="3" d="M16 7v18M7 16h18" />,
+  check: <path stroke-width="3.200" d="M7 17l6 6L25 10" />,
+  more: (
+    <g fill="var(--ink)" stroke="none">
+      <circle cx="7" cy="16" r="2.600" /><circle cx="16" cy="16" r="2.600" /><circle cx="25" cy="16" r="2.600" />
+    </g>
+  ),
+  flower: (
+    <g fill="var(--coral-l)">
+      <circle cx="16" cy="9.500" r="4.200" /><circle cx="22.200" cy="14" r="4.200" /><circle cx="19.800" cy="21.200" r="4.200" />
+      <circle cx="12.200" cy="21.200" r="4.200" /><circle cx="9.800" cy="14" r="4.200" />
+      <circle cx="16" cy="16" r="2.400" fill="var(--yellow)" />
+    </g>
+  ),
   // ---- 類別 ----
   plane: (
     <g transform="translate(16 16) rotate(-20)" fill="#fff">

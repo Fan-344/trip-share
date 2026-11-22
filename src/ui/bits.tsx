@@ -19,7 +19,7 @@ export function Farewell({ theme, title }: { theme: ThemeId; title: string }) {
   return (
     <div class="farewell">
       <div class="row">{t.motifs.map((m) => <Icon key={m} id={m} size={28} />)}</div>
-      {title}・{t.farewell} ✿
+      <span class="row" style="justify-content:center;gap:6px">{title}・{t.farewell}<Icon id="flower" size={16} /></span>
     </div>
   )
 }
