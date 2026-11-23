@@ -249,8 +249,8 @@ export class Trip {
     for (const i of items.all()) if (i.listId === list.id && (i.section ?? '') === from) items.update(i.id, { section: to })
   }
 
-  renameList(list: List & Meta, title: string): void {
-    ;(list.kind === 'private' ? this.privLists : this.lists).update(list.id, { title })
+  updateList(list: List & Meta, patch: Partial<Pick<List, 'title' | 'icon'>>): void {
+    ;(list.kind === 'private' ? this.privLists : this.lists).update(list.id, patch)
   }
 
   allLists(): (List & Meta)[] {

@@ -50,7 +50,7 @@ function ResultSheet({ result, onClose }: { result: RestoreResult; onClose: () =
   return (
     <Sheet title="還原完成" onClose={onClose}>
       <ul class="plain">{lines.map((l) => <li key={String(l)}>{l}</li>)}</ul>
-      <p class="muted">訂位代號不在備份裡，需要的話請重新填。行程打開後會自動跟家人同步到最新。</p>
+      <p class="muted">訂位代號不在備份裡，要重新填。</p>
       <div class="actions"><button class="primary" onClick={onClose}>完成</button></div>
     </Sheet>
   )
@@ -74,7 +74,7 @@ export function BackupCard({ reg }: { reg: Registry }) {
       <Fold key={String(stale)} title="備份" summary={last === null ? '還沒備份過' : `上次：${ago(last, now)}`} open={stale}>
       <div class="card flat" style={stale ? 'background:var(--yellow-l)' : ''}>
         <p class="muted" style="margin-top:0">
-          資料只存在這支手機。換手機、清除瀏覽器資料或手機遺失時，備份檔可以把身分、所有行程和私人清單找回來。
+          資料只存在這支手機；備份檔可以找回身分、行程和私人清單。
         </p>
         <div class="row wrap">
           <button class={stale ? 'primary' : ''} disabled={reg.trips().length === 0} onClick={() => setSheet('download')}>
@@ -123,14 +123,14 @@ export function DownloadSheet({ reg, only, onClose }: { reg: Registry; only?: { 
       {done ? (
         <div>
           <p class="row"><Icon id="check" size={22} />備份檔已經存出去了。</p>
-          <p class="muted">請把它放在手機以外的地方（雲端硬碟、電腦、寄給自己），手機不見時才用得到。</p>
+          <p class="muted">請存到手機以外的地方。</p>
           <div class="actions"><button class="primary" onClick={onClose}>完成</button></div>
         </div>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); if (!mismatch && !busy) void save() }}>
           {only ? (
             <p>
-              只包含「{only.title}」這一趟：行程的完整內容、行程金鑰和你在這趟的私人清單。
+              只包含「{only.title}」和你在這趟的私人清單。
               <b>不包含你的身分，也不包含訂位代號。</b>
             </p>
           ) : (
@@ -146,7 +146,7 @@ export function DownloadSheet({ reg, only, onClose }: { reg: Registry; only?: { 
           )}
           <div class="notice" style="display:block">
             {pw !== ''
-              ? '有設密碼：忘記密碼就打不開這份備份，沒有任何方法復原。'
+              ? '忘記密碼就打不開，無法復原。'
               : only
                 ? '沒有設密碼：拿到這個檔案的人可以看、也可以改這趟行程（跟拿到邀請連結一樣），而且看得到你在這趟的私人清單。'
                 : '沒有設密碼：拿到這個檔案的人可以看到所有行程，並以你的身分修改。請自己收好，不要傳給別人。'}
@@ -228,8 +228,8 @@ export function RestoreSheet({ reg, onClose }: { reg: Registry; onClose: () => v
               <Seg value={mode} options={[['merge', '合併回原行程'], ['copy', '另存成舊版副本']]} onChange={setMode} />
               <p class="muted">
                 {mode === 'merge'
-                  ? '把備份的內容和現在的內容合在一起。備份之後才做的修改會保留，不會退回舊版。'
-                  : '原行程不動，另外多一份備份當時的樣子。副本是獨立的行程，不會跟家人同步。'}
+                  ? '和現在的內容合併，之後的修改會保留。'
+                  : '另存一份當時的樣子，不會同步。'}
               </p>
             </div>
           )}
@@ -262,19 +262,19 @@ export function Recover({ reg }: { reg: Registry }) {
   const [restoring, setRestoring] = useState(false)
   return (
     <div style="margin-top:28px">
-      <button class="small" type="button" onClick={() => setOpen(true)}>換了手機或資料不見了？找回我的資料</button>
+      <button class="small" type="button" onClick={() => setOpen(true)}>找回我的資料</button>
       {open && !restoring && (
         <Sheet title="找回我的資料" onClose={() => setOpen(false)}>
           <div class="card flat">
             <b>我有備份檔</b>
-            <p class="muted">身分、所有行程和私人清單都會回來。</p>
+            
             <button class="primary" onClick={() => setRestoring(true)}>上傳備份檔</button>
           </div>
           <div class="card flat">
             <b>我沒有備份檔</b>
             <p class="muted">
-              請家人打開行程的「更多」，把邀請 QR Code 給你掃，用新的身分重新加入。行程內容會從家人那邊同步回來；
-              你原本的個人清單還在，按「解鎖」就能繼續用。私人清單和訂位代號只存在原本的手機，找不回來。
+              請家人給你邀請 QR Code，用新身分加入。
+              私人清單和訂位代號找不回來。
             </p>
           </div>
         </Sheet>

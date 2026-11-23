@@ -69,7 +69,7 @@ describe('清單整理成「清單底下有欄位」', () => {
     legacy(a)
     splitLikeOldVersion(a)
     const money = a.allLists().find((l) => l.title === '金錢')!
-    a.renameList(money, '錢')
+    a.updateList(money, { title: '錢' })
     a.addListItem(money, '信用卡')
     a.tidyLists()
     expect(shape(a)).toEqual([['出發前清單', ['證件:護照✓', '證件:影本', '錢:換泰銖', '錢:信用卡']]])

@@ -62,7 +62,7 @@ function Routes({ reg, hash }: { reg: Registry; hash: string }) {
     return (
       <div class="page top">
         <h1>邀請連結不完整</h1>
-        <p>連結可能在傳送時被截斷。請對方按「複製邀請連結」重新傳一次，或把整段連結貼在下面。</p>
+        <p>連結不完整。請對方重新複製，或把整段貼在下面。</p>
         <PasteInvite />
         <p><a href="#">回首頁</a></p>
       </div>
@@ -114,14 +114,14 @@ function InstallHint() {
         <button class="small ghost" aria-label="不再顯示" onClick={dismiss}><Icon id="close" size={16} /></button>
       </div>
       <p class="muted">
-        iPhone 的 Safari 會清掉 7 天沒開的網頁資料。加到主畫面後行程會一直留著，沒網路也打得開。
+        Safari 會清掉 7 天沒開的資料；加到主畫面才會一直留著。
       </p>
       {open ? (
         <ol class="steps">
-          <li>點 Safari 下方的「分享」按鈕（方框加向上箭頭）。</li>
-          <li>往下找到「加入主畫面」，按「加入」。</li>
-          <li>從主畫面打開「旅遊共編」。它是全新的，要重新取暱稱。</li>
-          <li>回這裡到行程的「更多」複製邀請連結，再到主畫面的 App 按「貼上邀請」，行程就會同步過去。</li>
+          <li>點 Safari 的「分享」。</li>
+          <li>選「加入主畫面」。</li>
+          <li>從主畫面打開，重新取暱稱。</li>
+          <li>到行程「更多」複製邀請連結，在主畫面的 App 按「貼上邀請」。</li>
         </ol>
       ) : (
         <button class="small" onClick={() => setOpen(true)}>怎麼加</button>
@@ -135,12 +135,12 @@ function Nickname({ invited, onSave }: { invited: boolean; onSave: (n: string) =
   return (
     <form class="page top" onSubmit={(e) => { e.preventDefault(); if (n.trim()) onSave(n.trim()) }}>
       <h1>{invited ? '你收到一份行程邀請' : '歡迎'}</h1>
-      <p>{invited ? '先取一個暱稱，讓家人知道是誰；按「開始」後就會加入行程。' : '先取一個暱稱，讓一起規劃的人知道是誰改的。'}</p>
+      <p>{invited ? '取個暱稱就能加入。' : '先取個暱稱。'}</p>
       <Field label="你的暱稱">
         <input value={n} onInput={(e) => setN(value(e))} placeholder="例如：爸爸" />
       </Field>
       <button class="primary block" disabled={!n.trim()}>開始</button>
-      <p class="muted">不用註冊。資料只存在這支手機，並加密後同步給你邀請的人。</p>
+      <p class="muted">不用註冊；資料加密後只同步給你邀請的人。</p>
     </form>
   )
 }
@@ -175,7 +175,7 @@ function Home({ reg }: { reg: Registry }) {
         <button class="small" aria-label="更改顯示名稱" onClick={() => setRenaming(true)}>{reg.me()!.nickname}<Icon id="pencil" size={14} /></button>
       </div>
       <InstallHint />
-      {trips.length === 0 && <p class="empty">還沒有行程。建立一個，或貼上家人給你的邀請。</p>}
+      {trips.length === 0 && <p class="empty">還沒有行程。</p>}
       {trips.map((t) => (
         <a class="card tap tripcard" key={t.id} href={`#/t/${t.id}`}>
           {/* 行程卡用它上次開啟時的主題上色 */}
@@ -266,7 +266,7 @@ function RenameSheet({ reg, onClose }: { reg: Registry; onClose: () => void }) {
         }}>
           <Field label="顯示名稱"><input value={name} onInput={(e) => setName(value(e))} /></Field>
           <p class="muted">
-            其他成員在成員名單、修改紀錄、購物回覆裡看到的就是這個名字。
+            其他成員看到的名字。
             {trips > 0 && `會一起改掉這支手機上 ${trips} 份行程裡的名字。`}
           </p>
           <div class="actions">

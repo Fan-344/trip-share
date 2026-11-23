@@ -140,6 +140,13 @@ const ICONS: Record<string, JSX.Element> = {
       <path d="M16 10v17M16 10q-6 -7 -8 -3q-1 3 8 3q9 0 8 -3q-2 -4 -8 3z" />
     </g>
   ),
+  trash: (
+    <g>
+      <path d="M5 9h22M12 9v-3h8v3" />
+      <path fill="var(--coral-l)" d="M8 9h16l-1.500 18h-13z" />
+      <path stroke-width="2" d="M13.500 14v8M18.500 14v8" />
+    </g>
+  ),
   // ---- 類別 ----
   plane: (
     <g transform="translate(16 16) rotate(-20)" fill="#fff">
@@ -315,7 +322,13 @@ const NAME_ICONS: [RegExp, string][] = [
 ]
 export const iconForName = (name: string): string => NAME_ICONS.find(([re]) => re.test(name))?.[1] ?? ''
 
-export const catOf =(id: string | undefined) => CATS.find((c) => c.id === id)
+/** 清單可以選的圖示。 */
+export const LIST_ICONS: string[] = [
+  'checklist', 'luggage', 'passport', 'ticket', 'coin', 'shirt', 'pill', 'bear', 'bed', 'globe', 'bag', 'gift',
+  'food', 'camera', 'heart', 'star', 'people', 'note', 'bell', 'calendar', 'house', 'plane', 'car', 'sun', 'flower',
+]
+
+export const catOf = (id: string | undefined) => CATS.find((c) => c.id === id)
 
 /** 每日標題可以選的圖示：類別的加上所有主題圖案。 */
 export const DAY_ICONS: string[] = [

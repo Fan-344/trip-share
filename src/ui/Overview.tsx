@@ -223,7 +223,7 @@ function TripSheet({ trip, onClose }: { trip: Trip; onClose: () => void }) {
           <Field label="出發日"><input type="date" value={f.startDate} onInput={(e) => setF({ ...f, startDate: value(e) })} /></Field>
           <Field label="回程日"><input type="date" value={f.endDate} min={f.startDate} onInput={(e) => setF({ ...f, endDate: value(e) })} /></Field>
         </div>
-        <span class="muted">佈景主題（全家人看到的都一樣）</span>
+        <span class="muted">佈景主題</span>
         <div class="swatches">
           <button type="button" class={f.theme === '' ? 'on' : ''} onClick={() => setF({ ...f, theme: '' })}>
             <i style={`background:${THEMES.find((t) => t.id === auto)!.accent}`} />
@@ -331,7 +331,7 @@ function FlightSheet({ trip, id, initial, onSaved, onClose }: {
         </div>
         <Field label="抵達時間是哪裡的時間">{tzSelect('arrTz')}</Field>
         <Field label="機型（可不填）"><input value={f.aircraft} onInput={(e) => set({ aircraft: value(e) })} placeholder="A330-900neo" /></Field>
-        <Field label="訂位代號（只存在這支手機，不會同步給任何人）">
+        <Field label="訂位代號（只存在這支手機）">
           <input value={f.pnr} onInput={(e) => set({ pnr: value(e) })} autocapitalize="characters" autocomplete="off" />
         </Field>
         <div class="actions">

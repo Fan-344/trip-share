@@ -129,10 +129,10 @@ export function More({ trip, reg, sync }: TabProps) {
       <Fold title="備份這趟行程">
         <div class="card flat">
           <p class="muted" style="margin-top:0">
-            把這一趟存成一個檔案：留著當紀錄，或拿到另一支手機上載入。檔案裡有行程內容、行程金鑰和你在這趟的私人清單，沒有你的身分。
+            存成檔案，可在另一支手機載入。不含你的身分。
           </p>
           <button onClick={() => setExporting(true)}>下載這趟行程的檔案</button>
-          <p class="muted" style="margin-bottom:0">要載入檔案，請回首頁的「備份」按「載入備份檔」。</p>
+          <p class="muted" style="margin-bottom:0">載入：首頁的「備份」。</p>
         </div>
       </Fold>
       {exporting && <DownloadSheet reg={reg} only={{ id: trip.meta.id, title: trip.meta.title }} onClose={() => setExporting(false)} />}
@@ -142,7 +142,7 @@ export function More({ trip, reg, sync }: TabProps) {
       <div class="card flat">
         <b>從這支手機移除</b>
         <p class="muted">
-          只清掉這支手機上的這份行程（包含你的私人清單和訂位代號），其他成員不受影響。之後想再看，要請家人重新邀請。
+          只清這支手機；私人清單和訂位代號會一起清掉。
         </p>
         <button onClick={() => {
           if (confirm(`把「${trip.meta.title}」從這支手機移除？\n\n其他成員不受影響。你的私人清單和訂位代號會一起清掉，無法復原。`)) {
@@ -154,7 +154,7 @@ export function More({ trip, reg, sync }: TabProps) {
         <div class="card flat" style="background:var(--coral-l)">
           <b>刪除整份行程</b>
           <p class="muted">
-            所有成員都會看到「這份行程已經刪除」，內容不再顯示。管理員之後還可以取消刪除。
+            所有成員都看不到內容；管理員可以取消刪除。
           </p>
           <button class="danger" style="background:#fff" onClick={() => {
             if (confirm(`刪除「${trip.meta.title}」？\n\n所有成員都會看不到這份行程的內容。`)) trip.setDeleted(true)

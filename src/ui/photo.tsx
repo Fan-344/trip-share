@@ -92,7 +92,7 @@ export function PhotoField({ value, onChange }: { value: Uint8Array | null; onCh
         </div>
       ) : (
         <button type="button" class="add" style="margin-top:0" disabled={busy} onClick={() => input.current?.click()}>
-          <Icon id="camera" size={22} />{busy ? '處理中…' : '拍照或選一張照片'}
+          <Icon id="camera" size={22} />{busy ? '處理中…' : '加照片'}
         </button>
       )}
       {error && <p class="muted">{error}</p>}

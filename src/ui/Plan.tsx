@@ -68,7 +68,7 @@ export function Plan({ trip, theme }: TabProps) {
         </div>
 
         {list.length === 0 ? (
-          <Empty icon={themeOf(theme).motifs[0]}>{fullDay(day)} 還沒有安排。</Empty>
+          <Empty icon={themeOf(theme).motifs[0]}>還沒有安排。</Empty>
         ) : (
           <div class="timeline">
             {list.map((i) => {
@@ -234,12 +234,12 @@ function ItemSheet({ trip, id, day, onClose }: { trip: Trip; id?: string; day: s
           <Field label="交通（可不填）"><input value={f.transport} onInput={(e) => set({ transport: value(e) })} placeholder="飯店接送" /></Field>
         </div>
         <Field label={badUrl ? '地圖連結（要以 https:// 開頭）' : '地圖連結（可不填）'}>
-          <input type="url" value={f.mapUrl ?? ''} onInput={(e) => set({ mapUrl: value(e) })} placeholder="從地圖 App 按「分享」複製的連結" />
+          <input type="url" value={f.mapUrl ?? ''} onInput={(e) => set({ mapUrl: value(e) })} placeholder="地圖 App 分享的連結" />
         </Field>
         {/* 沒勾過的時候跟著類別走：用餐、景點、體驗、購物預設勾，其他預設不勾 */}
         <label class="check" style="border-top:0">
           <input type="checkbox" checked={mapSearchOn(f)} onChange={(e) => set({ mapSearch: (e.target as HTMLInputElement).checked })} />
-          <span class="name">沒貼連結時，用地點名稱在地圖上找<small>卡片上會出現圖釘。地點是「度假村內」這種泛稱時可以取消。</small></span>
+          <span class="name">用地點名稱在地圖上找</span>
         </label>
         <Field label="說明（可不填）"><textarea value={f.note} onInput={(e) => set({ note: value(e) })} /></Field>
         <div class="actions">

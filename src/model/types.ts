@@ -115,6 +115,8 @@ export interface List {
   title: string
   /** 擁有者公鑰（個人清單可多人共管）。 */
   owners: string[]
+  /** 圖示代號，見 src/ui/Icons.tsx；空白就依名稱自動配。 */
+  icon?: string
 }
 
 export interface ListItem {

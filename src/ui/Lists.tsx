@@ -6,7 +6,7 @@ import type { ListItemView, Trip } from '../model/trip'
 import type { List, ListKind, Meta } from '../model/types'
 import { Empty, Farewell } from './bits'
 import { Chevron, useStored } from './fold'
-import { Icon, iconForName } from './Icons'
+import { Icon, LIST_ICONS, iconForName } from './Icons'
 import { EditBar, Field, Seg, Sheet, value } from './kit'
 import type { TabProps } from './TripPage'
 
@@ -98,12 +98,13 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
   const [picked, setPicked] = useState<string | null>(null)
   // 正在哪一個欄位裡新增項目；'' 是不屬於任何欄位的那一區，null 是沒有在新增。
   const [adding, setAdding] = useState<string | null>(null)
+  const [sheet, setSheet] = useState(false)
+  const icon = list.icon || iconForName(list.title)
   // 剛建好、還沒有項目的欄位。欄位是跟著項目存的，所以空的欄位只在這次編輯期間看得到。
   const [fresh, setFresh] = useState<string[]>([])
   const items = trip.listItemsOf(list)
   const done = items.filter((i) => i.checked).length
   const owners = list.owners.map((o) => trip.nicknameOf(o)).join('、')
-  const table = list.kind === 'private' ? trip.privLists : trip.lists
   const sections = [...new Set([...sectionsOf(items), ...(editing ? fresh : [])])]
   const loose = items.filter((i) => !i.section)
 
@@ -112,12 +113,8 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
   // 每份清單各自上鎖，預設鎖著；鎖著不能勾，避免滑手機時誤觸。這支手機會記住哪幾份解開了。
   const [locked, setLocked] = useStored(`lock:${list.id}`, true)
 
-  const rename = () => {
-    const title = prompt('清單名稱', list.title)?.trim()
-    if (title && title !== list.title) trip.renameList(list, title)
-  }
   const newSection = () => {
-    const title = prompt('欄位名稱（例如：證件、衣物）')?.trim()
+    const title = prompt('欄位名稱')?.trim()
     if (!title) return
     if (!sections.includes(title)) setFresh([...fresh, title])
     setAdding(title)
@@ -136,10 +133,9 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
         onChange={(e) => trip.setChecked(list.kind, i.id, (e.target as HTMLInputElement).checked)} />
       {/* 編輯模式下點文字可以改名稱、說明、搬到別的欄位 */}
       <span class="name" role={editing ? 'button' : undefined} onClick={(e) => { if (editing) { e.stopPropagation(); setPicked(i.id) } }}>
-        {i.name}
+        {i.name}{editing && <Icon id="pencil" size={14} cls="after" />}
         {i.note && <small>{i.note}</small>}
       </span>
-      {editing && <Icon id="pencil" size={16} />}
       {!editing && i.checked && list.kind === 'shared' && <span class="muted">{i.checkedBy.map((p) => trip.nicknameOf(p)).join('、')}</span>}
     </div>
   )
@@ -153,7 +149,14 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
   return (
     <div class={`card ${open ? '' : 'shut'}`}>
       <div class="cardhead" role="button" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <h3 class="grow">{iconForName(list.title) && <Icon id={iconForName(list.title)} size={22} />}{list.title}</h3>
+        <h3 class="grow">
+          {icon && <Icon id={icon} size={22} />}{list.title}
+          {editing && (
+            <button class="small ghost" aria-label={`修改「${list.title}」`} onClick={(e) => { e.stopPropagation(); setSheet(true) }}>
+              <Icon id="pencil" size={16} />
+            </button>
+          )}
+        </h3>
         <span class="muted">{done}／{items.length}</span>
         <button class={`small ghost lockbtn ${locked ? 'locked' : ''}`} aria-pressed={locked}
           aria-label={locked ? `「${list.title}」鎖定中，點一下解鎖` : `「${list.title}」可以勾，點一下鎖定`}
@@ -170,15 +173,7 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
         <div>
           {editing && (
             <div class="row wrap" style="margin:8px 0">
-              <button class="small" onClick={rename}><Icon id="pencil" size={16} />改名</button>
-              <button class="small" onClick={newSection}><Icon id="plus" size={16} />新增欄位</button>
-              <button class="small" disabled={done === 0}
-                onClick={() => { if (confirm(`取消「${list.title}」的 ${done} 個勾選？`)) items.forEach((i) => i.checked && trip.setChecked(list.kind, i.id, false)) }}>
-                全部取消勾選
-              </button>
-              <button class="small danger" onClick={() => { if (confirm(`刪除「${list.title}」這份清單？`)) table.remove(list.id) }}>
-                刪除清單
-              </button>
+              <button class="small" onClick={newSection}><Icon id="plus" size={16} />欄位</button>
             </div>
           )}
           {/* 不屬於任何欄位的項目 */}
@@ -212,6 +207,7 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
           {items.length === 0 && !editing && <p class="muted">還是空的。</p>}
         </div>
       )}
+      {sheet && <ListSheet trip={trip} list={list} done={done} onClose={() => setSheet(false)} />}
       {picked && <ItemSheet trip={trip} kind={list.kind} item={items.find((i) => i.id === picked)} sections={sections} onClose={() => setPicked(null)} />}
     </div>
   )
@@ -249,6 +245,50 @@ function ItemSheet({ trip, kind, item, sections, onClose }: {
         <div class="actions">
           <button type="button" class="danger" onClick={() => { trip.removeListItem(kind, item.id); onClose() }}>刪除</button>
           <button class="primary" disabled={!f.name.trim()}>儲存</button>
+        </div>
+      </form>
+    </Sheet>
+  )
+}
+
+/** 清單本身的設定：名稱、圖示，還有清空勾選與刪除。 */
+function ListSheet({ trip, list, done, onClose }: { trip: Trip; list: List & Meta; done: number; onClose: () => void }) {
+  const [f, setF] = useState({ title: list.title, icon: list.icon ?? '' })
+  const auto = iconForName(f.title)
+  return (
+    <Sheet title="清單" onClose={onClose}>
+      <form onSubmit={(e) => {
+        e.preventDefault()
+        if (!f.title.trim()) return
+        trip.updateList(list, { title: f.title.trim(), icon: f.icon })
+        onClose()
+      }}>
+        <Field label="名稱"><input value={f.title} onInput={(e) => setF({ ...f, title: value(e) })} /></Field>
+        <span class="muted">圖示</span>
+        <div class="icons">
+          <button type="button" class={f.icon === '' ? 'on' : ''} aria-label="自動" onClick={() => setF({ ...f, icon: '' })}>
+            {auto ? <Icon id={auto} size={28} /> : <span class="muted">無</span>}
+          </button>
+          {LIST_ICONS.map((id) => (
+            <button type="button" key={id} class={f.icon === id ? 'on' : ''} aria-label={id} onClick={() => setF({ ...f, icon: id })}>
+              <Icon id={id} size={28} />
+            </button>
+          ))}
+        </div>
+        <div class="row wrap" style="margin-top:10px">
+          <button type="button" class="small" disabled={done === 0} onClick={() => {
+            if (!confirm(`清空 ${done} 個勾選？`)) return
+            trip.listItemsOf(list).forEach((i) => i.checked && trip.setChecked(list.kind, i.id, false))
+            onClose()
+          }}>清空勾選</button>
+        </div>
+        <div class="actions">
+          <button type="button" class="danger" onClick={() => {
+            if (!confirm(`刪除「${list.title}」？`)) return
+            ;(list.kind === 'private' ? trip.privLists : trip.lists).remove(list.id)
+            onClose()
+          }}><Icon id="trash" size={18} />刪除</button>
+          <button class="primary" disabled={!f.title.trim()}>儲存</button>
         </div>
       </form>
     </Sheet>

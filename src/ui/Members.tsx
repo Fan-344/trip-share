@@ -25,13 +25,13 @@ export function InviteSection({ trip, reg }: Props) {
   return (
     <Fold title="邀請家人" summary="QR Code" open={trip.phoneMembers().length <= 1}>
       <div class="card center">
-        <p>請家人用手機相機掃這個 QR Code，打開後就會加入。</p>
+        <p>用手機相機掃描加入</p>
         <Qr text={link} label="邀請 QR Code" />
         <p class="muted">
-          這個邀請到 {until.getMonth() + 1}/{until.getDate()} 前有效。
-          <b>掃到或拿到連結的人就能看、也能改這份行程</b>，不要截圖貼到公開的地方。
+          {until.getMonth() + 1}/{until.getDate()} 前有效。
+          <b>拿到的人就能看和改</b>，不要公開。
         </p>
-        <CopyButton text={link} label="人不在旁邊？複製連結用私訊傳" cls="small" />
+        <CopyButton text={link} label="複製邀請連結" cls="small" />
       </div>
     </Fold>
   )
@@ -60,10 +60,9 @@ export function MembersSection({ trip, reg, sync }: Props) {
           ))}
         </ul>
         {admins < 2 && phones > 1 && iAmAdmin && (
-          <p class="muted">建議至少兩位管理員，其中一人換手機或遺失資料時，另一人還能管理行程。點成員的名字可以設定。</p>
+          <p class="muted">建議至少兩位管理員。</p>
         )}
         <button class="add" onClick={() => setSheet('add')}><Icon id="plus" size={18} />新增不用手機的成員</button>
-        <p class="muted" style="margin-bottom:0">小孩、長輩這些不會自己開 App 的人，加在這裡就能幫他建清單、算代買。</p>
       </div>
       {sheet === 'add' && <AddManaged trip={trip} onClose={() => setSheet(null)} />}
       {picked && (
@@ -85,7 +84,6 @@ function AddManaged({ trip, onClose }: { trip: Trip; onClose: () => void }) {
         onClose()
       }}>
         <Field label="怎麼稱呼"><input value={name} onInput={(e) => setName(value(e))} placeholder="例如：大女兒、阿嬤" /></Field>
-        <p class="muted">之後他有手機、想自己用的話，直接給他邀請就好；他會是另一個成員，原本這個可以移除。</p>
         <div class="actions"><button class="primary" disabled={!name.trim()}>新增</button></div>
       </form>
     </Sheet>
@@ -175,12 +173,11 @@ function MemberSheet({ trip, reg, sync, member, iAmAdmin, admins, phones, onClos
                   設為管理員
                 </button>
               )}
-              <p class="muted">管理員可以移出成員、指定其他管理員、刪除整份行程。</p>
               <button class="block danger" onClick={kick}>移出行程</button>
               <p class="muted">
                 {ROTATE_KEY_ON_REMOVE
                   ? '會換一把新的行程金鑰，只交給留下來的人。需要網路。'
-                  : '他會從名單消失、不再看到這份行程。之後可以再邀請他回來。'}
+                  : '之後可以再邀請回來。'}
               </p>
             </div>
           )}

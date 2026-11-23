@@ -454,3 +454,6 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 /* 有小圖的標題：不要前面那顆圓點 */
 h2.plain .icon, .cardhead h3 .icon, .sect legend .icon { flex: none; }
 .cardhead h3 { display: flex; align-items: center; gap: 6px; }
+/* 名稱後面的小鉛筆（編輯模式） */
+.check .name .icon.after { margin-left: 6px; vertical-align: -2px; }
+.cardhead h3 button { min-height: 26px; padding: 0 4px; }
