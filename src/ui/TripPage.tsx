@@ -8,6 +8,7 @@ import type { PhotoStore } from '../store/photos'
 import type { TripSync } from '../sync/engine'
 import { resolveTheme, type ThemeId } from '../themes'
 import { Icon } from './Icons'
+import { confirmBox } from './dialog'
 import { ago } from '../time'
 import { useDocs } from './kit'
 import { Lists } from './Lists'
@@ -135,8 +136,8 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
           <div class="notice" style="display:block">
             之後可能會再被邀請的話，先不要按下面的按鈕。你的私人清單和訂位代號只存在這支手機上，移除之後就找不回來。
           </div>
-          <button onClick={() => {
-            if (confirm(`把「${meta.title}」從這支手機移除？\n\n你的私人清單和訂位代號會一起清掉，無法復原。`)) leaveTrip(reg, meta.id)
+          <button onClick={async () => {
+            if (await confirmBox({ title: `從這支手機移除「${meta.title}」？`, body: '私人清單和訂位代號會一起清掉，無法復原。', ok: '移除', danger: true })) leaveTrip(reg, meta.id)
           }}>從這支手機移除</button>
         </div>
       </div>

@@ -9,6 +9,7 @@ import { ago } from '../time'
 import { Fold } from './fold'
 import { useNow } from './kit'
 import { BUILD } from './Start'
+import { confirmBox } from './dialog'
 import { leaveTrip, type TabProps } from './TripPage'
 
 const COLL: Record<string, string> = {
@@ -144,8 +145,8 @@ export function More({ trip, reg, sync }: TabProps) {
         <p class="muted">
           只清這支手機；私人清單和訂位代號會一起清掉。
         </p>
-        <button onClick={() => {
-          if (confirm(`把「${trip.meta.title}」從這支手機移除？\n\n其他成員不受影響。你的私人清單和訂位代號會一起清掉，無法復原。`)) {
+        <button onClick={async () => {
+          if (await confirmBox({ title: `從這支手機移除「${trip.meta.title}」？`, body: '私人清單和訂位代號會一起清掉，無法復原。', ok: '移除', danger: true })) {
             leaveTrip(reg, trip.meta.id)
           }
         }}>從這支手機移除</button>
@@ -156,8 +157,8 @@ export function More({ trip, reg, sync }: TabProps) {
           <p class="muted">
             所有成員都看不到內容；管理員可以取消刪除。
           </p>
-          <button class="danger" style="background:#fff" onClick={() => {
-            if (confirm(`刪除「${trip.meta.title}」？\n\n所有成員都會看不到這份行程的內容。`)) trip.setDeleted(true)
+          <button class="danger" style="background:#fff" onClick={async () => {
+            if (await confirmBox({ title: `刪除「${trip.meta.title}」？`, body: '所有成員都會看不到內容。', ok: '刪除', danger: true })) trip.setDeleted(true)
           }}>刪除整份行程</button>
         </div>
       )}

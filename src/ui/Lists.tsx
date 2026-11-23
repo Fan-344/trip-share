@@ -7,6 +7,7 @@ import type { List, ListKind, Meta } from '../model/types'
 import { Empty, Farewell } from './bits'
 import { Chevron, useStored } from './fold'
 import { Icon, LIST_ICONS, iconForName } from './Icons'
+import { confirmBox, promptBox } from './dialog'
 import { EditBar, Field, Seg, Sheet, value } from './kit'
 import type { TabProps } from './TripPage'
 
@@ -113,14 +114,14 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
   // 每份清單各自上鎖，預設鎖著；鎖著不能勾，避免滑手機時誤觸。這支手機會記住哪幾份解開了。
   const [locked, setLocked] = useStored(`lock:${list.id}`, true)
 
-  const newSection = () => {
-    const title = prompt('欄位名稱')?.trim()
+  const newSection = async () => {
+    const title = await promptBox({ title: '新欄位', placeholder: '例如：證件' })
     if (!title) return
     if (!sections.includes(title)) setFresh([...fresh, title])
     setAdding(title)
   }
-  const renameSection = (s: string) => {
-    const title = prompt('欄位名稱', s)?.trim()
+  const renameSection = async (s: string) => {
+    const title = await promptBox({ title: '欄位名稱', value: s })
     if (!title || title === s) return
     trip.renameSection(list, s, title)
     setFresh(fresh.map((f) => (f === s ? title : f)))
@@ -276,15 +277,15 @@ function ListSheet({ trip, list, done, onClose }: { trip: Trip; list: List & Met
           ))}
         </div>
         <div class="row wrap" style="margin-top:10px">
-          <button type="button" class="small" disabled={done === 0} onClick={() => {
-            if (!confirm(`清空 ${done} 個勾選？`)) return
+          <button type="button" class="small" disabled={done === 0} onClick={async () => {
+            if (!(await confirmBox({ title: `清空 ${done} 個勾選？`, ok: '清空' }))) return
             trip.listItemsOf(list).forEach((i) => i.checked && trip.setChecked(list.kind, i.id, false))
             onClose()
           }}>清空勾選</button>
         </div>
         <div class="actions">
-          <button type="button" class="danger" onClick={() => {
-            if (!confirm(`刪除「${list.title}」？`)) return
+          <button type="button" class="danger" onClick={async () => {
+            if (!(await confirmBox({ title: `刪除「${list.title}」？`, ok: '刪除', danger: true }))) return
             ;(list.kind === 'private' ? trip.privLists : trip.lists).remove(list.id)
             onClose()
           }}><Icon id="trash" size={18} />刪除</button>

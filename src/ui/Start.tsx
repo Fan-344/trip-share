@@ -8,6 +8,7 @@ import { Art } from './Art'
 import { BackupCard, Recover } from './Backup'
 import { Fold } from './fold'
 import { Icon } from './Icons'
+import { DialogHost } from './dialog'
 import { Field, PasteInvite, Sheet, useDocs, useHash, value } from './kit'
 import { TripPage } from './TripPage'
 
@@ -24,6 +25,7 @@ export function App() {
   if (!reg) return <p class="page top muted">載入中…</p>
   return (
     <div>
+      <DialogHost />
       {applyUpdate && (
         <div class="banner">
           <span class="grow">有新版本</span>

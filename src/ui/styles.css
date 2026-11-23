@@ -457,3 +457,14 @@ h2.plain .icon, .cardhead h3 .icon, .sect legend .icon { flex: none; }
 /* 名稱後面的小鉛筆（編輯模式） */
 .check .name .icon.after { margin-left: 6px; vertical-align: -2px; }
 .cardhead h3 button { min-height: 26px; padding: 0 4px; }
+
+/* 自己畫的彈跳視窗（確認、輸入）：畫面正中間的小卡，比底部面板再上一層 */
+.dialog-wrap { position: fixed; inset: 0; z-index: 40; background: rgba(62, 58, 57, 0.5); display: flex; align-items: center; justify-content: center; padding: 24px; animation: fadein 0.15s ease; }
+.dialog { background: var(--paper); width: 100%; max-width: 340px; border: var(--line); border-radius: 22px; box-shadow: 5px 5px 0 var(--ink); padding: 18px 18px 16px; text-align: center; animation: dialogin 0.28s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.dialog-icon { display: flex; justify-content: center; margin-bottom: 4px; }
+.dialog h3 { font-size: 1.05rem; overflow-wrap: anywhere; }
+.dialog p { margin: 6px 0 0; white-space: pre-line; }
+.dialog input { margin-top: 12px; text-align: center; }
+.dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.dialog-actions .danger { box-shadow: 0 3px 0 var(--ink); }
+@keyframes dialogin { from { opacity: 0; transform: scale(0.85) translateY(10px); } to { opacity: 1; transform: none; } }

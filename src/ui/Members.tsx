@@ -6,6 +6,7 @@ import { INVITE_DAYS, ROTATE_KEY_ON_REMOVE, inviteLink, kickMember, type Registr
 import type { TripSync } from '../sync/engine'
 import { Chevron, Fold } from './fold'
 import { Icon } from './Icons'
+import { confirmBox } from './dialog'
 import { CopyButton, Field, Qr, Sheet, value } from './kit'
 import { leaveTrip } from './TripPage'
 
@@ -109,9 +110,9 @@ function MemberSheet({ trip, reg, sync, member, iAmAdmin, admins, phones, onClos
 
   const kick = async () => {
     const detail = ROTATE_KEY_ON_REMOVE
-      ? '會換一把新的行程金鑰，只交給留下來的人；之後的修改他看不到也改不了。\n他已經下載到手機上的內容收不回來。'
-      : '他會從成員名單消失，他的 App 會顯示「你已經不在這份行程裡」。\n之後想讓他回來，再給他一次邀請就可以。'
-    if (!confirm(`把「${member.nickname}」移出這份行程？\n\n${detail}`)) return
+      ? '會換新的行程金鑰。他已經下載的內容收不回來。'
+      : '之後可以再邀請回來。'
+    if (!(await confirmBox({ title: `把「${member.nickname}」移出行程？`, body: detail, ok: '移出', danger: true }))) return
     setBusy(ROTATE_KEY_ON_REMOVE ? '正在換金鑰並通知其他成員…' : '正在移出…')
     setError('')
     try {
@@ -125,7 +126,7 @@ function MemberSheet({ trip, reg, sync, member, iAmAdmin, admins, phones, onClos
   }
 
   const leave = async () => {
-    if (!confirm(`退出「${trip.meta.title}」？\n\n行程會從這支手機移除（包含你的私人清單和訂位代號）。之後想回來，要請家人再邀請一次。`)) return
+    if (!(await confirmBox({ title: `退出「${trip.meta.title}」？`, body: '行程會從這支手機移除，私人清單和訂位代號一起清掉。', ok: '退出', danger: true }))) return
     setBusy('正在退出…')
     trip.members.remove(me)
     // 盡量讓其他人知道我退出了；沒網路也照樣退出，只是他們的名單上暫時還看得到我
@@ -184,8 +185,8 @@ function MemberSheet({ trip, reg, sync, member, iAmAdmin, admins, phones, onClos
 
           {/* 不用手機的成員：誰都可以移除（他沒有金鑰，不用換） */}
           {member.managed && (
-            <button class="block danger" onClick={() => {
-              if (confirm(`移除「${member.nickname}」？他名下的清單還會留著。`)) { trip.members.remove(member.id); onClose() }
+            <button class="block danger" onClick={async () => {
+              if (await confirmBox({ title: `移除「${member.nickname}」？`, body: '他名下的清單會留著。', ok: '移除', danger: true })) { trip.members.remove(member.id); onClose() }
             }}>移除這位成員</button>
           )}
 
