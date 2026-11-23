@@ -155,6 +155,17 @@ export class Trip {
     return this.members.get(pubkey)?.nickname ?? '（未知成員）'
   }
 
+  /**
+   * 這個成員的行李收好了沒：他名下的個人清單（大家本來就看得到的那種）至少有一項，而且全部勾完。
+   * 私人清單不算，別人看不到。
+   */
+  packedOf(pubkey: string): boolean {
+    const items = this.lists.all()
+      .filter((l) => l.kind === 'personal' && l.owners.includes(pubkey))
+      .flatMap((l) => this.listItemsOf(l))
+    return items.length > 0 && items.every((i) => i.checked)
+  }
+
   /** 這個成員如果已經不在名單上：是誰、什麼時候把他拿掉的。還在名單上就是 null。 */
   removalOf(pubkey: string): { by: string; at: number } | null {
     if (!this.members.get(pubkey)?.deleted) return null

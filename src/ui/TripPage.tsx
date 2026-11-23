@@ -172,7 +172,8 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
       <div class="topbar">
         <div class="row">
           <a href="#" aria-label="回我的行程" style="display:flex"><Icon id="back" size={22} /></a>
-          <span class="title grow">{meta.title}</span>
+          {/* 行程名稱後面接日期；名稱太長時縮短名稱，日期一定完整 */}
+          <span class="grow titlebar"><span class="title">{meta.title}</span>{meta.startDate && meta.endDate && <span class="dates">{md(meta.startDate)}–{md(meta.endDate)}</span>}</span>
           <SyncBadge sync={sync} />
         </div>
         <nav class="tabs">
@@ -212,3 +213,6 @@ export function SyncBadge({ sync }: { sync: TripSync | null }) {
   if (s.pending) return <span class="sync busy"><i />同步中</span>
   return <span class="sync"><i />已同步{s.lastSyncAt ? `・${ago(s.lastSyncAt)}` : ''}</span>
 }
+
+/** 「2027-03-05」→「3/5」。 */
+const md = (date: string): string => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`

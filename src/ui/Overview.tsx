@@ -1,5 +1,6 @@
 // 總覽：行程日期與倒數、航班、住宿。
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
+import { WX_NAME, cachedWeather, hasWeather, loadWeather, pickDays, type Weather, type WxKind } from '../weather'
 import type { Trip } from '../model/trip'
 import type { Flight, Meta, Stay } from '../model/types'
 import {
@@ -12,6 +13,8 @@ import { Empty, Farewell } from './bits'
 import { Chevron } from './fold'
 import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
+import { lookOf, stageOf, type Job, type Look, type Stage } from '../avatar'
+import { Figure, Pile } from './Figure'
 import { Mascot } from './Mascot'
 import { ImportSheet, type ImportState } from './Import'
 import { EditBar, Field, Sheet, useNow, value } from './kit'
@@ -47,6 +50,15 @@ export function Overview({ trip, theme }: TabProps) {
   const t = today()
   const dayIndex = days.indexOf(t)
 
+  // 小人：現在是哪個階段（查攻略、收行李、出發、旅行中），以及每個成員的行李收好了沒。
+  const startMs = next ? toInstant(next.dep) : meta.startDate ? new Date(`${meta.startDate}T00:00`).getTime() : now
+  const stage = stageOf(startMs - now, dayIndex >= 0 || (!!meta.endDate && t > meta.endDate))
+  const me = trip.actor.pubkey
+  // 自己排第一個，進度條上最多站五個人。
+  const cast = [...trip.members.all()].sort((a, b) => Number(b.id === me) - Number(a.id === me))
+    .slice(0, 5).map((m) => ({ look: lookOf(m), packed: trip.packedOf(m.id) }))
+  const who: Who = { cast, stage }
+
   return (
     <div>
       <div class="card hero">
@@ -57,30 +69,28 @@ export function Overview({ trip, theme }: TabProps) {
         {dayIndex >= 0 ? (
           <div class="depart">
             <div class="depart-main"><div class="depart-days"><span>旅行第</span><b>{dayIndex + 1}</b><span>天</span></div></div>
-            <Track p={(dayIndex + 0.5) / days.length} />
+            <Track p={(dayIndex + 0.5) / days.length} who={who} />
             <div class="muted depart-label">共 {days.length} 天</div>
           </div>
         ) : next ? (
-          <Countdown ms={toInstant(next.dep) - now}
+          <Countdown who={who} ms={toInstant(next.dep) - now}
             label={`${fullDay(next.dep.local.slice(0, 10))} ${hm(next.dep.local)} 起飛（${placeName(next.dep.tz, flights)}時間）`} />
         ) : meta.startDate > t ? (
-          <Countdown ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label={`${fullDay(meta.startDate)} 出發`} />
+          <Countdown who={who} ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label={`${fullDay(meta.startDate)} 出發`} />
         ) : null}
         <div class="body">
-        <div class="row">
-          <span class="muted grow">
-            {meta.startDate.slice(0, 4)}　{fullDay(meta.startDate)} ～ {fullDay(meta.endDate)}
-          </span>
-          {editing && <button class="small" onClick={() => setSheet({ kind: 'trip' })}><Icon id="pencil" size={16} />修改</button>}
-        </div>
-        <h1>{meta.title}</h1>
-        {meta.desc && <p class="desc">{meta.desc}</p>}
         <div class="row wrap">
           {days.length > 0 && <span class="chip yellow">{days.length} 天 {days.length - 1} 夜</span>}
           {trip.members.all().map((m) => <span class="chip" key={m.id}>{m.nickname}</span>)}
+          {editing && <button class="small right" onClick={() => setSheet({ kind: 'trip' })}><Icon id="pencil" size={16} />修改</button>}
         </div>
         </div>
       </div>
+
+      {/* 目的地的天氣：看去程那班飛到哪裡 */}
+      {flights[0] && hasWeather(flights[0].to) && (
+        <WeatherCard airport={flights[0].to} start={meta.startDate} end={meta.endDate} />
+      )}
 
       <h2 class="plain"><Icon id="ticket" size={24} />航班</h2>
       {flights.map((f) => {
@@ -385,7 +395,7 @@ const two = (n: number): string => String(n).padStart(2, '0')
  * 出發倒數：左邊是很大的天數，右邊是一秒一秒跳的時分秒，下面一條航線。
  * 進度條代表出發前的最後 14 天，越接近出發，拖行李的小人越靠近終點的圖釘。
  */
-function Countdown({ ms, label }: { ms: number; label: string }) {
+function Countdown({ ms, label, who }: { ms: number; label: string; who: Who }) {
   const c = countdown(ms)
   return (
     <div class="depart">
@@ -398,37 +408,120 @@ function Countdown({ ms, label }: { ms: number; label: string }) {
           <div><b key={c.s} class="tick">{two(c.s)}</b><span>秒</span></div>
         </div>
       </div>
-      <Track p={1 - ms / (14 * 86_400_000)} />
+      <Track p={1 - ms / (14 * 86_400_000)} who={who} />
       <div class="muted depart-label">{label}</div>
     </div>
   )
 }
 
-/** 拖著行李箱往前走的小人：腿前後擺、身體微微起伏。 */
-function Traveler() {
+
+
+/** 進度條上的小人：這趟的成員（自己排第一個）和現在的階段。 */
+interface Who { cast: { look: Look; packed: boolean }[]; stage: Stage }
+
+
+const WX_ICON: Record<WxKind, string> = { clear: 'sun', partly: 'partly', cloudy: 'cloud', fog: 'fog', rain: 'rain', snow: 'snow', storm: 'storm' }
+
+/**
+ * 當地天氣：現在的氣溫，和行程那幾天的預報（還太早、預報不到的話先列接下來五天）。
+ * 先顯示上次查到的，同時去查新的；完全查不到就不顯示這張卡片。
+ */
+function WeatherCard({ airport, start, end }: { airport: string; start: string; end: string }) {
+  const [wx, setWx] = useState<Weather | null>(() => cachedWeather(airport))
+  useEffect(() => {
+    let gone = false
+    void loadWeather(airport).then((w) => { if (!gone && w) setWx(w) })
+    return () => { gone = true }
+  }, [airport])
+  if (!wx) return null
+  const days = pickDays(wx, start, end)
+  const inTrip = (date: string) => date >= start && date <= end
   return (
-    <svg class="traveler" viewBox="0 0 40 32" width="45" height="36" aria-hidden="true">
-      <path fill="none" stroke="#8a5a4a" stroke-width="1.2" stroke-linecap="round" d="M14 18l7 -5" />
-      <rect x="3" y="17" width="11" height="11" rx="2.5" fill="#f5c561" />
-      <path fill="none" stroke="#fdf0dc" stroke-width="1" d="M6.500 19.500v6M10.500 19.500v6" />
-      <circle cx="5.500" cy="29.500" r="1.400" fill="#8a5a4a" /><circle cx="11.500" cy="29.500" r="1.400" fill="#8a5a4a" />
-      <rect class="leg" x="24" y="22" width="2.4" height="8.500" rx="1.200" fill="#8a5a4a" />
-      <rect class="leg alt" x="27" y="22" width="2.4" height="8.500" rx="1.200" fill="#8a5a4a" />
-      <path fill="#e9755c" d="M23 12h7l1.500 11h-10z" />
-      <path fill="none" stroke="#e9755c" stroke-width="2.2" stroke-linecap="round" d="M24 15l-3 -2" />
-      <circle cx="26.500" cy="8.500" r="3.300" fill="#f1c9a8" />
-      <path fill="#8a5a4a" d="M23 8a3.500 3.500 0 0 1 7 0q-3.500 -1.700 -7 0z" />
-    </svg>
+    <div class="card weather">
+      <div class="row">
+        <Icon id={WX_ICON[wx.now.kind]} size={48} cls="a-float slow" />
+        <div class="grow">
+          <div class="wx-now"><b>{wx.now.temp}°</b><span>{WX_NAME[wx.now.kind]}</span></div>
+          <div class="muted">{airportName(airport) || airport}現在・{ago(wx.at)}更新</div>
+        </div>
+      </div>
+      <div class="wx-days">
+        {days.map((d) => (
+          <div key={d.date} class={inTrip(d.date) ? 'on' : ''}>
+            <small>{Number(d.date.slice(5, 7))}/{Number(d.date.slice(8, 10))}</small>
+            <Icon id={WX_ICON[d.kind]} size={26} />
+            <b>{d.hi}°</b><span class="muted">{d.lo}°</span>
+            <small class="wx-rain">{d.rain >= 30 ? '雨 ' + d.rain + '%' : ' '}</small>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
-/** 進度條：走過的那段是往前滑的斜條紋，小人拖著行李站在條紋的最前端，盡頭是圖釘。p 是 0 到 1。 */
-function Track({ p }: { p: number }) {
-  const at = Math.max(0.1, Math.min(0.94, p)) * 100
+/**
+ * 每個角色在進度條上怎麼走：回傳 [起點, 終點, 來回一趟幾秒]，位置是整條線的百分比。
+ * at 是現在的進度（行李堆的位置），i 是第幾個人（同角色的人錯開一點）。起點等於終點就是不走。
+ */
+function roamOf(job: Job, at: number, i: number): [number, number, number] {
+  const lo = (v: number) => Math.max(4, v)
+  const hi = (v: number) => Math.min(95, v)
+  switch (job) {
+    // 導遊：走在行李堆前面探路，走到快到終點再折回來
+    case 'guide': return [hi(at + 5), hi(at + 36), 13]
+    // 採買：從後面很遠的地方把東西提回行李堆
+    case 'shopper': return [lo(at - 48), lo(at - 7), 17]
+    // 攝影：整條線從頭走到尾，到處拍
+    case 'photo': return [4, 95, 32]
+    // 氣氛擔當：在行李堆前後跑來跑去
+    case 'cheer': return [lo(at - 28), hi(at + 14), 7]
+    // 廢人：坐在行李堆旁邊不動
+    case 'lazy': return [lo(at - 10), lo(at - 10), 0]
+    // 旅伴：在行李堆後面慢慢踱步
+    default: return [lo(at - 24 - i * 3), lo(at - 6), 20 + i * 2]
+  }
+}
+
+/**
+ * 每個角色走一步（左右腳各一次）要幾秒：決定腿擺、身體搖晃、甩手的快慢，每個角色的步調不一樣。
+ * 同角色的人再各差一點，才不會整齊劃一。
+ */
+function stepOf(job: Job, i: number): number {
+  const base: Record<Job, number> = {
+    cheer: 0.3,    // 氣氛擔當：小碎步跑
+    guide: 0.46,   // 導遊：穩穩地快走
+    '': 0.56,      // 旅伴：一般步伐
+    shopper: 0.68, // 採買：提著東西，步子沉
+    photo: 0.82,   // 攝影：邊走邊看，慢慢晃
+    lazy: 1,       // 廢人不走，用不到
+  }
+  return Math.round((base[job] + (i % 3) * 0.04) * 100) / 100
+}
+
+/**
+ * 進度條：走過的那段是往前滑的斜條紋，前端堆著全團的行李，盡頭是圖釘。
+ * 每個成員的小人照自己的角色在線上來回走（導遊在前面探路、採買來回搬東西、廢人坐著不動…）。p 是 0 到 1。
+ */
+function Track({ p, who }: { p: number; who: Who }) {
+  const at = Math.max(0.14, Math.min(0.9, p)) * 100
+  const small = who.cast.length > 3
   return (
     <div class="depart-track">
       <i style={`width:${at}%`} />
-      <span class="who" style={`left:${at}%`}><Traveler /></span>
+      <span class="pile" style={`left:${at}%`}><Pile cast={who.cast} stage={who.stage} size={small ? 36 : 40} /></span>
+      {who.cast.map((m, i) => {
+        const [a, b, dur] = roamOf(m.look.job, at, i)
+        const moving = b - a > 2
+        // 每個人的起步時間錯開，才不會全部同時折返
+        const timing = moving ? `animation-duration:${dur}s;animation-delay:${-(i * 2.3 + 1)}s` : ''
+        return (
+          <span key={i} class={`roamer ${moving ? 'go' : ''}`} style={`left:${a}%;--a:${a}%;--b:${b}%;--step:${stepOf(m.look.job, i)}s;${timing}`}>
+            <span class="face" style={timing}>
+              <Figure look={m.look} stage={who.stage === 'trip' ? 'trip' : 'plan'} packed={m.packed} luggage={false} walk={moving} size={small ? 36 : 42} cls={moving ? 'traveler' : ''} />
+            </span>
+          </span>
+        )
+      })}
       <Icon id="pin" size={22} />
     </div>
   )

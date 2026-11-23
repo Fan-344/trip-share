@@ -140,6 +140,7 @@ export function More({ trip, reg, sync }: TabProps) {
 
 
       <Fold title="移除與刪除">
+      <LeaveCard trip={trip} reg={reg} sync={sync} />
       <div class="card flat">
         <b>從這支手機移除</b>
         <p class="muted">
@@ -165,6 +166,39 @@ export function More({ trip, reg, sync }: TabProps) {
       </Fold>
 
       <p class="muted center" style="margin-top:28px">版本 {BUILD}</p>
+    </div>
+  )
+}
+
+/**
+ * 退出這份行程：把自己從成員名單拿掉，並把行程從這支手機移除。
+ * 跟下面的「從這支手機移除」不同：那個只清這支手機，人還在名單上。
+ */
+function LeaveCard({ trip, reg, sync }: Pick<TabProps, 'trip' | 'reg' | 'sync'>) {
+  const [busy, setBusy] = useState(false)
+  const me = trip.actor.pubkey
+  const members = trip.members.all()
+  const mine = members.find((m) => m.id === me)
+  if (!mine) return null
+  const phones = members.filter((m) => !m.managed).length
+  const admins = members.filter((m) => m.role === 'admin' && !m.managed).length
+  // 唯一的管理員不能退出，不然就沒有人能管理了
+  const stuck = mine.role === 'admin' && admins <= 1 && phones > 1
+  return (
+    <div class="card flat">
+      <b>退出這份行程</b>
+      <p class="muted">
+        把我從成員名單拿掉，行程也從這支手機移除；私人清單和訂位代號會一起清掉。
+      </p>
+      <button class="danger" disabled={busy || stuck} onClick={async () => {
+        if (!(await confirmBox({ title: `退出「${trip.meta.title}」？`, body: '行程會從這支手機移除，私人清單和訂位代號一起清掉。', ok: '退出', danger: true }))) return
+        setBusy(true)
+        trip.members.remove(me)
+        // 盡量讓其他人知道我退出了；沒網路也照樣退出，只是他們的名單上暫時還看得到我
+        await sync?.publishSnapshotNow().catch(() => 0)
+        leaveTrip(reg, trip.meta.id)
+      }}>{busy ? '正在退出…' : '退出這份行程'}</button>
+      {stuck && <p class="muted">你是唯一的管理員。請先把另一位成員設為管理員，再退出。</p>}
     </div>
   )
 }

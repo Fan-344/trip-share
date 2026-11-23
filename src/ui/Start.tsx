@@ -5,6 +5,8 @@ import { Registry, acceptInvite, createTrip, parseInvite, renameEverywhere, type
 import { THEMES } from '../themes'
 import { fullDay } from '../time'
 import { Art } from './Art'
+import { BAGS, defaultLook } from '../avatar'
+import { Pile } from './Figure'
 import { BackupCard, Recover } from './Backup'
 import { Fold } from './fold'
 import { Icon } from './Icons'
@@ -43,6 +45,16 @@ function ThemeGallery() {
   return (
     <div class="page top">
       <h1>佈景主題一覽</h1>
+      {/* 行李堆：一到五件各一種擺法。上排有人沒收好，下排全部收好 */}
+      <h2>行李堆<span class="muted">一到五件</span></h2>
+      {[false, true].map((packed) => (
+        <div class="card row" key={String(packed)} style="justify-content:space-around;align-items:flex-end">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <Pile key={n} stage="go" size={48}
+              cast={Array.from({ length: n }, (_, i) => ({ look: { ...defaultLook(`m${i}`), bag: BAGS[(i * 3) % BAGS.length] }, packed: packed || i % 2 === 0 }))} />
+          ))}
+        </div>
+      ))}
       {THEMES.map((t) => (
         <div key={t.id} style={`--accent:${t.accent};--accent-l:color-mix(in srgb, ${t.accent} 30%, white)`}>
           <h2>{t.name}<span class="muted">{t.id}・{t.hint}</span></h2>

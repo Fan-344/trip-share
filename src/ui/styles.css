@@ -570,7 +570,7 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 @keyframes stripes { to { background-position: 17px 0; } }
 @keyframes legstep { 0%, 100% { transform: rotate(18deg); } 50% { transform: rotate(-18deg); } }
 @keyframes bobwalk { from { transform: translateY(0); } to { transform: translateY(-1.5px); } }
-.depart-track { position: relative; height: 50px; margin-top: 6px; }
+.depart-track { position: relative; height: 60px; margin-top: 6px; }
 .depart-track::before { content: ""; position: absolute; left: 0; right: 26px; bottom: 6px; height: 9px; border-radius: 999px; background: var(--edge); }
 .depart-track > i {
   position: absolute; left: 0; bottom: 6px; height: 9px; border-radius: 999px;
@@ -578,7 +578,80 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
   animation: stripes 0.9s linear infinite;
 }
 .depart-track > .icon { position: absolute; right: 0; bottom: 2px; }
-.depart-track .who { position: absolute; bottom: 13px; transform: translateX(-68%); display: flex; }
 .traveler { display: block; animation: bobwalk 0.3s ease-in-out infinite alternate; }
 .traveler .leg { animation: legstep 0.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 0; }
 .traveler .leg.alt { animation-delay: -0.3s; }
+
+/* ---- 成員的小人 ---- */
+.figure { flex: none; display: block; overflow: visible; }
+/* 採買的購物袋前後晃：以提把為軸 */
+@keyframes dangle { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+.a-dangle { animation: dangle 0.9s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 0; }
+/* 攝影：相機平常放低，每隔一下舉起來，閃光亮一下 */
+@keyframes cam { 0%, 55%, 100% { transform: translateY(3px); } 65%, 90% { transform: translateY(0); } }
+@keyframes flash { 0%, 72%, 84%, 100% { opacity: 0; } 78% { opacity: 1; } }
+.a-cam { animation: cam 3.2s ease-in-out infinite; }
+.a-flash { animation: flash 3.2s linear infinite; opacity: 0; }
+/* 廢人：坐著慢慢前後晃 */
+.a-rock.slow { animation-duration: 3.6s; }
+
+/* 選小人樣子的面板 */
+.lookedit { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
+.lookpreview { display: flex; justify-content: center; align-items: flex-end; height: 132px; margin-bottom: 8px; border-radius: 18px; background: var(--accent-l); }
+.dots { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.dots button { width: 34px; min-height: 34px; padding: 0; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--shade); }
+.dots button.on { box-shadow: 0 0 0 2.5px var(--ink); }
+
+/* ---- 進度條上的行李堆和來回走的小人 ---- */
+.depart-track .pile { position: absolute; bottom: 12px; transform: translateX(-50%); display: flex; }
+/* 小人在自己的範圍（--a 到 --b）之間來回走；走到頭停一下再折返 */
+@keyframes roam { 0% { left: var(--a); } 46%, 50% { left: var(--b); } 96%, 100% { left: var(--a); } }
+/* 折返時轉身：去程面向右，回程面向左 */
+@keyframes turn { 0%, 47.9% { transform: scaleX(1); } 48%, 97.9% { transform: scaleX(-1); } 98%, 100% { transform: scaleX(1); } }
+.depart-track .roamer { position: absolute; bottom: 12px; transform: translateX(-50%); display: flex; }
+.depart-track .roamer.go { animation: roam linear infinite; }
+.depart-track .roamer .face { display: flex; }
+.depart-track .roamer.go .face { animation: turn linear infinite; }
+
+/* 頂端：行程名稱後面接日期 */
+.titlebar { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.titlebar .title { min-width: 0; }
+.titlebar .dates { flex: none; font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---- 當地天氣卡片 ---- */
+.weather { padding: 14px 16px 12px; }
+.wx-now { display: flex; align-items: baseline; gap: 8px; }
+.wx-now b { font-size: 2rem; line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wx-days { display: flex; gap: 6px; margin-top: 10px; }
+.wx-days > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 0 4px; border-radius: 14px; font-size: 0.85rem; line-height: 1.3; }
+/* 行程中的那幾天上底色 */
+.wx-days > div.on { background: var(--accent-l); }
+.wx-days small { font-size: 0.72rem; color: var(--muted); }
+.wx-days b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.wx-days .wx-rain { color: #5f93aa; }
+
+/* ---- 進度條上走路更活潑：腿擺得大、身體左右搖、手前後甩 ---- */
+@keyframes legstep { 0%, 100% { transform: rotate(30deg); } 50% { transform: rotate(-30deg); } }
+@keyframes waddle { from { transform: rotate(-5deg) translateY(0); } to { transform: rotate(5deg) translateY(-2.5px); } }
+@keyframes armswing { from { transform: rotate(38deg); } to { transform: rotate(-38deg); } }
+.traveler { animation: waddle 0.24s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+.traveler .leg { animation-duration: 0.48s; }
+.traveler .leg.alt { animation-delay: -0.24s; }
+.traveler .arm { animation: armswing 0.24s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 0; }
+
+/* 每個角色的步調不同：--step 是走一步要幾秒（由 Overview 的 stepOf 給），腿、身體搖晃、甩手都跟著它 */
+.roamer .traveler { animation-duration: calc(var(--step, 0.5s) / 2); }
+.roamer .traveler .leg { animation-duration: var(--step, 0.5s); }
+.roamer .traveler .leg.alt { animation-delay: calc(var(--step, 0.5s) / -2); }
+.roamer .traveler .arm { animation-duration: calc(var(--step, 0.5s) / 2); }
+
+/* ---- 廢人：躺著的小動作 ---- */
+/* 肚子隨呼吸起伏 */
+@keyframes belly { from { transform: scaleY(1); } to { transform: scaleY(1.14); } }
+.a-belly { animation: belly 2.6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+/* 翹著的那隻腳慢慢晃 */
+@keyframes knee { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+.a-knee { animation: knee 1.9s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0 100%; }
+/* 滑手機：手偶爾動一下 */
+@keyframes scrollphone { 0%, 70%, 100% { transform: translateY(0); } 78% { transform: translateY(-1.2px); } 86% { transform: translateY(0.6px); } }
+.a-scroll { animation: scrollphone 2.8s ease-in-out infinite; }

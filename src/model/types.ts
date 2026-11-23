@@ -1,4 +1,5 @@
 // 資料模型型別（規格書第 5 節）
+import type { Look } from '../avatar'
 
 /** 做出改動的人與裝置。pubkey 之後會是 Nostr 公鑰；device 是每次安裝產生的隨機 ID。 */
 export interface Actor {
@@ -53,6 +54,8 @@ export interface Member {
   nickname: string
   role: Role
   joinedAt: number
+  /** 小人的樣子和在團裡的角色（見 src/avatar.ts）；沒選過的欄位照成員代號給預設。 */
+  look?: Partial<Look>
   /** 不用手機的成員（小孩、長輩）：沒有金鑰，由其他人代管。 */
   managed?: boolean
 }
