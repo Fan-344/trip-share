@@ -136,7 +136,7 @@ export function FigureBody({ look, stage, packed, walk = false, luggage = true }
   const lazy = look.job === 'lazy'
   const upper = (
     <g>
-      {stage === 'trip' && !lazy && <rect x="-7.500" y="-18" width="4.500" height="9" rx="2.200" fill={SEA} />}
+      {stage === 'trip' && !lazy && <rect x="-7.500" y="-18" width="4.500" height="9" rx="2.200" fill={look.bag} />}
       <HairBack look={look} />
       <path fill={look.coat} d="M-3.500 -18h7l1.500 11h-10z" />
       <circle cx="0" cy="-21.500" r="3.300" fill={look.skin} />
