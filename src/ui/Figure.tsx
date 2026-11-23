@@ -154,8 +154,8 @@ export function FigureBody({ look, stage, packed, walk = false, luggage = true }
           </g>
         ) : (
           <g>
-            {/* 走路時前後甩的那隻手 */}
-            {walk && <path class="arm" fill="none" stroke={look.coat} stroke-width="2.2" stroke-linecap="round" d="M-2.500 -16v6.500" />}
+            {/* 走路時前後甩的那隻手；氣氛擔當兩隻手都舉著，不再多畫一隻 */}
+            {walk && look.job !== 'cheer' && <path class="arm" fill="none" stroke={look.coat} stroke-width="2.2" stroke-linecap="round" d="M-2.500 -16v6.500" />}
             <g fill={TRUNK}>
               <rect class={walk ? 'leg' : undefined} x="-3" y="-8" width="2.400" height="8" rx="1.200" />
               <rect class={walk ? 'leg alt' : undefined} x="0.600" y="-8" width="2.400" height="8" rx="1.200" />

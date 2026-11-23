@@ -571,13 +571,12 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 @keyframes legstep { 0%, 100% { transform: rotate(18deg); } 50% { transform: rotate(-18deg); } }
 @keyframes bobwalk { from { transform: translateY(0); } to { transform: translateY(-1.5px); } }
 .depart-track { position: relative; height: 82px; margin-top: 6px; }
-.depart-track::before { content: ""; position: absolute; left: 0; right: 26px; bottom: 6px; height: 14px; border-radius: 999px; background: var(--edge); }
+.depart-track::before { content: ""; position: absolute; left: 0; right: 0; bottom: 6px; height: 14px; border-radius: 999px; background: var(--edge); }
 .depart-track > i {
   position: absolute; left: 0; bottom: 6px; height: 14px; border-radius: 999px;
   background: linear-gradient(-45deg, #f29a84 25%, var(--pop) 25% 50%, #f29a84 50% 75%, var(--pop) 75%) 0 0 / 17px 17px;
   animation: stripes 0.9s linear infinite;
 }
-.depart-track > .icon { position: absolute; right: 0; bottom: 5px; }
 .traveler { display: block; animation: bobwalk 0.3s ease-in-out infinite alternate; }
 .traveler .leg { animation: legstep 0.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 0; }
 .traveler .leg.alt { animation-delay: -0.3s; }

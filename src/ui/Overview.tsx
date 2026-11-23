@@ -495,8 +495,8 @@ function habitOf(job: Job, at: number, i: number): Habit {
   }
 }
 
-/** 會走的角色的活動範圍：整條線，從最左邊到圖釘前面。 */
-const ALL: [number, number] = [4, 94]
+/** 會走的角色的活動範圍：整條線，兩端各留一點，小人才不會走出卡片。 */
+const ALL: [number, number] = [5, 95]
 
 /** 使用者是否要求減少動態效果：是的話小人站著不走。 */
 const stillMode = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -552,7 +552,7 @@ function Roamer({ id, look, packed, stage, habit, size }: {
 }
 
 /**
- * 進度條：走過的那段是往前滑的斜條紋，前端是全團的行李，盡頭是圖釘；全團的小人在線上各走各的。p 是 0 到 1。
+ * 進度條：走過的那段是往前滑的斜條紋，前端是全團的行李；全團的小人在線上各走各的。p 是 0 到 1。
  */
 function Track({ p, who }: { p: number; who: Who }) {
   // 取整數百分比：進度每秒都在變一點點，小人的活動範圍不用跟著每秒重算
@@ -565,7 +565,6 @@ function Track({ p, who }: { p: number; who: Who }) {
       {who.cast.map((m, i) => (
         <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={who.stage} habit={habitOf(m.look.job, at, i)} size={small ? 50 : 58} />
       ))}
-      <Icon id="pin" size={22} />
     </div>
   )
 }
