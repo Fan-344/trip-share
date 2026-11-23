@@ -28,6 +28,7 @@ const blank = (): TicketFlight => ({ code: '', from: '', to: '', depDate: '', de
 /** 這班還缺哪些必填欄位（給畫面提示用）。 */
 export function missingFields(f: TicketFlight): string[] {
   const out: string[] = []
+  if (!f.code) out.push('航班代號')
   if (!f.from || !f.to) out.push('機場')
   if (!f.depDate) out.push('日期')
   if (!f.depTime || !f.arrTime) out.push('時間')
@@ -93,7 +94,9 @@ function findDates(text: string, near: string): Found<string>[] {
     const at = m.index
     const end = at + m[0].length
     if (out.some((o) => at < o.end && end > o.at)) return // 前面的規則已經認走這一段
-    out.push({ at, end, value: ymd(y ?? guessYear(mo, d, near), mo, d) })
+    // 年份被擠到下一行（窄畫面折行、兩欄混在一起）：往後看到下一行結尾為止
+    const next = y ?? Number(/(?<!\d)(20\d{2})(?![\d:/-])/.exec(text.slice(end).split('\n').slice(0, 2).join('\n').slice(0, 60))?.[1]) ?? 0
+    out.push({ at, end, value: ymd(next || guessYear(mo, d, near), mo, d) })
   }
   const year = (s: string | undefined) => (s ? (s.length === 2 ? 2000 + Number(s) : Number(s)) : null)
   const mon = MONTHS.join('|')
@@ -130,7 +133,7 @@ function findTimes(text: string): Found<string>[] {
 
 function findAirports(text: string): Found<string>[] {
   const all: Found<string>[] = []
-  const re = /(?<![A-Za-z])[A-Z]{3}(?![A-Za-z])/g
+  const re = /(?<![A-Za-z0-9])[A-Z]{3}(?![A-Za-z0-9])/g
   for (let m: RegExpExecArray | null; (m = re.exec(text));) {
     if (!NOT_AIRPORT.has(m[0])) all.push({ at: m.index, end: m.index + 3, value: m[0] })
   }
@@ -143,14 +146,38 @@ function findAirports(text: string): Found<string>[] {
     return /[(（]\s*$/.test(before) && /^\s*[)）]/.test(after) || /^\s*(-|–|—|→|>|至|飛)/.test(after) || /(-|–|—|→|>|至|飛)\s*$/.test(before)
   })
   const picked = [...known, ...shaped.filter((s) => !known.includes(s))].sort((a, b) => a.at - b.at)
-  return picked
+  if (new Set(picked.map((p) => p.value)).size >= 2) return picked
+  // 還是湊不到兩個：單獨出現的三個大寫字母也算（小機場不在表裡，例如截圖上大大的「SHI」）
+  return all
 }
+
+/** 航班號碼前面補的零拿掉：JX0309 就是 JX309。 */
+const flightCode = (airline: string, number: string) => airline + number.replace(/^0+(?=\d)/, '')
 
 function findCodes(text: string): Found<string>[] {
   const out: Found<string>[] = []
   const re = /(?<![A-Za-z0-9])([A-Z][A-Z0-9]|[0-9][A-Z])\s?-?(\d{2,4})(?![0-9A-Za-z:/.年月])/g
   for (let m: RegExpExecArray | null; (m = re.exec(text));) {
-    if (AIRLINES.has(m[1])) out.push({ at: m.index, end: m.index + m[0].length, value: m[1] + m[2] })
+    if (AIRLINES.has(m[1])) out.push({ at: m.index, end: m.index + m[0].length, value: flightCode(m[1], m[2]) })
+  }
+  return out
+}
+
+/** 文字辨識常搞混的字：同一組裡的字當成同一個。 */
+const LOOKALIKE = ['1IJLT|!', '0ODQ', '5S', '8B', '2Z', '6G', 'VY', 'UV']
+const sameGlyph = (a: string, b: string) => a === b || LOOKALIKE.some((g) => g.includes(a) && g.includes(b))
+
+/**
+ * 找不到航班代號時再找一次，容許辨識錯字：像「1x0309」其實是「JX0309」。
+ * 只在前兩個字換成相近的字之後是認得的航空公司才算；有好幾家都像就取表裡排前面的。
+ */
+function findLooseCodes(text: string): Found<string>[] {
+  const out: Found<string>[] = []
+  const re = /(?<![A-Za-z0-9])([A-Za-z0-9|!]{2})\s?-?(\d{3,4})(?![0-9A-Za-z:/.年月])/g
+  for (let m: RegExpExecArray | null; (m = re.exec(text));) {
+    const seen = m[1].toUpperCase()
+    const airline = [...AIRLINES].find((a) => sameGlyph(a[0], seen[0]) && sameGlyph(a[1], seen[1]))
+    if (airline) out.push({ at: m.index, end: m.index + m[0].length, value: flightCode(airline, m[2]) })
   }
   return out
 }
@@ -202,8 +229,16 @@ const filled = (f: TicketFlight) => [f.from, f.to, f.depDate, f.depTime, f.arrTi
 export function parseTicketText(raw: string, hint: TicketHint = { near: '' }): TicketFlight[] {
   // 全形英數轉半形，OCR 常見的怪空白收成一般空白
   const text = raw.replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[\u00A0\u3000\t]/g, ' ')
-  const codes = findCodes(text)
-  if (codes.length === 0) return []
+  let codes = findCodes(text)
+  if (codes.length === 0) codes = findLooseCodes(text)
+  if (codes.length === 0) {
+    // 完全找不到代號（截圖上代號被圖示擋到之類）：機場和時間都有的話，其他欄位照樣帶出來，代號留給使用者填
+    const f = readSegment('', text, '', hint.near)
+    if (!f.from || !f.to || !f.depTime) return []
+    return [{ ...f, pnr: findPnr(text) }]
+  }
+  // 猜出來的代號要有機場佐證，不然只是一串像代號的字
+  if (findCodes(text).length === 0 && findAirports(text).length < 2) return []
   const after = codes.map((c, i) => readSegment(c.value, text.slice(c.end, codes[i + 1]?.at ?? text.length), text.slice(0, c.at), hint.near))
   const before = codes.map((c, i) => readSegment(c.value, text.slice(i ? codes[i - 1].end : 0, c.at), text.slice(0, i ? codes[i - 1].end : 0), hint.near))
   const score = (list: TicketFlight[]) => list.reduce((n, f) => n + filled(f), 0)

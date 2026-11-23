@@ -202,6 +202,41 @@ export class Trip {
     return (list.kind === 'private' ? this.privLists : this.lists).create(list)
   }
 
+  /**
+   * 舊版的清單裡可以再分類（「出發前清單」底下有「證件」「金錢」…）。現在清單只有一層：
+   * 把每個分類拆成獨立的一份清單，項目搬過去；原本的清單搬空了就刪掉。回傳拆出了幾份。
+   *
+   * 每支手機打開行程時都會跑。新清單的 ID 由「原清單＋分類名」算出來，
+   * 所以兩支手機同時拆也會拆出同一份，不會變成兩份。
+   */
+  splitListGroups(): number {
+    let made = 0
+    // 已經刪掉的原清單也看：別人還在用舊版時，可能同時又往裡面加了有分類的項目
+    for (const list of [...this.lists.all(true), ...this.privLists.all(true)]) {
+      const table = list.kind === 'private' ? this.privLists : this.lists
+      const items = this.itemsTable(list.kind).all().filter((i) => i.listId === list.id)
+      const groups = [...new Set(items.map((i) => i.group ?? '').filter(Boolean))]
+      for (const group of groups) {
+        let h = 5381
+        for (const ch of group) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0
+        const id = `${list.id}.${h.toString(36)}`
+        const there = table.get(id)
+        if (there?.deleted) continue // 拆出來的清單後來被刪掉了：不要把項目搬進去
+        if (!there) {
+          table.create({ kind: list.kind, title: group, owners: list.owners }, id)
+          made++
+        }
+        for (const i of items) if (i.group === group) this.itemsTable(list.kind).update(i.id, { listId: id, group: '' })
+      }
+      if (groups.length > 0 && !list.deleted && items.every((i) => i.group)) table.remove(list.id)
+    }
+    return made
+  }
+
+  renameList(list: List & Meta, title: string): void {
+    ;(list.kind === 'private' ? this.privLists : this.lists).update(list.id, { title })
+  }
+
   allLists(): (List & Meta)[] {
     return [...this.lists.all(), ...this.privLists.all()]
   }

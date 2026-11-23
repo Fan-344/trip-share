@@ -427,3 +427,11 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 
 /* 照片還沒抓到時的佔位框 */
 .photo.wait { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 120px; color: var(--muted); font-size: 0.85rem; border-style: dashed; }
+
+/* 每頁右上角的「編輯」開關；編輯中整列變色，提醒現在點東西會進入修改 */
+.editbar { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; min-height: 32px; }
+.editbar.on { background: var(--yellow-l); border: 2px dashed var(--ink); border-radius: 12px; padding: 4px 6px 4px 10px; }
+/* 清單標題列上的鎖：鎖著的清單不能勾，避免滑手機時誤觸 */
+.lockbtn { border: 0; background: transparent; padding: 4px; min-height: 0; display: flex; box-shadow: none; }
+.lockbtn.locked { opacity: 0.55; }
+.check input:disabled { pointer-events: none; }

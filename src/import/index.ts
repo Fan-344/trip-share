@@ -24,6 +24,7 @@ async function fromImage(image: Blob, hint: TicketHint, onStage: (s: Stage, prog
   onStage('辨識文字…', 0)
   const { readImageText } = await import('./ocr')
   const text = await readImageText(image, (p) => onStage('辨識文字…', p))
+  if (import.meta.env.DEV) console.log('[辨識出的文字]\n' + text)
   return { flights: parseTicketText(text, hint), via: 'ocr' }
 }
 

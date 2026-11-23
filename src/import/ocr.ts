@@ -38,9 +38,13 @@ async function prepare(image: Blob): Promise<HTMLCanvasElement> {
     for (let n = 0; lo < 255 && (n += hist[lo]) < total * 0.02;) lo++
     for (let n = 0; hi > 0 && (n += hist[hi]) < total * 0.02;) hi--
     const span = Math.max(1, hi - lo)
+    // 深色模式的截圖（深底淺字）：反過來變成白底黑字，辨識引擎才讀得準
+    let median = 0
+    for (let n = 0; median < 255 && (n += hist[median]) < total / 2;) median++
+    const dark = median < 110
     for (let i = 0; i < px.length; i += 4) {
       const v = Math.max(0, Math.min(255, Math.round(((px[i] - lo) / span) * 255)))
-      px[i] = px[i + 1] = px[i + 2] = v
+      px[i] = px[i + 1] = px[i + 2] = dark ? 255 - v : v
     }
     ctx.putImageData(data, 0, 0)
     return canvas

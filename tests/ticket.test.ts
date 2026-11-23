@@ -125,3 +125,40 @@ describe('登機證條碼', () => {
     expect(JSON.stringify(parseBoardingPass(raw, hint))).not.toContain('WANG')
   })
 })
+
+describe('截圖辨識出來的文字（會有錯字）', () => {
+  // 深色底的訂位畫面：代號被認錯、兩欄的字混在一起、機場不在表裡
+  const ocr = `Flight Information
+Z 1x0309
+Sun, Sep 13, Sun, Sep 13,
+2027 2027
+10:40 11:00
+
+AIRBUS A321NEO
+
+ZZQ 1h 20mins RMQ
+Somewhere Taichung
+
+Non-stop
+Airport International
+Terminal 2
+= 63 kg CO2e`
+
+  it('代號認錯也推得回來、補零拿掉、表裡沒有的機場照樣讀', () => {
+    expect(parseTicketText(ocr, hint)).toEqual([
+      { code: 'JX309', from: 'ZZQ', to: 'RMQ', depDate: '2027-09-13', depTime: '10:40', arrDate: '2027-09-13', arrTime: '11:00', cabin: '', pnr: '' },
+    ])
+  })
+
+  it('完全沒有代號：其他欄位照樣帶出來，代號留空', () => {
+    const got = parseTicketText(ocr.replace('Z 1x0309', '%%'), hint)
+    expect(got).toHaveLength(1)
+    expect(got[0]).toMatchObject({ code: '', from: 'ZZQ', to: 'RMQ', depTime: '10:40' })
+    expect(missingFields(got[0])).toEqual(['航班代號'])
+  })
+
+  it('沒有機場佐證的相近字不算航班', () => {
+    expect(parseTicketText('訂單 1X0309 已付款 10:40', hint)).toEqual([])
+    expect(parseTicketText('1h 20mins, 63 kg', hint)).toEqual([])
+  })
+})

@@ -71,7 +71,7 @@ export function ImportSheet({ near, state, onState, onPick, onClose }: {
           return (
             <div class="card flat ticket" key={i}>
               <div class="row">
-                <h3 class="grow">{f.code}　{f.from || '？'} → {f.to || '？'}</h3>
+                <h3 class="grow">{f.code || '航班？'}　{f.from || '？'} → {f.to || '？'}</h3>
                 {done && <span class="chip green">已加入</span>}
               </div>
               <p>

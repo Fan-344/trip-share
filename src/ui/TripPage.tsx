@@ -91,6 +91,12 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
     gone && gone.by !== trip.actor.pubkey && !invited ? gone : null
   useEffect(() => window.scrollTo(0, 0), [tab])
 
+  // 舊版清單裡的分類：拆成各自一份清單（清單現在只有一層）。別人用舊版又加了分類的話，同步進來時再拆一次。
+  const grouped = trip.listItems.all().filter((i) => i.group).length + trip.privListItems.all().filter((i) => i.group).length
+  useEffect(() => {
+    if (current && !removed && !meta.deleted && grouped > 0) trip.splitListGroups()
+  }, [current, grouped, !removed, !meta.deleted])
+
   useEffect(() => {
     if (!meta.id) return
     const root = document.documentElement

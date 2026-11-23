@@ -7,7 +7,7 @@ import { ago, dayLabel, daysBetween, defaultTz, fullDay, mapLink, mapSearchOn, p
 import { Empty, Farewell } from './bits'
 import { Chevron } from './fold'
 import { CATS, DAY_ICONS, Icon, catOf } from './Icons'
-import { Field, Seg, Sheet, useNow, value } from './kit'
+import { EditBar, Field, Seg, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
 
 const KINDS: [ItemKind, string][] = [['normal', '一般'], ['must', '必去'], ['reminder', '提醒']]
@@ -25,6 +25,7 @@ export function Plan({ trip, theme }: TabProps) {
   const day = days.includes(picked) ? picked : days.includes(t) ? t : days[0] ?? meta.startDate
   const [sheet, setSheet] = useState<{ kind: 'item'; id?: string } | { kind: 'day' } | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [editing, setEditing] = useState(false)
 
   // 沒填時間的排最前面（整天的事），其餘照時間。
   const list = items.filter((i) => i.date === day).sort((a, b) => a.time.localeCompare(b.time) || a.createdAt - b.createdAt)
@@ -35,6 +36,7 @@ export function Plan({ trip, theme }: TabProps) {
 
   return (
     <div>
+      <EditBar on={editing} onChange={setEditing} hint="編輯中：點開項目可以修改" />
       <div class="days">
         {days.map((d) => {
           const { md, wd } = dayLabel(d)
@@ -61,9 +63,9 @@ export function Plan({ trip, theme }: TabProps) {
           </div>
           <div class="grow">
             <div class="muted">{n >= 0 ? `Day ${n + 1}・` : ''}{fullDay(day)}</div>
-            <h3>{dayTitle || <span class="muted">幫這天取個標題</span>}</h3>
+            <h3>{dayTitle || (editing && <span class="muted">幫這天取個標題</span>)}</h3>
           </div>
-          <button class="small ghost" aria-label="編輯這天的標題與圖示" onClick={() => setSheet({ kind: 'day' })}><Icon id="pencil" size={22} /></button>
+          {editing && <button class="small ghost" aria-label="編輯這天的標題與圖示" onClick={() => setSheet({ kind: 'day' })}><Icon id="pencil" size={22} /></button>}
         </div>
 
         {list.length === 0 ? (
@@ -113,9 +115,9 @@ export function Plan({ trip, theme }: TabProps) {
                             </a>
                           )}
                           <span class="grow" />
-                          <button class="small" onClick={(e) => { e.stopPropagation(); setSheet({ kind: 'item', id: i.id }) }}>
+                          {editing && <button class="small" onClick={(e) => { e.stopPropagation(); setSheet({ kind: 'item', id: i.id }) }}>
                             <Icon id="pencil" size={16} />修改
-                          </button>
+                          </button>}
                         </div>
                       </div>
                     )}
@@ -126,7 +128,7 @@ export function Plan({ trip, theme }: TabProps) {
           </div>
         )}
       </div>
-      <button class="add" onClick={() => setSheet({ kind: 'item' })}><Icon id="plus" size={18} />新增項目</button>
+      {editing && <button class="add" onClick={() => setSheet({ kind: 'item' })}><Icon id="plus" size={18} />新增項目</button>}
       <Farewell theme={theme} title={meta.title} />
 
       {sheet?.kind === 'item' && <ItemSheet trip={trip} id={sheet.id} day={day} onClose={() => setSheet(null)} />}

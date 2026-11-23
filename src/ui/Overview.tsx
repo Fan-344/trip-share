@@ -13,7 +13,7 @@ import { Chevron } from './fold'
 import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
 import { ImportSheet, type ImportState } from './Import'
-import { Field, Sheet, useNow, value } from './kit'
+import { EditBar, Field, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
 
 const DAY = 86_400_000
@@ -42,11 +42,13 @@ export function Overview({ trip, theme }: TabProps) {
   // 預設展開的那一班：接下來要搭的；都飛完了就是最後一班。
   const focus = next ?? flights[flights.length - 1]
   const [openFlight, setOpenFlight] = useState<Record<string, boolean>>({})
+  const [editing, setEditing] = useState(false)
   const t = today()
   const dayIndex = days.indexOf(t)
 
   return (
     <div>
+      <EditBar on={editing} onChange={setEditing} hint="編輯中：可以新增、修改航班與住宿" />
       <div class="card hero">
         <Art theme={theme} />
         <div class="body">
@@ -54,7 +56,7 @@ export function Overview({ trip, theme }: TabProps) {
           <span class="muted grow">
             {meta.startDate.slice(0, 4)}　{fullDay(meta.startDate)} ～ {fullDay(meta.endDate)}
           </span>
-          <button class="small" onClick={() => setSheet({ kind: 'trip' })}>編輯</button>
+          {editing && <button class="small" onClick={() => setSheet({ kind: 'trip' })}><Icon id="pencil" size={16} />修改</button>}
         </div>
         <h1>{meta.title}</h1>
         {meta.desc && <p class="desc">{meta.desc}</p>}
@@ -126,27 +128,28 @@ export function Overview({ trip, theme }: TabProps) {
               <span class="muted grow">
                 {f.aircraft}{f.aircraft && pnr && '・'}{pnr && `訂位代號 ${pnr.code}（只存在這支手機）`}
               </span>
-              <button class="small" onClick={() => setSheet({ kind: 'flight', id: f.id })}><Icon id="pencil" size={16} />修改</button>
+              {editing && <button class="small" onClick={() => setSheet({ kind: 'flight', id: f.id })}><Icon id="pencil" size={16} />修改</button>}
             </div>
           </div>
         )
       })}
       {flights.length === 0 && <Empty icon="plane">還沒有航班。</Empty>}
-      <div class="two">
+      {editing && <div class="two">
         <button class="add" onClick={() => setSheet({ kind: 'flight' })}><Icon id="plus" size={18} />新增航班</button>
         <button class="add" onClick={() => { setTicket(null); setSheet({ kind: 'import' }) }}><Icon id="camera" size={18} />匯入機票</button>
-      </div>
+      </div>}
 
       <h2>住宿</h2>
       {stays.map((s) => {
         const map = safeUrl(s.mapUrl)
         const nights = nightsBetween(s.checkIn, s.checkOut)
         return (
-          <div class="card tap" key={s.id} onClick={() => setSheet({ kind: 'stay', id: s.id })}>
+          <div class={`card ${editing ? 'tap' : ''}`} key={s.id} onClick={() => { if (editing) setSheet({ kind: 'stay', id: s.id }) }}>
             <EditedNotice rec={s} trip={trip} now={now} />
             <div class="row">
               <h3 class="grow">{s.name}</h3>
               <span class={`chip ${s.confirmed ? 'green' : 'coral'}`}>{s.confirmed ? '已確認' : '未確認'}</span>
+              {editing && <Icon id="pencil" size={18} />}
             </div>
             <p>
               {fullDay(s.checkIn)} 入住 ～ {fullDay(s.checkOut)} 退房{nights > 0 && `・${nights} 晚`}
@@ -156,7 +159,7 @@ export function Overview({ trip, theme }: TabProps) {
         )
       })}
       {stays.length === 0 && <Empty icon="house">還沒有住宿。</Empty>}
-      <button class="add" onClick={() => setSheet({ kind: 'stay' })}><Icon id="plus" size={18} />新增住宿</button>
+      {editing && <button class="add" onClick={() => setSheet({ kind: 'stay' })}><Icon id="plus" size={18} />新增住宿</button>}
 
       <Farewell theme={theme} title={meta.title} />
 

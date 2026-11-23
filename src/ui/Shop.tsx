@@ -8,7 +8,7 @@ import { ago, daysBetween, fullDay, today } from '../time'
 import { Empty, Farewell } from './bits'
 import { Chevron, Fold } from './fold'
 import { Icon } from './Icons'
-import { Field, Sheet, useNow, value } from './kit'
+import { EditBar, Field, Sheet, useNow, value } from './kit'
 import { CURRENCIES, detectCurrency, formatPrice, parsePrice } from '../money'
 import type { PhotoStore } from '../store/photos'
 import { Lightbox, PhotoField, usePhoto } from './photo'
@@ -20,6 +20,7 @@ type SheetState = { id?: string; ask: boolean } | null
 export function Shop({ trip, theme, photos }: TabProps) {
   const me = trip.actor.pubkey
   const [sheet, setSheet] = useState<SheetState>(null)
+  const [editing, setEditing] = useState(false)
   const items = trip.shopItems()
   const range = daysBetween(trip.meta.startDate, trip.meta.endDate)
   const bought = items.filter((i) => i.bought).length
@@ -32,6 +33,7 @@ export function Shop({ trip, theme, photos }: TabProps) {
 
   return (
     <div>
+      <EditBar on={editing} onChange={setEditing} hint="編輯中：可以新增、修改要買的東西" />
       <div class="card">
         <div class="row">
           <b class="grow">已買到</b>
@@ -39,19 +41,19 @@ export function Shop({ trip, theme, photos }: TabProps) {
         </div>
         <div class="bar"><i style={`width:${items.length ? (bought / items.length) * 100 : 0}%`} /></div>
         {items.length > 0 && bought === items.length && <div class="stamp"><Icon id="star" size={18} />都買齊了！</div>}
-        <div class="two" style="margin-top:12px">
-          <button class="primary" onClick={() => setSheet({ ask: true })}><Icon id="camera" size={20} />現場問大家</button>
-          <button onClick={() => setSheet({ ask: false })}><Icon id="plus" size={18} />事先要買的</button>
+        <div class={editing ? 'two' : ''} style="margin-top:12px">
+          <button class="primary" style="width:100%" onClick={() => setSheet({ ask: true })}><Icon id="camera" size={20} />現場問大家</button>
+          {editing && <button onClick={() => setSheet({ ask: false })}><Icon id="plus" size={18} />事先要買的</button>}
         </div>
         <p class="muted" style="margin-bottom:0">
-          在店裡看到東西，按「現場問大家」拍張照，大家各自回要幾個。出發前就想好要買的，用「事先要買的」。
+          在店裡看到東西，按「現場問大家」拍張照，大家各自回要幾個。{editing && '出發前就想好要買的，用「事先要買的」。'}
         </p>
       </div>
 
       {items.length === 0 && <Empty icon="bag">還沒有要買的東西。</Empty>}
 
       {asking.length > 0 && <h2>正在問大家</h2>}
-      {asking.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
+      {asking.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={editing ? () => setSheet({ id: i.id, ask: true }) : undefined} />)}
 
       {dates.map((date) => {
         const n = range.indexOf(date)
@@ -66,7 +68,7 @@ export function Shop({ trip, theme, photos }: TabProps) {
               </span>
             </div>
             {planned.filter((i) => i.date === date).map((i) => (
-              <PlanCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: false })} />
+              <PlanCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={editing ? () => setSheet({ id: i.id, ask: false }) : undefined} />
             ))}
           </div>
         )
@@ -74,7 +76,7 @@ export function Shop({ trip, theme, photos }: TabProps) {
 
       {asked.length > 0 && (
         <Fold title="問過、已經買了的" summary={`${asked.length} 樣`}>
-          {asked.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
+          {asked.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={editing ? () => setSheet({ id: i.id, ask: true }) : undefined} />)}
         </Fold>
       )}
 
@@ -118,7 +120,7 @@ function Answers({ trip, item, pending }: { trip: Trip; item: ShopItemView; pend
 }
 
 /** 現場詢問的卡片。問的人看到的是統計與「買到了」；其他人看到的是回覆按鈕。 */
-function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: PhotoStore; item: ShopItemView; me: string; onEdit: () => void }) {
+function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: PhotoStore; item: ShopItemView; me: string; onEdit?: () => void }) {
   const now = useNow(60_000)
   const mine = item.wants[me]
   const iDeclined = item.declined.includes(me)
@@ -176,7 +178,7 @@ function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Photo
               {item.bought ? '改回還沒買' : '買到了'}
             </button>
             {iAsked && !item.bought && <button class="small" onClick={notify}>通知大家</button>}
-            {iAsked && <button class="small" onClick={onEdit}><Icon id="pencil" size={16} />修改</button>}
+            {iAsked && onEdit && <button class="small" onClick={onEdit}><Icon id="pencil" size={16} />修改</button>}
           </div>
         </div>
       ) : (
@@ -207,7 +209,7 @@ function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Photo
 }
 
 /** 事先計畫的東西。 */
-function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: PhotoStore; item: ShopItemView; me: string; onEdit: () => void }) {
+function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: PhotoStore; item: ShopItemView; me: string; onEdit?: () => void }) {
   const linked = item.itemId ? trip.items.get(item.itemId) : undefined
   const wants = Object.entries(item.wants)
   const proxy = item.total - item.qty
@@ -257,7 +259,7 @@ function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Phot
         <button class={`small ${item.bought ? '' : 'primary'}`} onClick={() => trip.shop.update(item.id, { bought: !item.bought })}>
           {item.bought ? '改回還沒買' : '買到了'}
         </button>
-        <button class="small" onClick={onEdit}><Icon id="pencil" size={16} />修改</button>
+        {onEdit && <button class="small" onClick={onEdit}><Icon id="pencil" size={16} />修改</button>}
       </div>
     </div>
   )
