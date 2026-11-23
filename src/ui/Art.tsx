@@ -197,6 +197,143 @@ function Lamp({ x, y, h = 16 }: { x: number; y: number; h?: number }) {
 }
 
 
+/* ---------- 會動的人和動物 ---------- */
+// 都沒有五官，只用色塊。全部站在原地，只有小動作（搧耳朵、搖尾巴、傘輕輕晃），像一幅會動的畫。預設面向右邊。
+
+const SKIN = '#f1c9a8'
+
+/**
+ * 前景的一小塊岸邊：貼著畫面左下角（right 是右下角），上面長幾根草。
+ * 離鏡頭最近的角色站在這裡，畫得比遠處的大很多，前後才有距離。
+ */
+function Bank({ fill, right = false }: { fill: string; right?: boolean }) {
+  return (
+    <g transform={right ? `translate(${W} 0) scale(-1 1)` : undefined}>
+      <path fill={fill} d="M-4 264V232q36 -14 86 -6q40 6 58 38z" />
+      <path fill="none" stroke={C.leafL} stroke-width="1.6" stroke-linecap="round" d="M104 246l-2 -7M108 247l1 -8M112 249l4 -6M10 229l-1 -7M14 229l2 -7" />
+    </g>
+  )
+}
+
+/** 把角色放在 (x, y)，腳底貼著那一點；rev 是面向左邊。 */
+function Stand({ x, y, s = 1, rev = false, children }: { x: number; y: number; s?: number; rev?: boolean; children: ComponentChildren }) {
+  return <g transform={`translate(${x} ${y}) scale(${rev ? -s : s} ${s})`}>{children}</g>
+}
+
+/** 停在半空的海鷗：拍著翅膀，上下飄。 */
+function Gull({ x, y, s = 1, delay = 0 }: { x: number; y: number; s?: number; delay?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <g class="a-float" style={`animation-delay:${delay}s`}><path class="a-wing" fill="#fff" d="M-9 0q4 -7 9 -2q5 -5 9 2q-5 -3 -9 2q-4 -5 -9 -2z" /></g>
+    </g>
+  )
+}
+
+/** 站著的人。kind：一般、撐傘、穿長裙、戴斗笠。原點在腳底。 */
+function Person({ coat, hair = C.trunk, kind = 'plain', wave = false }: { coat: string; hair?: string; kind?: 'plain' | 'umbrella' | 'skirt' | 'hat'; wave?: boolean }) {
+  return (
+    <g class="a-breathe">
+      {kind !== 'skirt' && (
+        <g fill={C.trunk}>
+          <rect x="-3" y="-8" width="2.4" height="8" rx="1.2" />
+          <rect x="0.600" y="-8" width="2.4" height="8" rx="1.2" />
+        </g>
+      )}
+      {kind === 'skirt' ? <path class="a-swish" fill={coat} d="M-3 -15h6l5 14q-8 3 -16 0z" /> : <path fill={coat} d="M-3.500 -18h7l1.500 11h-10z" />}
+      {/* 舉起來揮的手 */}
+      {wave && <path class="a-hi" fill="none" stroke={coat} stroke-width="2.4" stroke-linecap="round" d="M3 -16l5 -8" />}
+      {kind === 'skirt' && <path fill={C.cream} d="M-3.400 -19h6.800l1 5.500h-8.800z" />}
+      <circle cx="0" cy="-21.500" r="3.200" fill={SKIN} />
+      <path fill={hair} d="M-3.400 -22a3.400 3.400 0 0 1 6.800 0q-3.400 -1.600 -6.800 0z" />
+      {kind === 'hat' && <path fill={C.glow} d="M-8 -22.500L0 -28.500L8 -22.500z" />}
+      {kind === 'umbrella' && (
+        <g>
+          <path fill="none" stroke={C.trunk} stroke-width="0.8" d="M4 -12v-22" />
+          <g class="a-rock"><path fill={C.coral} d="M-8 -32q12 -12 24 0z" /><path fill={C.coralD} d="M4 -38q12 0 12 6h-12z" /></g>
+        </g>
+      )}
+    </g>
+  )
+}
+
+/** 小狗：站著搖尾巴。原點在腳底。 */
+function Dog({ fill = '#d9a47e' }: { fill?: string }) {
+  return (
+    <g class="a-breathe">
+      <g fill={fill}>
+        <rect x="-6" y="-5" width="1.8" height="5" rx="0.9" /><rect x="-3.500" y="-5" width="1.8" height="5" rx="0.9" />
+        <rect x="3" y="-5" width="1.8" height="5" rx="0.9" /><rect x="5.500" y="-5" width="1.8" height="5" rx="0.9" />
+        <rect x="-7" y="-10" width="15" height="6" rx="3" />
+        <circle cx="9" cy="-11" r="3.200" /><rect x="11" y="-11" width="3.500" height="2.200" rx="1" />
+        <path class="a-wag" d="M-7 -8q-4 -3 -3 -7q2 3 4 4z" />
+      </g>
+      <path fill={C.trunk} d="M7.500 -13.500l1.500 -3l1.500 3.500z" />
+    </g>
+  )
+}
+
+/** 停著的腳踏車。原點在車子正下方的地面。 */
+function Bike() {
+  return (
+    <g>
+      {[-9, 9].map((x) => (
+        <g key={x} transform={`translate(${x} -6)`}>
+          <g>
+            <circle r="6" fill="none" stroke={C.trunk} stroke-width="1.3" /><path fill="none" stroke={C.trunk} stroke-width="0.6" d="M-6 0h12M0 -6v12" />
+          </g>
+        </g>
+      ))}
+      <path fill="none" stroke={C.coral} stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" d="M-9 -6l5 -9h9l4 9M-4 -15l5 9l4 -9M5 -15l-1 -4h3M-6 -16h4" />
+    </g>
+  )
+}
+
+/** 大象：站著搧耳朵、擺鼻子和尾巴，背上披一塊毯子。原點在腳底。 */
+function Elephant() {
+  const body = '#b7a4cc'
+  const dark = '#a48fbd'
+  return (
+    <g class="a-breathe">
+      <g fill={dark}><rect x="-13" y="-10" width="5" height="10" rx="2" /><rect x="6" y="-10" width="5" height="10" rx="2" /></g>
+      <g fill={body}><rect x="-8" y="-10" width="5" height="10" rx="2" /><rect x="11" y="-10" width="5" height="10" rx="2" /></g>
+      <path class="a-swish" fill="none" stroke={dark} stroke-width="1.5" stroke-linecap="round" d="M-16 -18q-4 2 -3 8" />
+      <path fill={body} d="M-16 -12q0 -14 14 -15h12q10 0 12 10v8q-2 4 -8 3h-24q-6 0 -6 -6z" />
+      <path fill={C.coral} d="M-8 -27h14v7h-14z" /><rect x="-8" y="-21" width="14" height="2" fill={C.gold} />
+      <circle cx="19" cy="-22" r="8" fill={body} />
+      <path class="a-trunk" fill="none" stroke={body} stroke-width="4" stroke-linecap="round" d="M25 -20q5 6 2 16" />
+      <ellipse class="a-flap" cx="14" cy="-22" rx="5" ry="7" fill={C.pink} />
+      <circle cx="22" cy="-24" r="1" fill={C.trunk} />
+    </g>
+  )
+}
+
+
+/** 小螃蟹：橫著來回走。 */
+function Crab() {
+  return (
+    <g class="a-drive fast">
+      <path fill="none" stroke={C.coralD} stroke-width="1" stroke-linecap="round" d="M-5 0l-3 3M-3 1l-2 3M5 0l3 3M3 1l2 3M-5 -3l-3 -3M5 -3l3 -3" />
+      <ellipse rx="6" ry="4" fill={C.coral} /><circle cx="-8.500" cy="-6.500" r="2" fill={C.coral} /><circle cx="8.500" cy="-6.500" r="2" fill={C.coral} />
+    </g>
+  )
+}
+
+
+/** 躍出水面的海豚：沿弧線跳一下，隔一陣子再跳。waterY 以下的部分看不到。 */
+function Dolphin({ id, path, waterY, dur = 8 }: { id: string; path: string; waterY: number; dur?: number }) {
+  if (reducedMotion()) return null
+  return (
+    <g clip-path={`url(#${id}d)`}>
+      <clipPath id={`${id}d`}><rect x="-4" y="-4" width={W + 8} height={waterY + 6} /></clipPath>
+      <g>
+        <animateMotion dur={`${dur}s`} repeatCount="indefinite" rotate="auto" {...motionPath(path)} calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.3;1" />
+        <path fill="#7fa9bf" d="M-12 0q8 -8 20 -3q4 -5 6 -5q-1 4 -1 7q-10 6 -21 3l-5 4q0 -4 1 -6z" />
+        <path fill="#dceaf0" d="M-6 2q8 2 14 -1q-6 4 -14 1z" />
+      </g>
+    </g>
+  )
+}
+
 /* ---------- 泰北 ---------- */
 
 
@@ -333,8 +470,13 @@ function Thai() {
       <SkyLantern x={262} y={46} s={0.6} delay={-4} /><SkyLantern x={60} y={62} s={0.5} delay={-1.2} />
       <SkyLantern x={22} y={110} s={0.7} delay={-5.5} />
       {land()}
+      {/* 寺前站著一頭大象，搧著耳朵 */}
+      {/* 遠處：寺前兩個小小的僧人，襯出佛寺的大小 */}
+      <Stand x={150} y={190} s={0.7}><Person coat={C.orange} /></Stand><Stand x={196} y={190} s={0.7} rev><Person coat={C.orange} /></Stand>
       <Water id="th" y={198} top="#9cd6cd" bottom="#d3efe3" land={land} />
-      <Krathong x={70} y={230} /><Krathong x={318} y={222} delay={-1.5} />
+      {/* 前景：岸邊一頭大象，離鏡頭最近所以最大 */}
+      <Bank fill="#e9bd92" /><Stand x={60} y={254} s={1.7}><Elephant /></Stand>
+      <Krathong x={176} y={238} /><Krathong x={318} y={222} delay={-1.5} />
     </Scene>
   )
 }
@@ -427,7 +569,11 @@ function Japan() {
       <ellipse cx="200" cy="176" rx="190" ry="12" fill="#fff" opacity="0.45" />
       <Bird x={318} y={66} /><Bird x={338} y={78} delay={-1.2} />
       {land()}
+      {/* 岸邊站著一個撐紅傘的人 */}
+      <Stand x={138} y={199} s={0.7}><Person coat="#e98fa3" /></Stand>
       <Water id="jp" y={200} top="#a6d8d5" bottom="#def2e9" land={land} />
+      {/* 前景：岸邊一個撐紅傘的人 */}
+      <Bank fill="#eec3a8" /><Stand x={56} y={254} s={2.1}><Person coat="#7f8fb5" kind="umbrella" /></Stand>
       {/* 立在水裡的鳥居 */}
       <At x={262} y={240} s={1.2}><Torii /></At>
       <ellipse cx="262" cy="241" rx="38" ry="3.5" fill="#fff" opacity="0.5" />
@@ -503,6 +649,8 @@ function Island() {
       {land()}
       <Water id="is" y={152} top="#78ccc5" bottom="#c3ecdf" land={land} />
       <At x={166} y={176} s={0.75}><Sailboat /></At>
+      {/* 遠處有海豚躍出水面 */}
+      <Dolphin id="is" path="M64 176Q92 110 120 176" waterY={152} />
       {/* 水上屋和棧道：站在水裡，所以畫在水面之後 */}
       <g fill="#c98f6b">
         <rect x="262" y="176" width="146" height="2.500" />
@@ -515,6 +663,9 @@ function Island() {
       <path fill="#fff" opacity="0.6" d="M-4 226Q70 202 150 224Q220 244 300 252Q350 256 404 248v-3Q350 252 300 248Q220 240 150 220Q70 198 -4 222z" />
       <At x={44} y={236} s={1.25}><Palm /></At>
       <At x={96} y={246} s={0.9}><Palm flip /></At>
+      {/* 沙灘上有人戴著草帽揮手，旁邊一隻小螃蟹 */}
+      <Stand x={190} y={250} s={1.9}><Person coat={C.coral} kind="hat" wave /></Stand>
+      <At x={256} y={254} s={1.5}><Crab /></At>
     </Scene>
   )
 }
@@ -598,8 +749,13 @@ function City() {
       <Cloud x={40} y={30} s={1.2} /><Cloud x={250} y={44} delay={-5} />
       <Bird x={300} y={60} /><Bird x={320} y={72} delay={-1.2} />
       {land()}
+      {/* 河岸上有人牽著狗看風景 */}
+      
+      <Stand x={282} y={205} s={0.75} rev><Person coat={C.gold} /></Stand><Stand x={150} y={205} s={0.75}><Person coat={C.pink} /></Stand>
       <Water id="ct" y={206} top="#a9c6d9" bottom="#e6dcec" land={land} />
-      <At x={96} y={238} s={0.45}><Sailboat /></At>
+      {/* 前景：對岸有人牽著狗看夜景 */}
+      <Bank fill="#dba98f" /><Stand x={48} y={254} s={2}><Person coat={C.leaf} /></Stand><Stand x={88} y={254} s={2}><Dog fill={C.cream} /></Stand>
+      <At x={306} y={238} s={0.45}><Sailboat /></At>
       <Twinkle x={30} y={64} /><Twinkle x={96} y={22} delay={-1} /><Twinkle x={170} y={40} delay={-0.5} />
       <Twinkle x={226} y={18} delay={-1.6} /><Twinkle x={366} y={26} delay={-0.8} /><Twinkle x={388} y={84} delay={-2} />
     </Scene>
@@ -674,14 +830,374 @@ function General() {
       <Float x={276} y={118} s={0.55} delay={-3}><Balloon fill={C.plum} stripe={C.cream} /></Float>
       <Bird x={160} y={110} /><Bird x={180} y={122} delay={-1.2} />
       {land()}
+      {/* 有人停下腳踏車，站在草地上看熱氣球 */}
+      <Stand x={286} y={186} s={0.7}><Person coat={C.coral} /></Stand>
       <Water id="ge" y={212} top="#8fd0c8" bottom="#d3efe3" land={land} />
-      <At x={150} y={240} s={0.5}><Sailboat /></At>
+      {/* 前景：湖邊有人停下腳踏車，朝熱氣球揮手 */}
+      <Bank fill="#7fbd9a" /><Stand x={40} y={254} s={2}><Bike /></Stand><Stand x={92} y={254} s={2}><Person coat={C.gold} wave /></Stand>
+      <At x={226} y={240} s={0.5}><Sailboat /></At>
+    </Scene>
+  )
+}
+
+/* ---------- 韓國 ---------- */
+
+const SLATE = '#6f8093'
+const SLATE_D = '#5c6c7f'
+const DAN = '#c9584a'
+const DAN_D = '#b04a3e'
+const JADE = '#5fa39a'
+
+/** 寬屋簷的瓦頂：兩端上翹、一條屋脊、瓦片橫紋，右半邊是暗面。 */
+function HipRoof({ base, half, h }: { base: number; half: number; h: number }) {
+  const k = half
+  return (
+    <g>
+      <path fill={SLATE} d={`M${-k - 10} ${base}q9 -2 15 ${-h}h${2 * k - 10}q6 ${h - 2} 15 ${h}z`} />
+      <path fill={SLATE_D} d={`M0 ${base}v${-h}h${k - 5}q6 ${h - 2} 15 ${h}z`} />
+      <rect x={-k + 5} y={base - h - 2} width={2 * k - 10} height="3" rx="1.5" fill={C.cream} />
+      <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.3" d={`M${-k} ${base - h * 0.35}h${2 * k}M${-k + 3} ${base - h * 0.7}h${2 * k - 6}`} />
+      <path fill={C.cream} d={`M${-k - 10} ${base}q-4 -5 0 -9q1 4 5 6zM${k + 10} ${base}q4 -5 0 -9q-1 4 -5 6z`} />
+    </g>
+  )
+}
+
+/** 兩層樓的宮殿樓閣：一樓一排紅柱、簷下的彩繪、二樓的格子窗。原點在地面正中。 */
+export function Palace() {
+  return (
+    <g>
+      <rect x="-62" y="-6" width="124" height="6" fill={C.creamD} />
+      <rect x="-56" y="-13" width="112" height="7" fill={C.cream} />
+      <path fill={C.creamD} d="M-10 0h20l-3 -13h-14z" />
+      <path fill="none" stroke={C.cream} stroke-width="0.8" d="M-9 -4h18M-8 -8h16" />
+      <rect x="-50" y="-44" width="100" height="31" fill="#f1d9c4" opacity="0.55" />
+      {[-50, -36, -22, -8, 4, 18, 32, 46].map((x) => <rect key={x} x={x} y="-44" width="4" height="31" fill={x > 0 ? DAN_D : DAN} />)}
+      <rect x="-54" y="-50" width="108" height="6" fill={JADE} />
+      <g fill={C.gold}>{[-45, -30, -15, 0, 15, 30, 45].map((x) => <circle key={x} cx={x} cy="-47" r="1.3" />)}</g>
+      <HipRoof base={-50} half={60} h={14} />
+      <rect x="-40" y="-84" width="80" height="20" fill={DAN} /><rect x="4" y="-84" width="36" height="20" fill={DAN_D} />
+      {[-34, -20, -6, 8, 22].map((x) => (
+        <g key={x}>
+          <rect x={x} y="-80" width="10" height="12" fill={C.cream} />
+          <path fill="none" stroke={DAN} stroke-width="0.7" d={`M${x + 5} -80v12M${x} -74h10`} />
+        </g>
+      ))}
+      <rect x="-44" y="-90" width="88" height="6" fill={JADE} />
+      <g fill={C.gold}>{[-36, -24, -12, 0, 12, 24, 36].map((x) => <circle key={x} cx={x} cy="-87" r="1.3" />)}</g>
+      <HipRoof base={-90} half={50} h={18} />
+    </g>
+  )
+}
+
+function Korea() {
+  const land = () => (
+    <g>
+      <path fill="#f1cfb4" d="M-4 200v-10q104 -6 204 -4t204 -2v16z" />
+      {/* 主角是池邊的樓閣，兩側是秋天的楓樹 */}
+      <At x={200} y={192} s={1.3}><Palace /></At>
+      <Tree x={44} y={192} s={1.2} fill={C.coral} light="#f29a84" />
+      <Tree x={82} y={193} s={0.75} fill={C.gold} light="#fbdc8f" />
+      <Tree x={356} y={192} s={1.15} fill={C.orange} light={C.orangeL} />
+    </g>
+  )
+  return (
+    <Scene id="kr" sky={['#f9d2c4', '#f6c6c2', '#f3e0d2', '#d9ebe2']}>
+      <Sun id="kr" x={84} y={62} r={22} />
+      <Cloud x={262} y={26} s={1.2} />
+      <path fill="#cdb9d3" d="M-4 200V136Q40 92 86 120Q120 70 170 112Q220 84 262 118Q310 86 350 116Q380 104 404 120V200z" />
+      {/* 山上的塔 */}
+      <rect x="326" y="64" width="3" height="36" fill={C.cream} /><ellipse cx="327.500" cy="78" rx="7" ry="3.500" fill={C.coral} />
+      <rect x="327" y="50" width="1.200" height="14" fill={C.trunk} />
+      <path fill="#e3b5ad" d="M-4 200V168Q70 140 140 160Q210 138 280 164Q340 148 404 166V200z" />
+      <Bird x={300} y={56} /><Bird x={282} y={66} delay={-1.2} />
+      {land()}
+      {/* 兩個穿韓服的人站在池邊 */}
+      <Stand x={184} y={199} s={0.7}><Person coat={C.cream} /></Stand>
+      <Water id="kr" y={200} top="#9fd3cc" bottom="#d6efe4" land={land} />
+      {/* 前景：池邊兩個穿韓服的人，一個揮著手 */}
+      <Bank fill="#eac3a6" right /><Stand x={322} y={254} s={2}><Person coat="#e98fa3" kind="skirt" /></Stand><Stand x={356} y={254} s={2} rev><Person coat={JADE} kind="skirt" wave /></Stand>
+      {/* 池裡的荷葉 */}
+      <g fill={C.leafL}><ellipse cx="60" cy="234" rx="12" ry="3.500" /><ellipse cx="84" cy="242" rx="8" ry="2.500" /></g>
+      <circle cx="64" cy="231" r="2.600" fill={C.pink} />
+    </Scene>
+  )
+}
+
+/* ---------- 港澳 ---------- */
+
+/** 紅帆的中式帆船：三面有橫桿的扇形帆。原點在水面正中。 */
+export function Junk() {
+  const sail = (x: number, w: number, h: number, top: number) => (
+    <g>
+      <rect x={x + w * 0.45} y={top - 6} width="2" height={-top + 2} fill={C.trunk} />
+      <path fill={C.coral} d={`M${x} ${top + h}q${-w * 0.12} ${-h * 0.5} ${w * 0.15} ${-h}h${w * 0.7}q${w * 0.2} ${h * 0.5} ${w * 0.15} ${h}z`} />
+      <path fill={C.coralD} d={`M${x + w * 0.5} ${top}h${w * 0.35}q${w * 0.2} ${h * 0.5} ${w * 0.15} ${h}h${-w * 0.5}z`} />
+      <path fill="none" stroke={C.cream} stroke-width="0.8" opacity="0.6" d={[0.25, 0.5, 0.75].map((t) => `M${x + w * 0.04} ${top + h * t}h${w * 0.92}`).join('')} />
+    </g>
+  )
+  return (
+    <g class="a-bob">
+      {sail(-46, 26, 34, -48)}
+      {sail(-18, 40, 52, -70)}
+      {sail(24, 24, 30, -44)}
+      <path fill={C.gold} d="M2 -76l10 3l-10 3z" />
+      <path fill={C.trunk} d="M-56 -10q4 2 10 2h88q8 0 14 -8l-6 16q-2 6 -10 6h-76q-10 0 -14 -6z" />
+      <rect x="-44" y="-8" width="84" height="2" fill="#c98f6b" />
+    </g>
+  )
+}
+
+function HongKong() {
+  const land = () => (
+    <g>
+      {([[4, 26, 60], [34, 22, 84], [60, 28, 70], [92, 20, 96], [150, 24, 78], [212, 22, 90], [262, 26, 72], [292, 30, 58], [338, 24, 82], [364, 28, 66]] as const).map(([x, w, h]) => (
+        <Building key={x} x={x} w={w} h={h} base={178} fill="#dcbccf" shade="#d0adc3" lit={false} />
+      ))}
+      <Building x={116} w={30} h={120} base={178} fill="#b9a6d0" shade={C.plum} />
+      <path fill="#b9a6d0" d="M123 56l8 -24l8 24z" />
+      <Building x={236} w={26} h={104} base={178} fill={C.peach} shade={C.peachD} />
+      <path fill={C.peachD} d="M236 72l13 -18l13 18z" />
+      <Building x={40} w={30} h={66} base={178} fill={C.pink} shade="#e892a4" />
+      <Building x={176} w={34} h={84} base={178} fill={C.coral} shade={C.coralD} />
+      <Building x={302} w={32} h={74} base={178} fill={C.pink} shade="#e892a4" />
+      <rect x="-4" y="178" width={W + 8} height="6" fill="#e3b39c" />
+    </g>
+  )
+  return (
+    <Scene id="hk" sky={['#c6b0d8', '#e9b3b7', '#fbd2ad', '#fde9c9']}>
+      <Sun id="hk" x={330} y={70} r={22} fill="#fff0d0" />
+      <Cloud x={50} y={24} s={1.2} />
+      <Twinkle x={110} y={20} /><Twinkle x={200} y={34} delay={-1} /><Twinkle x={270} y={16} delay={-1.8} />
+      {/* 後面的山 */}
+      <path fill="#b9a3c4" d="M-4 184V124Q60 66 130 96Q190 44 250 100Q320 76 404 122V184z" />
+      {land()}
+      <Water id="hk" y={184} top="#9fc0d6" bottom="#e6dcea" land={land} />
+      {/* 主角是港裡的紅帆船 */}
+      <At x={176} y={240} s={1.25}><Junk /></At>
+      {/* 海鷗：近的大、遠的小 */}
+      <Gull x={62} y={212} s={2.4} /><Gull x={304} y={150} s={1.1} delay={-1} /><Gull x={338} y={128} s={0.6} delay={-2} />
+      {/* 兩隻海鷗停在帆船旁的半空 */}
+    </Scene>
+  )
+}
+
+/* ---------- 越南 ---------- */
+
+const OCHRE = '#f2c35f'
+const OCHRE_D = '#e0ab45'
+const TEAL = '#4f9a8f'
+const TILE = '#c9634f'
+const TILE_D = '#b05443'
+
+/** 老街的店屋：瓦屋頂、二樓兩扇百葉窗和陽台、一樓的遮陽棚和拱門。原點在左下角。 */
+export function Shophouse({ w, h, fill = OCHRE, shade = OCHRE_D }: { w: number; h: number; fill?: string; shade?: string }) {
+  return (
+    <g>
+      <rect x="0" y={-h} width={w} height={h} fill={fill} />
+      <rect x={w * 0.6} y={-h} width={w * 0.4} height={h} fill={shade} />
+      <path fill={TILE} d={`M-4 ${-h}l5 -12h${w - 2}l5 12z`} />
+      <path fill={TILE_D} d={`M${w / 2} ${-h}v-12h${w / 2 - 1}l5 12z`} />
+      <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.3" d={`M-1 ${-h - 4}h${w + 2}M1 ${-h - 8}h${w - 2}`} />
+      <rect x={w * 0.16} y={-h + 8} width={w * 0.24} height="16" rx="1" fill={TEAL} />
+      <rect x={w * 0.6} y={-h + 8} width={w * 0.24} height="16" rx="1" fill={TEAL} />
+      <path fill="none" stroke="#fff" stroke-width="0.6" opacity="0.4" d={`M${w * 0.16} ${-h + 13}h${w * 0.24}M${w * 0.16} ${-h + 18}h${w * 0.24}M${w * 0.6} ${-h + 13}h${w * 0.24}M${w * 0.6} ${-h + 18}h${w * 0.24}`} />
+      <rect x="-2" y={-h + 26} width={w + 4} height="2.5" fill={C.cream} />
+      <path fill="none" stroke={C.cream} stroke-width="0.8" d={Array.from({ length: Math.floor(w / 6) }, (_, i) => `M${3 + i * 6} ${-h + 28}v5`).join('')} />
+      <path fill={C.coral} d={`M-3 -24h${w + 6}l-3 6h${-w}z`} />
+      <path fill="#3f7f76" d={`M${w / 2 - 7} 0v-12a7 7 0 0 1 14 0v12z`} />
+      <path fill={C.glow} d={`M${w / 2 - 4} 0v-11a4 4 0 0 1 8 0v11z`} />
+      {/* 門口兩盞燈籠 */}
+      <path fill="none" stroke={C.trunk} stroke-width="0.7" d={`M${w * 0.22} -18v4M${w * 0.78} -18v4`} />
+      <ellipse cx={w * 0.22} cy="-10" rx="3.4" ry="4" fill={C.coral} /><ellipse cx={w * 0.78} cy="-10" rx="3.4" ry="4" fill={C.gold} />
+    </g>
+  )
+}
+
+
+/** 載著燈籠的小木船。原點在水面正中。 */
+function Sampan() {
+  return (
+    <g class="a-bob">
+      <path fill="none" stroke={C.trunk} stroke-width="1.4" stroke-linecap="round" d="M-8 -4v-22q14 -4 22 4" />
+      <circle cx="14" cy="-16" r="10" fill="#fff" opacity="0.3" /><ellipse cx="14" cy="-16" rx="4.500" ry="5.500" fill={C.glow} />
+      <ellipse cx="-24" cy="-6" rx="4.500" ry="5" fill={C.coral} /><ellipse cx="-15" cy="-7" rx="4.500" ry="5" fill={C.gold} /><ellipse cx="2" cy="-6" rx="4.500" ry="5" fill={C.pink} />
+      {/* 船尾坐著戴斗笠的船夫，划著槳 */}
+      <path class="a-row" fill="none" stroke={C.trunk} stroke-width="1.4" stroke-linecap="round" d="M27 -12l9 17" />
+      <path fill={C.cream} d="M19 -5l2 -10h6l2 10z" /><circle cx="24" cy="-17.500" r="3" fill={SKIN} /><path fill={C.glow} d="M16 -18.500l8 -6l8 6z" />
+      <path fill={C.trunk} d="M-36 -6q36 10 72 0l-9 9q-27 6 -54 0z" />
+    </g>
+  )
+}
+
+function Vietnam() {
+  const land = () => (
+    <g>
+      <rect x="-4" y="190" width={W + 8} height="8" fill="#eec9a4" />
+      {/* 主角是河邊一排黃牆的老街店屋，每間門口掛著兩盞燈籠 */}
+      <At x={18} y={190}><Shophouse w={62} h={62} fill="#f6d28a" shade="#eabf6c" /></At>
+      <At x={88} y={190}><Shophouse w={72} h={86} /></At>
+      <At x={168} y={190}><Shophouse w={60} h={66} fill="#f3b78f" shade="#e6a078" /></At>
+      <At x={236} y={190}><Shophouse w={72} h={78} fill="#f6d28a" shade="#eabf6c" /></At>
+      <At x={316} y={190}><Shophouse w={58} h={60} /></At>
+      <Tree x={384} y={190} s={0.8} fill={C.pink} light={C.pinkL} />
+    </g>
+  )
+  return (
+    <Scene id="vn" sky={['#f9cfae', '#f7bfa6', '#f6dcc0', '#d9ecde']}>
+      <Sun id="vn" x={326} y={52} r={20} />
+      <Cloud x={40} y={30} s={1.2} /><Cloud x={210} y={20} delay={-5} />
+      <path fill="#e9c0b2" d="M-4 198V150Q80 116 160 140Q240 110 320 138Q360 126 404 140V198z" />
+      {land()}
+      {/* 戴斗笠的人牽著腳踏車站在老街上 */}
+      <Stand x={250} y={197} s={0.8} rev><Bike /></Stand><Stand x={266} y={197} s={0.8} rev><Person coat={C.cream} kind="hat" /></Stand>
+      <Water id="vn" y={198} top="#9cd3cb" bottom="#d6efe3" land={land} />
+      <At x={136} y={244} s={1.7}><Sampan /></At>
+      <Krathong x={300} y={228} delay={-1} />
+    </Scene>
+  )
+}
+
+/* ---------- 新加坡 ---------- */
+
+const GLASS = '#9fc3d2'
+const GLASS_D = '#86aebf'
+
+/** 三棟高樓頂著一艘船形平台的飯店。原點在地面正中。 */
+export function BaySands() {
+  const tower = (x: number) => (
+    <g>
+      <path fill={GLASS} d={`M${x - 14} 0L${x - 9} -86h18L${x + 14} 0z`} />
+      <path fill={GLASS_D} d={`M${x} 0v-86h9L${x + 14} 0z`} />
+      <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.35" d={[12, 24, 36, 48, 60, 72].map((y) => `M${x - 12} ${-y}h24`).join('')} />
+    </g>
+  )
+  return (
+    <g>
+      <rect x="-64" y="-4" width="128" height="4" fill={C.creamD} />
+      {tower(-44)}{tower(0)}{tower(44)}
+      <path fill={C.cream} d="M-70 -86q-8 -5 -2 -11h150q10 3 6 11z" />
+      <path fill={C.creamD} d="M-70 -86h154q2 -3 1 -5h-158q-1 3 3 5z" />
+      <g fill={C.leaf}>{[-52, -30, -8, 14, 36, 58].map((x) => <circle key={x} cx={x} cy="-99" r="3" />)}</g>
+    </g>
+  )
+}
+
+/** 樹形的高塔：往上張開的枝幹，頂著一片圓形的樹冠。原點在底部正中。 */
+function Supertree({ h }: { h: number }) {
+  return (
+    <g>
+      <path fill={C.plum} d={`M-3 0L-2 ${-h + 14}q-10 -4 -18 -14h40q-8 10 -18 14L3 0z`} />
+      <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.4" d={`M0 ${-h + 13}L-11 ${-h + 2}M0 ${-h + 13}L11 ${-h + 2}M0 ${-h + 13}v-11`} />
+      <ellipse cx="0" cy={-h} rx="22" ry="5" fill="#e3a2bd" />
+      <ellipse cx="0" cy={-h - 1.5} rx="15" ry="3" fill={C.pinkL} />
+    </g>
+  )
+}
+
+function Singapore() {
+  const land = () => (
+    <g>
+      <rect x="-4" y="190" width={W + 8} height="8" fill="#eccdb0" />
+      {/* 主角是海灣邊的飯店，右邊三座樹形高塔 */}
+      <At x={168} y={192} s={1.35}><BaySands /></At>
+      <At x={306} y={192}><Supertree h={74} /></At>
+      <At x={346} y={192}><Supertree h={54} /></At>
+      <At x={380} y={192}><Supertree h={66} /></At>
+      <Tree x={36} y={192} s={1.0} fill={C.leaf} light={C.leafL} />
+    </g>
+  )
+  return (
+    <Scene id="sg" sky={['#fbd9b8', '#f7c9c0', '#e9d9e6', '#cfe6ea']}>
+      <Sun id="sg" x={40} y={46} r={20} />
+      <Cloud x={300} y={30} s={1.2} />
+      <path fill="#dcc3d6" d="M-4 198V160Q80 136 160 152Q250 132 330 154Q370 146 404 156V198z" />
+      <Bird x={330} y={76} /><Bird x={348} y={86} delay={-1.2} />
+      {land()}
+      {/* 岸邊站著一大一小兩個人，看著海灣 */}
+      <Water id="sg" y={198} top="#9fd0d6" bottom="#dceff0" land={land} />
+      {/* 前景：岸邊一大一小，大人揮著手 */}
+      <Bank fill="#e3c2a2" /><Stand x={48} y={254} s={2.1}><Person coat={C.coral} wave /></Stand><Stand x={86} y={254} s={1.4}><Person coat={C.gold} /></Stand>
+      <At x={318} y={236} s={0.5}><Sailboat /></At>
+    </Scene>
+  )
+}
+
+/* ---------- 歐洲 ---------- */
+
+const IRON = '#8f7468'
+const IRON_D = '#7a6257'
+
+/** 鐵塔：三層平台、交叉的鐵架。原點在地面正中。 */
+export function Eiffel() {
+  return (
+    <g>
+      <rect x="-0.700" y="-164" width="1.400" height="14" fill={IRON} />
+      <path fill={IRON} d="M-36 0q22 -38 30 -78L-3 -150h6L6 -78q8 40 30 78h-14q-6 -20 -22 -20t-22 20z" />
+      <path fill={IRON_D} d="M0 -150h3L6 -78q8 40 30 78h-14q-6 -20 -22 -20z" />
+      <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.35" d="M-20 -40l14 -34M20 -40l-14 -34M-28 -14l12 -30M28 -14l-12 -30M-5 -86l3 -34M5 -86l-3 -34M-14 -60h28M-9 -100h18" />
+      <rect x="-24" y="-48" width="48" height="5" rx="1" fill={C.cream} />
+      <rect x="-11" y="-82" width="22" height="4" rx="1" fill={C.cream} />
+      <rect x="-5" y="-122" width="10" height="3" rx="1" fill={C.cream} />
+    </g>
+  )
+}
+
+/** 街邊的公寓：藍灰色斜屋頂和老虎窗、三排窗和鐵欄杆、一樓的店面遮陽棚。原點在左下角。 */
+function Mansion({ w, h }: { w: number; h: number }) {
+  const cols = Math.floor((w - 4) / 10)
+  const pad = (w - cols * 10 + 5) / 2
+  const xs = Array.from({ length: cols }, (_, i) => pad + i * 10)
+  return (
+    <g>
+      <rect x="0" y={-h} width={w} height={h} fill={C.cream} />
+      <rect x={w * 0.62} y={-h} width={w * 0.38} height={h} fill={C.creamD} />
+      <path fill="#8fa0b5" d={`M-2 ${-h}l4 -14h${w - 4}l4 14z`} />
+      <path fill="#7c8da3" d={`M${w / 2} ${-h}v-14h${w / 2 - 2}l4 14z`} />
+      {xs.map((x) => <rect key={x} x={x} y={-h - 10} width="5" height="7" rx="1" fill={C.cream} />)}
+      {[0, 1, 2].map((r) => xs.map((x) => <rect key={`${r}-${x}`} x={x} y={-h + 6 + r * 13} width="5" height="8" rx="1" fill="#b7c3d3" />))}
+      <path fill="none" stroke={C.trunk} stroke-width="0.7" opacity="0.6" d={[0, 1, 2].map((r) => `M3 ${-h + 15 + r * 13}h${w - 6}`).join('')} />
+      <rect x="0" y="-12" width={w} height="12" fill="#e9d2bd" />
+      <path fill={C.coral} d={`M3 -12h${w - 6}l2 5h${-(w - 2)}z`} />
+    </g>
+  )
+}
+
+function Europe() {
+  const land = () => (
+    <g>
+      <rect x="-4" y="190" width={W + 8} height="8" fill="#e9cdb6" />
+      <At x={2} y={190}><Mansion w={70} h={62} /></At>
+      <At x={76} y={190}><Mansion w={58} h={72} /></At>
+      <At x={262} y={190}><Mansion w={62} h={68} /></At>
+      <At x={328} y={190}><Mansion w={74} h={60} /></At>
+      {/* 主角是正中的鐵塔，兩旁各一棵樹 */}
+      <At x={198} y={192} s={1.05}><Eiffel /></At>
+      <Tree x={150} y={192} s={0.75} fill={C.leaf} light={C.leafL} />
+      <Tree x={246} y={192} s={0.75} fill={C.orange} light={C.orangeL} />
+    </g>
+  )
+  return (
+    <Scene id="eu" sky={['#f6d0c6', '#f3cdd4', '#f6e3d6', '#dcebe6']}>
+      <Sun id="eu" x={332} y={56} r={20} />
+      <Cloud x={46} y={34} s={1.3} />
+      <Bird x={110} y={70} /><Bird x={128} y={80} delay={-1.2} />
+      {land()}
+      {/* 有人牽著狗站在河邊 */}
+      <Water id="eu" y={198} top="#a6cdd6" bottom="#e1efea" land={land} />
+      {/* 前景：河邊有人牽著狗 */}
+      <Bank fill="#e0c1a8" right /><Stand x={322} y={254} s={2}><Person coat="#7f8fb5" /></Stand><Stand x={358} y={254} s={2}><Dog /></Stand>
+      <At x={96} y={236} s={0.45}><Sailboat /></At>
     </Scene>
   )
 }
 
 export function Art({ theme }: { theme: ThemeId }) {
   switch (theme) {
+    case 'korea': return <Korea />
+    case 'hongkong': return <HongKong />
+    case 'vietnam': return <Vietnam />
+    case 'singapore': return <Singapore />
+    case 'europe': return <Europe />
     case 'thai': return <Thai />
     case 'japan': return <Japan />
     case 'island': return <Island />

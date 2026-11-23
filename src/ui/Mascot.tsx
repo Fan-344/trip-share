@@ -2,7 +2,7 @@
 // 用的是總覽主圖（Art.tsx）的同一批零件，縮小後放進圓框裡。
 import type { ComponentChildren } from 'preact'
 import type { ThemeId } from '../themes'
-import { Balloon, C, Palm, Pine, Torii, Tree, Wat, Wheel } from './Art'
+import { Balloon, BaySands, C, Eiffel, Junk, Palace, Palm, Pine, Shophouse, Torii, Tree, Wat, Wheel } from './Art'
 
 const SUN = '#fff3d0'
 
@@ -29,6 +29,65 @@ const BODY: Record<ThemeId, { bg: string; art: ComponentChildren }> = {
         <path fill={C.cream} d="M32 30q8 -6 16 0l6 8q-5 -3 -8 1q-6 -5 -12 0q-3 -4 -8 -1z" />
         <rect y="60" width="80" height="20" fill="#a6d8d5" />
         <g transform="translate(40 72) scale(0.55)"><Torii /></g>
+      </g>
+    ),
+  },
+  // 宮殿樓閣
+  korea: {
+    bg: '#f6c6c2',
+    art: (
+      <g>
+        <circle cx="16" cy="18" r="8" fill={SUN} />
+        <path fill="#cdb9d3" d="M0 62V40q20 -16 40 -4t40 -8V62z" />
+        <g transform="translate(40 62) scale(0.4)"><Palace /></g>
+        <rect y="62" width="80" height="18" fill="#9fd3cc" />
+      </g>
+    ),
+  },
+  // 紅帆船
+  hongkong: {
+    bg: '#eab8b4',
+    art: (
+      <g>
+        <circle cx="62" cy="18" r="8" fill={SUN} />
+        <path fill="#b9a3c4" d="M0 56V38q20 -18 40 -6t40 -6V56z" />
+        <rect y="54" width="80" height="26" fill="#9fc0d6" />
+        <g transform="translate(40 66) scale(0.55)"><Junk /></g>
+      </g>
+    ),
+  },
+  // 老街店屋
+  vietnam: {
+    bg: '#f9cfae',
+    art: (
+      <g>
+        <circle cx="62" cy="16" r="8" fill={SUN} />
+        <g transform="translate(6 64) scale(0.62)"><Shophouse w={54} h={64} /></g>
+        <g transform="translate(42 64) scale(0.62)"><Shophouse w={54} h={52} fill="#f3b78f" shade="#e6a078" /></g>
+        <rect y="64" width="80" height="16" fill="#9cd3cb" />
+      </g>
+    ),
+  },
+  // 海灣邊的飯店
+  singapore: {
+    bg: '#f7c9c0',
+    art: (
+      <g>
+        <circle cx="14" cy="16" r="8" fill={SUN} />
+        <g transform="translate(40 64) scale(0.44)"><BaySands /></g>
+        <rect y="64" width="80" height="16" fill="#9fd0d6" />
+      </g>
+    ),
+  },
+  // 鐵塔
+  europe: {
+    bg: '#f3cdd4',
+    art: (
+      <g>
+        <circle cx="62" cy="18" r="8" fill={SUN} />
+        <rect x="6" y="46" width="22" height="22" fill={C.cream} /><rect x="52" y="42" width="24" height="26" fill={C.cream} />
+        <g transform="translate(40 68) scale(0.4)"><Eiffel /></g>
+        <rect y="68" width="80" height="12" fill="#a6cdd6" />
       </g>
     ),
   },

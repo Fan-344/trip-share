@@ -6,7 +6,7 @@ import {
   AIRPORTS, ago, airportName, countdown, daysBetween, fullDay, nightsBetween, placeName, safeUrl,
   toInstant, today, zoneOptions,
 } from '../time'
-import { THEMES, autoTheme, themeName, type ThemeId } from '../themes'
+import { THEMES, autoTheme, themeName } from '../themes'
 import { Art, RouteArc } from './Art'
 import { Empty, Farewell } from './bits'
 import { Chevron } from './fold'
@@ -57,14 +57,14 @@ export function Overview({ trip, theme }: TabProps) {
         {dayIndex >= 0 ? (
           <div class="depart">
             <div class="depart-main"><div class="depart-days"><span>旅行第</span><b>{dayIndex + 1}</b><span>天</span></div></div>
-            <Track p={(dayIndex + 0.5) / days.length} theme={theme} />
+            <Track p={(dayIndex + 0.5) / days.length} />
             <div class="muted depart-label">共 {days.length} 天</div>
           </div>
         ) : next ? (
-          <Countdown theme={theme} ms={toInstant(next.dep) - now}
+          <Countdown ms={toInstant(next.dep) - now}
             label={`${fullDay(next.dep.local.slice(0, 10))} ${hm(next.dep.local)} 起飛（${placeName(next.dep.tz, flights)}時間）`} />
         ) : meta.startDate > t ? (
-          <Countdown theme={theme} ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label={`${fullDay(meta.startDate)} 出發`} />
+          <Countdown ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label={`${fullDay(meta.startDate)} 出發`} />
         ) : null}
         <div class="body">
         <div class="row">
@@ -379,26 +379,13 @@ function StaySheet({ trip, id, onClose }: { trip: Trip; id?: string; onClose: ()
 
 const two = (n: number): string => String(n).padStart(2, '0')
 
-/** 沿著航線往終點走的小圖，每個主題一個：天燈、櫻花、太陽、星星、行李箱。 */
-const TRAVELER: Record<ThemeId, string> = { thai: 'lantern', japan: 'sakura', island: 'sun', city: 'star', general: 'luggage' }
 
-/** 一條往目的地的航線：主題小圖停在 p（0 到 1）的位置，走過的那段上色，盡頭是圖釘。 */
-function Track({ p, theme }: { p: number; theme: ThemeId }) {
-  const at = Math.max(0.03, Math.min(0.94, p)) * 100
-  return (
-    <div class="depart-track">
-      <i style={`width:${at}%`} />
-      <span class="plane" style={`left:${at}%`}><Icon id={TRAVELER[theme]} size={26} /></span>
-      <Icon id="pin" size={20} />
-    </div>
-  )
-}
 
 /**
  * 出發倒數：左邊是很大的天數，右邊是一秒一秒跳的時分秒，下面一條航線。
- * 航線代表出發前的最後 14 天，越接近出發，飛機越靠近終點的圖釘。
+ * 進度條代表出發前的最後 14 天，越接近出發，拖行李的小人越靠近終點的圖釘。
  */
-function Countdown({ ms, label, theme }: { ms: number; label: string; theme: ThemeId }) {
+function Countdown({ ms, label }: { ms: number; label: string }) {
   const c = countdown(ms)
   return (
     <div class="depart">
@@ -411,8 +398,38 @@ function Countdown({ ms, label, theme }: { ms: number; label: string; theme: The
           <div><b key={c.s} class="tick">{two(c.s)}</b><span>秒</span></div>
         </div>
       </div>
-      <Track p={1 - ms / (14 * 86_400_000)} theme={theme} />
+      <Track p={1 - ms / (14 * 86_400_000)} />
       <div class="muted depart-label">{label}</div>
+    </div>
+  )
+}
+
+/** 拖著行李箱往前走的小人：腿前後擺、身體微微起伏。 */
+function Traveler() {
+  return (
+    <svg class="traveler" viewBox="0 0 40 32" width="45" height="36" aria-hidden="true">
+      <path fill="none" stroke="#8a5a4a" stroke-width="1.2" stroke-linecap="round" d="M14 18l7 -5" />
+      <rect x="3" y="17" width="11" height="11" rx="2.5" fill="#f5c561" />
+      <path fill="none" stroke="#fdf0dc" stroke-width="1" d="M6.500 19.500v6M10.500 19.500v6" />
+      <circle cx="5.500" cy="29.500" r="1.400" fill="#8a5a4a" /><circle cx="11.500" cy="29.500" r="1.400" fill="#8a5a4a" />
+      <rect class="leg" x="24" y="22" width="2.4" height="8.500" rx="1.200" fill="#8a5a4a" />
+      <rect class="leg alt" x="27" y="22" width="2.4" height="8.500" rx="1.200" fill="#8a5a4a" />
+      <path fill="#e9755c" d="M23 12h7l1.500 11h-10z" />
+      <path fill="none" stroke="#e9755c" stroke-width="2.2" stroke-linecap="round" d="M24 15l-3 -2" />
+      <circle cx="26.500" cy="8.500" r="3.300" fill="#f1c9a8" />
+      <path fill="#8a5a4a" d="M23 8a3.500 3.500 0 0 1 7 0q-3.500 -1.700 -7 0z" />
+    </svg>
+  )
+}
+
+/** 進度條：走過的那段是往前滑的斜條紋，小人拖著行李站在條紋的最前端，盡頭是圖釘。p 是 0 到 1。 */
+function Track({ p }: { p: number }) {
+  const at = Math.max(0.1, Math.min(0.94, p)) * 100
+  return (
+    <div class="depart-track">
+      <i style={`width:${at}%`} />
+      <span class="who" style={`left:${at}%`}><Traveler /></span>
+      <Icon id="pin" size={22} />
     </div>
   )
 }

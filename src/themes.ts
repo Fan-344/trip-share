@@ -2,7 +2,7 @@
 // 沒有手動選的時候，依去程航班的目的地自動決定。
 import type { Flight } from './model/types'
 
-export type ThemeId = 'general' | 'thai' | 'japan' | 'island' | 'city'
+export type ThemeId = 'general' | 'thai' | 'japan' | 'korea' | 'hongkong' | 'vietnam' | 'singapore' | 'europe' | 'island' | 'city'
 
 export interface Theme {
   id: ThemeId
@@ -17,11 +17,16 @@ export interface Theme {
 }
 
 export const THEMES: Theme[] = [
-  { id: 'general', name: '出發', hint: '山丘與拱門', accent: '#c3cdb0', motifs: ['compass', 'pin', 'sun', 'camera'], farewell: '一路順風' },
-  { id: 'thai', name: '泰北山城', hint: '佛塔與拱門', accent: '#e7b9a6', motifs: ['elephant', 'chedi', 'lantern', 'lotus'], farewell: '一路順風，薩瓦迪卡' },
-  { id: 'japan', name: '日本', hint: '富士山與落日', accent: '#e3b4b4', motifs: ['sakura', 'torii', 'fuji', 'lantern'], farewell: '一路順風，いってらっしゃい' },
-  { id: 'island', name: '海島', hint: '海與帆船', accent: '#b9cdd3', motifs: ['palm', 'wave', 'sun', 'star'], farewell: '一路順風，記得擦防曬' },
-  { id: 'city', name: '城市', hint: '拱形的天際線', accent: '#cfc3d6', motifs: ['building', 'wheel', 'camera', 'bag'], farewell: '一路順風，玩得開心' },
+  { id: 'general', name: '出發', hint: '熱氣球與雪山', accent: '#c3cdb0', motifs: ['compass', 'pin', 'sun', 'camera'], farewell: '一路順風' },
+  { id: 'thai', name: '泰北山城', hint: '佛寺與天燈', accent: '#e7b9a6', motifs: ['elephant', 'chedi', 'lantern', 'lotus'], farewell: '一路順風，薩瓦迪卡' },
+  { id: 'japan', name: '日本', hint: '富士山與五重塔', accent: '#e3b4b4', motifs: ['sakura', 'torii', 'fuji', 'lantern'], farewell: '一路順風，いってらっしゃい' },
+  { id: 'korea', name: '韓國', hint: '宮殿與楓葉', accent: '#dcb9cc', motifs: ['flower', 'camera', 'bag', 'food'], farewell: '一路順風，잘 다녀오세요' },
+  { id: 'hongkong', name: '港澳', hint: '紅帆船與維港', accent: '#e9b9a4', motifs: ['building', 'food', 'star', 'bag'], farewell: '一路順風，玩得開心' },
+  { id: 'vietnam', name: '越南', hint: '老街與燈籠', accent: '#ecd29c', motifs: ['lantern', 'food', 'wave', 'lotus'], farewell: '一路順風，Chúc đi vui' },
+  { id: 'singapore', name: '新加坡', hint: '海灣與樹塔', accent: '#b7d3cf', motifs: ['building', 'palm', 'food', 'star'], farewell: '一路順風，玩得開心' },
+  { id: 'europe', name: '歐洲', hint: '鐵塔與街屋', accent: '#c9d0e0', motifs: ['building', 'camera', 'heart', 'compass'], farewell: '一路順風，Bon voyage' },
+  { id: 'island', name: '海島', hint: '椰子樹與水上屋', accent: '#b9cdd3', motifs: ['palm', 'wave', 'sun', 'star'], farewell: '一路順風，記得擦防曬' },
+  { id: 'city', name: '城市', hint: '高樓與摩天輪', accent: '#cfc3d6', motifs: ['building', 'wheel', 'camera', 'bag'], farewell: '一路順風，玩得開心' },
 ]
 
 export const themeOf = (id: ThemeId): Theme => THEMES.find((t) => t.id === id)!
@@ -40,10 +45,15 @@ export function defaultDayIcon(theme: ThemeId, index: number, total: number): st
 const BY_AIRPORT: Record<string, ThemeId> = {
   CNX: 'thai', BKK: 'thai', DMK: 'thai',
   NRT: 'japan', HND: 'japan', KIX: 'japan', NGO: 'japan', FUK: 'japan', CTS: 'japan',
-  HKT: 'island', OKA: 'island', CEB: 'island', DPS: 'island', CJU: 'island', DAD: 'island',
-  HKG: 'city', MFM: 'city', SIN: 'city', KUL: 'city', ICN: 'city', GMP: 'city', PUS: 'city',
+  HKT: 'island', OKA: 'island', CEB: 'island', DPS: 'island', BKI: 'island', GUM: 'island', ROR: 'island',
+  ICN: 'korea', GMP: 'korea', PUS: 'korea', CJU: 'korea', TAE: 'korea',
+  HKG: 'hongkong', MFM: 'hongkong',
+  SGN: 'vietnam', HAN: 'vietnam', DAD: 'vietnam', PQC: 'vietnam', CXR: 'vietnam',
+  SIN: 'singapore',
+  LHR: 'europe', CDG: 'europe', FRA: 'europe', AMS: 'europe', FCO: 'europe', MXP: 'europe', MUC: 'europe', VIE: 'europe', ZRH: 'europe', BCN: 'europe', MAD: 'europe', PRG: 'europe', IST: 'europe',
+  KUL: 'city',
   PVG: 'city', PEK: 'city', LAX: 'city', SFO: 'city', SEA: 'city', JFK: 'city', YVR: 'city',
-  LHR: 'city', CDG: 'city', FRA: 'city', SYD: 'city', MEL: 'city', MNL: 'city', SGN: 'city', HAN: 'city',
+  SYD: 'city', MEL: 'city', MNL: 'city',
 }
 
 const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v)

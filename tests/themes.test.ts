@@ -13,7 +13,9 @@ describe('佈景主題', () => {
     expect(autoTheme(trip)).toBe('thai')
     expect(autoTheme([flight('TPE', 'KIX', '2027-03-05')])).toBe('japan')
     expect(autoTheme([flight('TPE', 'OKA', '2027-03-05')])).toBe('island')
-    expect(autoTheme([flight('TPE', 'SIN', '2027-03-05')])).toBe('city')
+    expect(autoTheme([flight('TPE', 'SIN', '2027-03-05')])).toBe('singapore')
+    expect(autoTheme([flight('TPE', 'ICN', '2027-03-05')])).toBe('korea')
+    expect(autoTheme([flight('TPE', 'KUL', '2027-03-05')])).toBe('city')
   })
 
   it('沒有航班或不認得的機場用通用主題', () => {

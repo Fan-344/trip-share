@@ -16,7 +16,7 @@ const BY_ZONE: Record<string, string> = {
   'Australia/Sydney': '澳幣', 'Australia/Melbourne': '澳幣',
 }
 
-const BY_THEME: Record<string, string> = { thai: '泰銖', japan: '日圓' }
+const BY_THEME: Record<string, string> = { thai: '泰銖', japan: '日圓', korea: '韓元', hongkong: '港幣', vietnam: '越南盾', singapore: '新加坡幣', europe: '歐元' }
 
 export interface CurrencyGuess {
   currency: string
