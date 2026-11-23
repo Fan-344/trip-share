@@ -30,11 +30,11 @@ const motionPath = (path: string) => ({ path }) as Record<string, string>
 /** 機頭朝右的飛機外形，原點在機身中央。 */
 export function PlaneShape() {
   return (
-    <g fill="#fff">
-      <path d="M-6 -3l-9 -13h7l12 13z" />
-      <path d="M-6 3l-9 13h7l12 -13z" />
-      <path d="M-21 -2l-6 -9h5l6 9z" />
-      <ellipse rx="24" ry="5.5" />
+    <g stroke="none">
+      <path fill={C.coralD} d="M-6 -3l-9 -14h7l13 14zM-21 -2l-6 -10h5l7 10z" />
+      <ellipse rx="25" ry="6" fill={C.coral} />
+      <path fill={C.coralD} d="M-6 3l-9 14h7l13 -14z" />
+      <path fill={C.cream} d="M12 -2.500h7q3 1 4 2.500h-11z" />
     </g>
   )
 }
@@ -47,9 +47,9 @@ export function RouteArc() {
   const still = reducedMotion()
   return (
     <svg class="arc" viewBox="0 0 140 42" aria-hidden="true" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d={arc} stroke-dasharray="3 7" opacity="0.4" />
-      <circle cx="8" cy="34" r="3.5" fill="#fff" />
-      <circle cx="132" cy="34" r="3.5" fill="var(--accent)" />
+      <path d={arc} stroke-dasharray="0.1 6" opacity="0.45" />
+      <circle cx="8" cy="34" r="3.5" fill="var(--accent)" stroke="none" />
+      <circle cx="132" cy="34" r="3.5" fill={C.coral} stroke="none" />
       {still ? (
         <g transform="translate(70 10) scale(0.5)"><PlaneShape /></g>
       ) : (

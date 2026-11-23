@@ -6,7 +6,7 @@ import {
   AIRPORTS, ago, airportName, countdown, daysBetween, fullDay, nightsBetween, placeName, safeUrl,
   toInstant, today, zoneOptions,
 } from '../time'
-import { THEMES, autoTheme, themeName } from '../themes'
+import { THEMES, autoTheme, themeName, type ThemeId } from '../themes'
 import { Art, RouteArc } from './Art'
 import { Empty, Farewell } from './bits'
 import { Chevron } from './fold'
@@ -50,7 +50,22 @@ export function Overview({ trip, theme }: TabProps) {
   return (
     <div>
       <div class="card hero">
-        <Art theme={theme} />
+        <div class="heroart">
+          <Art theme={theme} />
+        </div>
+        {/* 倒數：主圖正下方的白色卡片。旅行中改顯示第幾天 */}
+        {dayIndex >= 0 ? (
+          <div class="depart">
+            <div class="depart-main"><div class="depart-days"><span>旅行第</span><b>{dayIndex + 1}</b><span>天</span></div></div>
+            <Track p={(dayIndex + 0.5) / days.length} theme={theme} />
+            <div class="muted depart-label">共 {days.length} 天</div>
+          </div>
+        ) : next ? (
+          <Countdown theme={theme} ms={toInstant(next.dep) - now}
+            label={`${fullDay(next.dep.local.slice(0, 10))} ${hm(next.dep.local)} 起飛（${placeName(next.dep.tz, flights)}時間）`} />
+        ) : meta.startDate > t ? (
+          <Countdown theme={theme} ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label={`${fullDay(meta.startDate)} 出發`} />
+        ) : null}
         <div class="body">
         <div class="row">
           <span class="muted grow">
@@ -64,14 +79,6 @@ export function Overview({ trip, theme }: TabProps) {
           {days.length > 0 && <span class="chip yellow">{days.length} 天 {days.length - 1} 夜</span>}
           {trip.members.all().map((m) => <span class="chip" key={m.id}>{m.nickname}</span>)}
         </div>
-        {dayIndex >= 0 ? (
-          <p><b>旅行第 {dayIndex + 1} 天</b></p>
-        ) : next ? (
-          <Countdown ms={toInstant(next.dep) - now}
-            label={`距離起飛（${fullDay(next.dep.local.slice(0, 10))} ${hm(next.dep.local)} ${placeName(next.dep.tz, flights)}時間）`} />
-        ) : meta.startDate > t ? (
-          <Countdown ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label="距離出發" />
-        ) : null}
         </div>
       </div>
 
@@ -186,20 +193,6 @@ export function Overview({ trip, theme }: TabProps) {
   )
 }
 
-function Countdown({ ms, label }: { ms: number; label: string }) {
-  const c = countdown(ms)
-  return (
-    <div>
-      <div class="count">
-        <div><b>{c.d}</b><span>天</span></div>
-        <div><b>{c.h}</b><span>時</span></div>
-        <div><b>{c.m}</b><span>分</span></div>
-        <div><b>{c.s}</b><span>秒</span></div>
-      </div>
-      <div class="muted center">{label}</div>
-    </div>
-  )
-}
 
 function TripSheet({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const [f, setF] = useState({
@@ -380,5 +373,46 @@ function StaySheet({ trip, id, onClose }: { trip: Trip; id?: string; onClose: ()
         </div>
       </form>
     </Sheet>
+  )
+}
+
+
+const two = (n: number): string => String(n).padStart(2, '0')
+
+/** 沿著航線往終點走的小圖，每個主題一個：天燈、櫻花、太陽、星星、行李箱。 */
+const TRAVELER: Record<ThemeId, string> = { thai: 'lantern', japan: 'sakura', island: 'sun', city: 'star', general: 'luggage' }
+
+/** 一條往目的地的航線：主題小圖停在 p（0 到 1）的位置，走過的那段上色，盡頭是圖釘。 */
+function Track({ p, theme }: { p: number; theme: ThemeId }) {
+  const at = Math.max(0.03, Math.min(0.94, p)) * 100
+  return (
+    <div class="depart-track">
+      <i style={`width:${at}%`} />
+      <span class="plane" style={`left:${at}%`}><Icon id={TRAVELER[theme]} size={26} /></span>
+      <Icon id="pin" size={20} />
+    </div>
+  )
+}
+
+/**
+ * 出發倒數：左邊是很大的天數，右邊是一秒一秒跳的時分秒，下面一條航線。
+ * 航線代表出發前的最後 14 天，越接近出發，飛機越靠近終點的圖釘。
+ */
+function Countdown({ ms, label, theme }: { ms: number; label: string; theme: ThemeId }) {
+  const c = countdown(ms)
+  return (
+    <div class="depart">
+      <div class="depart-main">
+        <div class="depart-days"><span>還有</span><b>{c.d}</b><span>天</span></div>
+        <div class="depart-clock">
+          <div><b>{two(c.h)}</b><span>時</span></div><i>:</i>
+          <div><b>{two(c.m)}</b><span>分</span></div><i>:</i>
+          {/* key 每秒換一次，數字會重新跳一下 */}
+          <div><b key={c.s} class="tick">{two(c.s)}</b><span>秒</span></div>
+        </div>
+      </div>
+      <Track p={1 - ms / (14 * 86_400_000)} theme={theme} />
+      <div class="muted depart-label">{label}</div>
+    </div>
   )
 }
