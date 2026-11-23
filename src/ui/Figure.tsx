@@ -44,6 +44,8 @@ function Hands({ look, stage }: { look: Look; stage: Stage }) {
           <path {...arm} d="M3 -16l5 -8" />
           <path fill="none" stroke={TRUNK} stroke-width="0.9" stroke-linecap="round" d="M8 -24v-10" />
           <path fill={CORAL} d="M8 -34l8.500 3l-8.500 3z" />
+          {/* 揮旗時旗子旁邊的三道提醒線 */}
+          <path class="fx a-blink" fill="none" stroke={GOLD} stroke-width="1.200" stroke-linecap="round" d="M18.500 -35l3 -2M19.500 -31h3.500M18.500 -27l3 2" />
         </g>
       )
     case 'shopper':
@@ -54,6 +56,11 @@ function Hands({ look, stage }: { look: Look; stage: Stage }) {
             <path fill="none" stroke={TRUNK} stroke-width="0.8" d="M4.500 -10q1.500 -3.500 3 0" />
             <path fill={PINK} d="M3 -10h6l1 8.500h-8z" />
           </g>
+          {/* 買到東西很開心：袋子上方冒出兩顆愛心 */}
+          <g class="fx" fill={CORAL}>
+            <path class="a-puff" d="M9 -13c-2.600 -1.800 -3 -3.500 -1.700 -4.400q1 -0.800 1.700 0.500q0.700 -1.300 1.700 -0.500c1.300 0.900 0.900 2.600 -1.700 4.400z" />
+            <g transform="translate(6 -4) scale(0.7)"><path class="a-puff" style="animation-delay:-0.800s" d="M9 -13c-2.600 -1.800 -3 -3.500 -1.700 -4.400q1 -0.800 1.700 0.500q0.700 -1.300 1.700 -0.500c1.300 0.900 0.900 2.600 -1.700 4.400z" /></g>
+          </g>
         </g>
       )
     case 'photo':
@@ -61,13 +68,29 @@ function Hands({ look, stage }: { look: Look; stage: Stage }) {
         <g class="a-cam">
           <path {...arm} d="M3 -16l4 -3" />
           <rect x="5" y="-23" width="6.500" height="4.800" rx="1.200" fill={SEA} /><circle cx="9" cy="-20.600" r="1.400" fill={CREAM} />
-          <circle class="a-flash" cx="11.500" cy="-23.500" r="3" fill="#fff" />
+          {/* 閃光：金色的星芒，白底上也看得到 */}
+          <path class="a-flash" fill="#ffd45e" d="M12 -29l1.400 3.600l3.600 1.400l-3.600 1.400L12 -19l-1.400 -3.600l-3.600 -1.400l3.600 -1.400z" />
         </g>
       )
     case 'cheer':
-      return <path {...arm} d="M3 -16l4.500 -8M-3 -16l-4.500 -8" />
+      return (
+        <g>
+          <path {...arm} d="M3 -16l4.500 -8M-3 -16l-4.500 -8" />
+          {/* 歡呼時頭上迸出三顆小星星 */}
+          <g class="fx">
+            <path class="a-pop" fill={GOLD} d="M-9 -30l1 2.400l2.400 1l-2.400 1l-1 2.400l-1 -2.400l-2.400 -1l2.400 -1z" />
+            <path class="a-pop" style="animation-delay:-0.400s" fill={PINK} d="M0 -34l0.900 2.100l2.100 0.900l-2.100 0.900l-0.900 2.100l-0.900 -2.100l-2.100 -0.900l2.100 -0.900z" />
+            <path class="a-pop" style="animation-delay:-0.800s" fill="#78ccc5" d="M9 -30l1 2.400l2.400 1l-2.400 1l-1 2.400l-1 -2.400l-2.400 -1l2.400 -1z" />
+          </g>
+        </g>
+      )
     default:
-      return null
+      // 旅伴：停下來想事情，頭上冒出三個點
+      return (
+        <g class="fx" fill="#b9a9a4">
+          <circle class="a-dot" cx="5" cy="-27" r="1.100" /><circle class="a-dot" style="animation-delay:0.300s" cx="8.500" cy="-28.500" r="1.300" /><circle class="a-dot" style="animation-delay:0.600s" cx="12.500" cy="-30" r="1.600" />
+        </g>
+      )
   }
 }
 

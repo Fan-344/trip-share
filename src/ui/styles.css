@@ -604,14 +604,8 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 
 /* ---- 進度條上的行李堆和來回走的小人 ---- */
 .depart-track .pile { position: absolute; bottom: 12px; transform: translateX(-50%); display: flex; }
-/* 小人在自己的範圍（--a 到 --b）之間來回走；走到頭停一下再折返 */
-@keyframes roam { 0% { left: var(--a); } 46%, 50% { left: var(--b); } 96%, 100% { left: var(--a); } }
-/* 折返時轉身：去程面向右，回程面向左 */
-@keyframes turn { 0%, 47.9% { transform: scaleX(1); } 48%, 97.9% { transform: scaleX(-1); } 98%, 100% { transform: scaleX(1); } }
 .depart-track .roamer { position: absolute; bottom: 12px; transform: translateX(-50%); display: flex; }
-.depart-track .roamer.go { animation: roam linear infinite; }
 .depart-track .roamer .face { display: flex; }
-.depart-track .roamer.go .face { animation: turn linear infinite; }
 
 /* 頂端：行程名稱後面接日期 */
 .titlebar { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
@@ -655,3 +649,44 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 /* 滑手機：手偶爾動一下 */
 @keyframes scrollphone { 0%, 70%, 100% { transform: translateY(0); } 78% { transform: translateY(-1.2px); } 86% { transform: translateY(0.6px); } }
 .a-scroll { animation: scrollphone 2.8s ease-in-out infinite; }
+
+/* ---- 進度條上的小人：走路時只走路，停下來才做角色的動作 ---- */
+.depart-track .roamer .face { transition: transform 0.2s ease; }
+/* 走路中：旗子、購物袋、相機、跳躍都先停住 */
+.roamer:not(.acting) .a-hi, .roamer:not(.acting) .a-dangle, .roamer:not(.acting) .a-cam,
+.roamer:not(.acting) .a-flash, .roamer:not(.acting) .a-bounce { animation: none; }
+/* 停下來：攝影舉起相機拍一張（比平常站著時頻繁）、氣氛擔當跳得快一點 */
+.roamer.acting .a-cam { animation: cam 1.8s ease-in-out infinite; }
+.roamer.acting .a-flash { animation: flash 1.8s linear infinite; }
+.roamer.acting .a-bounce { animation-duration: 0.9s; }
+
+/* ---- 角色的小特效（像攝影的閃光、廢人的 z）：停下來做動作時才出現 ---- */
+.roamer:not(.acting) .fx { display: none; }
+/* 導遊：旗子旁的提醒線一閃一閃 */
+@keyframes blink { 0%, 45%, 100% { opacity: 0; } 55%, 90% { opacity: 1; } }
+.a-blink { animation: blink 0.9s linear infinite; }
+/* 採買：愛心往上飄、淡掉 */
+@keyframes puff { 0% { transform: translateY(3px); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-9px); opacity: 0; } }
+.a-puff { animation: puff 1.6s ease-out infinite; }
+/* 氣氛擔當：小星星迸出來再消失 */
+@keyframes starpop { 0% { transform: scale(0); opacity: 0; } 30% { transform: scale(1.25); opacity: 1; } 65% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.5); opacity: 0; } }
+.a-pop { animation: starpop 1.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+/* 旅伴：三個點一個接一個冒出來 */
+@keyframes dot { 0%, 15% { opacity: 0; } 30%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.a-dot { animation: dot 2s linear infinite; opacity: 0; }
+
+/* ---- 總覽的角色列表：每人一格，小人在上、名字和稱號在下 ---- */
+.crew { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; }
+.crewman { width: 64px; display: flex; flex-direction: column; align-items: center; text-align: center; line-height: 1.25; }
+.crewman b { font-size: 0.82rem; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crewman small { font-size: 0.68rem; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- 總覽主卡片簡化：一張白卡片，由上到下是主圖、倒數、角色列表，中間不再套一層卡片 ---- */
+.hero { background: #fff; }
+.hero .depart { margin: 0; padding: 14px 16px 8px; background: transparent; border-radius: 0; box-shadow: none; }
+.hero .body { padding: 8px 12px 12px; border-top: 1px solid var(--edge); }
+.hero .depart-clock div { background: var(--accent-l); }
+.crew { flex-wrap: nowrap; justify-content: safe center; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.crew::-webkit-scrollbar { display: none; }
+.crewman { width: 58px; flex: none; }
+.crewman b { font-size: 0.78rem; font-weight: 400; color: var(--muted); }

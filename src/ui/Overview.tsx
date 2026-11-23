@@ -15,6 +15,7 @@ import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
 import { lookOf, stageOf, type Job, type Look, type Stage } from '../avatar'
 import { Figure, Pile } from './Figure'
+import { between, nextSpot, rng, seedOf } from '../random'
 import { Mascot } from './Mascot'
 import { ImportSheet, type ImportState } from './Import'
 import { EditBar, Field, Sheet, useNow, value } from './kit'
@@ -56,7 +57,7 @@ export function Overview({ trip, theme }: TabProps) {
   const me = trip.actor.pubkey
   // 自己排第一個，進度條上最多站五個人。
   const cast = [...trip.members.all()].sort((a, b) => Number(b.id === me) - Number(a.id === me))
-    .slice(0, 5).map((m) => ({ look: lookOf(m), packed: trip.packedOf(m.id) }))
+    .slice(0, 5).map((m) => ({ id: m.id, look: lookOf(m), packed: trip.packedOf(m.id) }))
   const who: Who = { cast, stage }
 
   return (
@@ -79,11 +80,19 @@ export function Overview({ trip, theme }: TabProps) {
           <Countdown who={who} ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label={`${fullDay(meta.startDate)} 出發`} />
         ) : null}
         <div class="body">
-        <div class="row wrap">
-          {days.length > 0 && <span class="chip yellow">{days.length} 天 {days.length - 1} 夜</span>}
-          {trip.members.all().map((m) => <span class="chip" key={m.id}>{m.nickname}</span>)}
-          {editing && <button class="small right" onClick={() => setSheet({ kind: 'trip' })}><Icon id="pencil" size={16} />修改</button>}
+        {/* 角色列表：全團每個人的小人和名字，排成一列；人多就左右滑 */}
+        <div class="crew">
+          {trip.members.all().map((m) => {
+            const look = lookOf(m)
+            return (
+              <div class="crewman" key={m.id}>
+                <Figure look={look} size={38} />
+                <b>{m.nickname}</b>
+              </div>
+            )
+          })}
         </div>
+        {editing && <div class="center"><button class="small" onClick={() => setSheet({ kind: 'trip' })}><Icon id="pencil" size={16} />修改行程</button></div>}
         </div>
       </div>
 
@@ -417,7 +426,7 @@ function Countdown({ ms, label, who }: { ms: number; label: string; who: Who }) 
 
 
 /** 進度條上的小人：這趟的成員（自己排第一個）和現在的階段。 */
-interface Who { cast: { look: Look; packed: boolean }[]; stage: Stage }
+interface Who { cast: { id: string; look: Look; packed: boolean }[]; stage: Stage }
 
 
 const WX_ICON: Record<WxKind, string> = { clear: 'sun', partly: 'partly', cloudy: 'cloud', fog: 'fog', rain: 'rain', snow: 'snow', storm: 'storm' }
@@ -459,69 +468,105 @@ function WeatherCard({ airport, start, end }: { airport: string; start: string; 
   )
 }
 
+
+/** 每個角色在進度條上的習性。 */
+interface Habit {
+  /** 活動範圍：整條線的百分比，[最左, 最右]。 */
+  range: [number, number]
+  /** 走路的速度：每秒走整條線的百分之幾。 */
+  speed: number
+  /** 停下來做動作的時間，[最短, 最長] 秒；每次停多久是隨機的。 */
+  pause: [number, number]
+  /** 走一步（左右腳各一次）要幾秒：腿擺、身體搖晃、甩手的快慢。 */
+  step: number
+}
+
 /**
- * 每個角色在進度條上怎麼走：回傳 [起點, 終點, 來回一趟幾秒]，位置是整條線的百分比。
- * at 是現在的進度（行李堆的位置），i 是第幾個人（同角色的人錯開一點）。起點等於終點就是不走。
+ * at 是現在的進度（行李的位置），i 是第幾個人（同角色的人步調再各差一點）。
+ * 會走的角色都可以在整條線上走（不限在已經走過的那一段）；差別在速度、步調和停多久。廢人不走，躺在行李旁邊。
  */
-function roamOf(job: Job, at: number, i: number): [number, number, number] {
-  const lo = (v: number) => Math.max(4, v)
-  const hi = (v: number) => Math.min(95, v)
+function habitOf(job: Job, at: number, i: number): Habit {
+  const jitter = (i % 3) * 0.04
   switch (job) {
-    // 導遊：走在行李堆前面探路，走到快到終點再折回來
-    case 'guide': return [hi(at + 5), hi(at + 36), 13]
-    // 採買：從後面很遠的地方把東西提回行李堆
-    case 'shopper': return [lo(at - 48), lo(at - 7), 17]
-    // 攝影：整條線從頭走到尾，到處拍
-    case 'photo': return [4, 95, 32]
-    // 氣氛擔當：在行李堆前後跑來跑去
-    case 'cheer': return [lo(at - 28), hi(at + 14), 7]
-    // 廢人：坐在行李堆旁邊不動
-    case 'lazy': return [lo(at - 10), lo(at - 10), 0]
-    // 旅伴：在行李堆後面慢慢踱步
-    default: return [lo(at - 24 - i * 3), lo(at - 6), 20 + i * 2]
+    case 'guide': return { range: ALL, speed: 8, pause: [1.5, 3.5], step: 0.46 + jitter }
+    case 'shopper': return { range: ALL, speed: 3.5, pause: [1, 2.5], step: 0.68 + jitter }
+    case 'photo': return { range: ALL, speed: 2.4, pause: [2, 4.5], step: 0.82 + jitter }
+    case 'cheer': return { range: ALL, speed: 15, pause: [0.8, 2], step: 0.3 + jitter }
+    case 'lazy': return { range: [Math.max(at - 10, 4), Math.max(at - 10, 4)], speed: 0, pause: [1, 1], step: 1 }
+    default: return { range: ALL, speed: 5.5, pause: [1.5, 4], step: 0.56 + jitter }
   }
 }
 
+/** 會走的角色的活動範圍：整條線，從最左邊到圖釘前面。 */
+const ALL: [number, number] = [4, 94]
+
+/** 使用者是否要求減少動態效果：是的話小人站著不走。 */
+const stillMode = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
 /**
- * 每個角色走一步（左右腳各一次）要幾秒：決定腿擺、身體搖晃、甩手的快慢，每個角色的步調不一樣。
- * 同角色的人再各差一點，才不會整齊劃一。
+ * 進度條上的一個小人：隨機挑一個位置走過去，到了停下來做自己角色的動作（導遊揮旗、攝影拍照、氣氛擔當跳…），
+ * 停一段隨機的時間後再挑下一個位置。走到哪、停多久都由隨機數決定，每個人不一樣，每次打開也不一樣。
  */
-function stepOf(job: Job, i: number): number {
-  const base: Record<Job, number> = {
-    cheer: 0.3,    // 氣氛擔當：小碎步跑
-    guide: 0.46,   // 導遊：穩穩地快走
-    '': 0.56,      // 旅伴：一般步伐
-    shopper: 0.68, // 採買：提著東西，步子沉
-    photo: 0.82,   // 攝影：邊走邊看，慢慢晃
-    lazy: 1,       // 廢人不走，用不到
-  }
-  return Math.round((base[job] + (i % 3) * 0.04) * 100) / 100
+function Roamer({ id, look, packed, stage, habit, size }: {
+  id: string; look: Look; packed: boolean; stage: Stage; habit: Habit; size: number
+}) {
+  const [lo, hi] = habit.range
+  const fixed = hi - lo <= 2
+  // 種子用成員代號加上現在的時間：同一個人每次打開走的路線都不同
+  const [r] = useState(() => rng(seedOf(id) ^ Date.now()))
+  const [pos, setPos] = useState(() => (fixed ? lo : between(r, lo, hi)))
+  const [secs, setSecs] = useState(0)
+  const [face, setFace] = useState(1)
+  const [walking, setWalking] = useState(false)
+
+  useEffect(() => {
+    if (fixed || stillMode()) return
+    let timer = 0
+    let here = Math.min(hi, Math.max(lo, pos))
+    const walk = () => {
+      const to = nextSpot(r, here, lo, hi, 8)
+      const t = Math.abs(to - here) / habit.speed
+      setFace(to > here ? 1 : -1)
+      setSecs(t)
+      setPos(to)
+      setWalking(true)
+      here = to
+      timer = window.setTimeout(act, t * 1000)
+    }
+    const act = () => {
+      setWalking(false)
+      timer = window.setTimeout(walk, between(r, habit.pause[0], habit.pause[1]) * 1000)
+    }
+    // 一開始先停一下再出發，每個人起步的時間錯開
+    timer = window.setTimeout(walk, between(r, 0.3, 2.5) * 1000)
+    return () => clearTimeout(timer)
+    // 範圍（跟著進度的整數百分比）或速度變了才重來；pos 是它自己在改，不能列進來
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lo, hi, habit.speed, fixed])
+
+  return (
+    <span class={`roamer ${walking ? '' : 'acting'}`} style={`left:${pos}%;transition:left ${walking ? secs : 0}s linear;--step:${habit.step}s`}>
+      <span class="face" style={`transform:scaleX(${face})`}>
+        <Figure look={look} stage={stage === 'trip' ? 'trip' : 'plan'} packed={packed} luggage={false} walk={walking} size={size} cls={walking ? 'traveler' : ''} />
+      </span>
+    </span>
+  )
 }
 
 /**
- * 進度條：走過的那段是往前滑的斜條紋，前端堆著全團的行李，盡頭是圖釘。
- * 每個成員的小人照自己的角色在線上來回走（導遊在前面探路、採買來回搬東西、廢人坐著不動…）。p 是 0 到 1。
+ * 進度條：走過的那段是往前滑的斜條紋，前端是全團的行李，盡頭是圖釘；全團的小人在線上各走各的。p 是 0 到 1。
  */
 function Track({ p, who }: { p: number; who: Who }) {
-  const at = Math.max(0.14, Math.min(0.9, p)) * 100
+  // 取整數百分比：進度每秒都在變一點點，小人的活動範圍不用跟著每秒重算
+  const at = Math.round(Math.max(0.14, Math.min(0.9, p)) * 100)
   const small = who.cast.length > 3
   return (
     <div class="depart-track">
       <i style={`width:${at}%`} />
       <span class="pile" style={`left:${at}%`}><Pile cast={who.cast} stage={who.stage} size={small ? 36 : 40} /></span>
-      {who.cast.map((m, i) => {
-        const [a, b, dur] = roamOf(m.look.job, at, i)
-        const moving = b - a > 2
-        // 每個人的起步時間錯開，才不會全部同時折返
-        const timing = moving ? `animation-duration:${dur}s;animation-delay:${-(i * 2.3 + 1)}s` : ''
-        return (
-          <span key={i} class={`roamer ${moving ? 'go' : ''}`} style={`left:${a}%;--a:${a}%;--b:${b}%;--step:${stepOf(m.look.job, i)}s;${timing}`}>
-            <span class="face" style={timing}>
-              <Figure look={m.look} stage={who.stage === 'trip' ? 'trip' : 'plan'} packed={m.packed} luggage={false} walk={moving} size={small ? 36 : 42} cls={moving ? 'traveler' : ''} />
-            </span>
-          </span>
-        )
-      })}
+      {who.cast.map((m, i) => (
+        <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={who.stage} habit={habitOf(m.look.job, at, i)} size={small ? 36 : 42} />
+      ))}
       <Icon id="pin" size={22} />
     </div>
   )
