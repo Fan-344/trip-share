@@ -13,7 +13,7 @@ import { Empty, Farewell } from './bits'
 import { Chevron } from './fold'
 import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
-import { lookOf, stageOf, type Job, type Look, type Stage } from '../avatar'
+import { lookOf, stageOf, titleOf, type Job, type Look, type Stage } from '../avatar'
 import { Figure, Pile } from './Figure'
 import { between, nextSpot, rng, seedOf } from '../random'
 import { Mascot } from './Mascot'
@@ -71,16 +71,14 @@ export function Overview({ trip, theme }: TabProps) {
           <div class="depart">
             <div class="depart-main"><div class="depart-days"><span>旅行第</span><b>{dayIndex + 1}</b><span>天</span></div></div>
             <Track p={(dayIndex + 0.5) / days.length} who={who} />
-            <div class="muted depart-label">共 {days.length} 天</div>
           </div>
         ) : next ? (
-          <Countdown who={who} ms={toInstant(next.dep) - now}
-            label={`${fullDay(next.dep.local.slice(0, 10))} ${hm(next.dep.local)} 起飛（${placeName(next.dep.tz, flights)}時間）`} />
+          <Countdown who={who} ms={toInstant(next.dep) - now} />
         ) : meta.startDate > t ? (
-          <Countdown who={who} ms={new Date(`${meta.startDate}T00:00`).getTime() - now} label={`${fullDay(meta.startDate)} 出發`} />
+          <Countdown who={who} ms={new Date(`${meta.startDate}T00:00`).getTime() - now} />
         ) : null}
         <div class="body">
-        {/* 角色列表：全團每個人的小人和名字，排成一列；人多就左右滑 */}
+        {/* 角色列表：全團每個人的小人、名字和稱號，排成一列；人多就左右滑 */}
         <div class="crew">
           {trip.members.all().map((m) => {
             const look = lookOf(m)
@@ -88,6 +86,7 @@ export function Overview({ trip, theme }: TabProps) {
               <div class="crewman" key={m.id}>
                 <Figure look={look} size={38} />
                 <b>{m.nickname}</b>
+                {titleOf(look) && <small>{titleOf(look)}</small>}
               </div>
             )
           })}
@@ -404,7 +403,7 @@ const two = (n: number): string => String(n).padStart(2, '0')
  * 出發倒數：左邊是很大的天數，右邊是一秒一秒跳的時分秒，下面一條航線。
  * 進度條代表出發前的最後 14 天，越接近出發，拖行李的小人越靠近終點的圖釘。
  */
-function Countdown({ ms, label, who }: { ms: number; label: string; who: Who }) {
+function Countdown({ ms, who }: { ms: number; who: Who }) {
   const c = countdown(ms)
   return (
     <div class="depart">
@@ -418,7 +417,6 @@ function Countdown({ ms, label, who }: { ms: number; label: string; who: Who }) 
         </div>
       </div>
       <Track p={1 - ms / (14 * 86_400_000)} who={who} />
-      <div class="muted depart-label">{label}</div>
     </div>
   )
 }
@@ -563,9 +561,9 @@ function Track({ p, who }: { p: number; who: Who }) {
   return (
     <div class="depart-track">
       <i style={`width:${at}%`} />
-      <span class="pile" style={`left:${at}%`}><Pile cast={who.cast} stage={who.stage} size={small ? 36 : 40} /></span>
+      <span class="pile" style={`left:${at}%`}><Pile cast={who.cast} stage={who.stage} size={small ? 46 : 52} /></span>
       {who.cast.map((m, i) => (
-        <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={who.stage} habit={habitOf(m.look.job, at, i)} size={small ? 36 : 42} />
+        <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={who.stage} habit={habitOf(m.look.job, at, i)} size={small ? 50 : 58} />
       ))}
       <Icon id="pin" size={22} />
     </div>
