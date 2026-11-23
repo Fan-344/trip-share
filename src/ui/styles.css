@@ -435,3 +435,15 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 .lockbtn { border: 0; background: transparent; padding: 4px; min-height: 0; display: flex; box-shadow: none; }
 .lockbtn.locked { opacity: 0.55; }
 .check input:disabled { pointer-events: none; }
+
+/* 清單裡的欄位（子清單）：一個框一欄，欄名嵌在框線上。畫面夠寬就排兩欄 */
+.sects { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
+@media (min-width: 600px) { .sects { grid-template-columns: 1fr 1fr; align-items: start; } }
+.sect { border: 2px solid var(--ink); border-radius: 14px; padding: 2px 12px 6px; margin: 12px 0 0; min-width: 0; background: #fff; }
+.sect legend { font-size: 0.86rem; font-weight: 700; padding: 0 6px; display: flex; align-items: center; gap: 6px; }
+.sect legend button { min-height: 24px; padding: 0 4px; }
+/* 編輯模式：整個框可以點，點了在這一欄新增項目 */
+.sect.tap { border-style: dashed; cursor: pointer; }
+.sect.loose { border: 2px dashed var(--ink); border-radius: 14px; padding: 2px 12px 6px; margin-top: 8px; }
+.addhint { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.85rem; padding: 8px 0 4px; }
+.addrow { padding: 8px 0 4px; }

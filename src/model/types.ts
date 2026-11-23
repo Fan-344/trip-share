@@ -120,7 +120,9 @@ export interface List {
 export interface ListItem {
   listId: string
   name: string
-  /** 分類（例如「證件」「衣物」）；同一份清單裡相同分類的項目排在一起。 */
+  /** 在清單的哪一個欄位（子清單，例如「證件」「衣物」）；空白是不屬於任何欄位。 */
+  section?: string
+  /** 舊版的欄位名，讀到會搬到 section（見 Trip.tidyLists）。 */
   group?: string
   /** 補充說明（例如「需至少到 2027/5/25 之後」）。 */
   note?: string

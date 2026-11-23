@@ -193,12 +193,12 @@ describe('不該離開手機的資料', () => {
 })
 
 describe('行前準備與購物', () => {
-  it('清單項目可以有分類與說明，並能修改', () => {
+  it('清單項目可以放在欄位裡、有說明，並能修改', () => {
     const { a, b } = twoPhones()
     const list = a.lists.get(a.createList({ kind: 'shared', title: '出發前清單', owners: [] }))!
-    const id = a.addListItem(list, '護照效期確認', { group: '證件', note: '至少 6 個月' })
+    const id = a.addListItem(list, '護照效期確認', { section: '證件', note: '至少 6 個月' })
     sync(a, b)
-    expect(b.listItemsOf(list)[0]).toMatchObject({ name: '護照效期確認', group: '證件', note: '至少 6 個月' })
+    expect(b.listItemsOf(list)[0]).toMatchObject({ name: '護照效期確認', section: '證件', note: '至少 6 個月' })
     b.updateListItem('shared', id, { note: '已確認' })
     sync(a, b)
     expect(a.listItemsOf(list)[0].note).toBe('已確認')

@@ -91,11 +91,11 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
     gone && gone.by !== trip.actor.pubkey && !invited ? gone : null
   useEffect(() => window.scrollTo(0, 0), [tab])
 
-  // 舊版清單裡的分類：拆成各自一份清單（清單現在只有一層）。別人用舊版又加了分類的話，同步進來時再拆一次。
-  const grouped = trip.listItems.all().filter((i) => i.group).length + trip.privListItems.all().filter((i) => i.group).length
+  // 舊版的清單資料（分類記在別的欄位、或被拆成好幾份清單）：整理成「清單底下有欄位」的樣子。同步進來舊資料時再整理一次。
+  const untidy = trip.listsNeedTidy()
   useEffect(() => {
-    if (current && !removed && !meta.deleted && grouped > 0) trip.splitListGroups()
-  }, [current, grouped, !removed, !meta.deleted])
+    if (current && !removed && !meta.deleted && untidy) trip.tidyLists()
+  }, [current, untidy, !removed, !meta.deleted])
 
   useEffect(() => {
     if (!meta.id) return

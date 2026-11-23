@@ -203,34 +203,50 @@ export class Trip {
   }
 
   /**
-   * 舊版的清單裡可以再分類（「出發前清單」底下有「證件」「金錢」…）。現在清單只有一層：
-   * 把每個分類拆成獨立的一份清單，項目搬過去；原本的清單搬空了就刪掉。回傳拆出了幾份。
+   * 把清單整理成現在的樣子：一份清單底下可以有幾個「欄位」（子清單），項目用 section 記自己在哪一欄。
+   * 要處理兩種舊資料，回傳動了幾筆（0 代表已經是整理好的）：
    *
-   * 每支手機打開行程時都會跑。新清單的 ID 由「原清單＋分類名」算出來，
-   * 所以兩支手機同時拆也會拆出同一份，不會變成兩份。
+   * 1. 更早的版本把欄位記在項目的 group 上 → 改記到 section。
+   * 2. 有一版把每個分類拆成獨立的清單（ID 是「原清單.分類雜湊」）、原清單刪掉 →
+   *    項目搬回原清單、欄位名用拆出來那份清單的名稱（改過名就照改過的），原清單還原，拆出來的刪掉。
+   *
+   * 不沿用 group 這個欄位名，是因為還停在拆清單那一版的手機看到 group 會再拆一次；用新的名字它就不會動。
+   * 每支手機打開行程時都會跑，做的事都一樣，同時跑結果也相同。
    */
-  splitListGroups(): number {
-    let made = 0
-    // 已經刪掉的原清單也看：別人還在用舊版時，可能同時又往裡面加了有分類的項目
-    for (const list of [...this.lists.all(true), ...this.privLists.all(true)]) {
-      const table = list.kind === 'private' ? this.privLists : this.lists
-      const items = this.itemsTable(list.kind).all().filter((i) => i.listId === list.id)
-      const groups = [...new Set(items.map((i) => i.group ?? '').filter(Boolean))]
-      for (const group of groups) {
-        let h = 5381
-        for (const ch of group) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0
-        const id = `${list.id}.${h.toString(36)}`
-        const there = table.get(id)
-        if (there?.deleted) continue // 拆出來的清單後來被刪掉了：不要把項目搬進去
-        if (!there) {
-          table.create({ kind: list.kind, title: group, owners: list.owners }, id)
-          made++
-        }
-        for (const i of items) if (i.group === group) this.itemsTable(list.kind).update(i.id, { listId: id, group: '' })
+  tidyLists(): number {
+    let changed = 0
+    for (const kind of ['shared', 'private'] as const) {
+      const table = kind === 'private' ? this.privLists : this.lists
+      const items = this.itemsTable(kind)
+      for (const i of items.all()) {
+        if (!i.group) continue
+        items.update(i.id, { section: i.section || i.group, group: '' })
+        changed++
       }
-      if (groups.length > 0 && !list.deleted && items.every((i) => i.group)) table.remove(list.id)
+      for (const part of table.all()) {
+        const cut = part.id.lastIndexOf('.')
+        const origin = cut > 0 ? table.get(part.id.slice(0, cut)) : undefined
+        if (!origin) continue
+        if (origin.deleted) table.restore(origin.id)
+        for (const i of items.all()) if (i.listId === part.id) items.update(i.id, { listId: origin.id, section: part.title })
+        table.remove(part.id)
+        changed++
+      }
     }
-    return made
+    return changed
+  }
+
+  /** 有沒有還沒整理的舊資料（畫面用它決定要不要跑 tidyLists）。 */
+  listsNeedTidy(): boolean {
+    const old = (t: Table<ListItem>) => t.all().some((i) => i.group)
+    const split = (t: Table<List>) => t.all().some((l) => { const cut = l.id.lastIndexOf('.'); return cut > 0 && !!t.get(l.id.slice(0, cut)) })
+    return old(this.listItems) || old(this.privListItems) || split(this.lists) || split(this.privLists)
+  }
+
+  /** 把一個欄位改名：這份清單裡在那一欄的項目全部改過去。 */
+  renameSection(list: List & Meta, from: string, to: string): void {
+    const items = this.itemsTable(list.kind)
+    for (const i of items.all()) if (i.listId === list.id && (i.section ?? '') === from) items.update(i.id, { section: to })
   }
 
   renameList(list: List & Meta, title: string): void {
@@ -245,11 +261,11 @@ export class Trip {
     return kind === 'private' ? this.privListItems : this.listItems
   }
 
-  addListItem(list: List & Meta, name: string, extra: { group?: string; note?: string } = {}): string {
-    return this.itemsTable(list.kind).create({ listId: list.id, name, group: extra.group ?? '', note: extra.note ?? '' })
+  addListItem(list: List & Meta, name: string, extra: { section?: string; note?: string } = {}): string {
+    return this.itemsTable(list.kind).create({ listId: list.id, name, section: extra.section ?? '', note: extra.note ?? '' })
   }
 
-  updateListItem(kind: ListKind, id: string, patch: Partial<Pick<ListItem, 'name' | 'group' | 'note'>>): void {
+  updateListItem(kind: ListKind, id: string, patch: Partial<Pick<ListItem, 'name' | 'section' | 'note'>>): void {
     this.itemsTable(kind).update(id, patch)
   }
 
