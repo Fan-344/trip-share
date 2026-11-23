@@ -693,3 +693,12 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 /* 角色列表的稱號：名字下面一行更小的字 */
 .crewman small { font-size: 0.66rem; color: var(--muted); }
 .crewman b { color: var(--text); }
+
+/* ---- 倒數結束後：整組小人站在主圖下緣 ---- */
+.herocrew { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; pointer-events: none; }
+.herocrew .roamer { position: absolute; bottom: 2px; transform: translateX(-50%); display: flex; }
+.herocrew .roamer .face { display: flex; transition: transform 0.2s ease; }
+/* 旅行中的那行「旅行第 N 天」：沒有進度條，上下留白少一點 */
+.hero .depart:not(:has(.depart-track)) { padding-bottom: 12px; }
+/* 主圖的容器要當定位基準，疊在上面的小人才會貼著主圖的下緣 */
+.heroart { position: relative; }

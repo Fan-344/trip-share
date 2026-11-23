@@ -59,18 +59,27 @@ export function Overview({ trip, theme }: TabProps) {
   const cast = [...trip.members.all()].sort((a, b) => Number(b.id === me) - Number(a.id === me))
     .slice(0, 5).map((m) => ({ id: m.id, look: lookOf(m), packed: trip.packedOf(m.id) }))
   const who: Who = { cast, stage }
+  // 倒數結束了沒：已經在旅行中，或沒有要等的航班、出發日也過了。結束後小人搬到主圖下緣。
+  const ended = dayIndex >= 0 || (!next && !(meta.startDate > t))
 
   return (
     <div>
       <div class="card hero">
         <div class="heroart">
           <Art theme={theme} />
+          {/* 倒數結束後（旅行中、或已經沒有要等的航班）：整組小人從進度條搬到主圖下緣，照樣各走各的 */}
+          {ended && (
+            <div class="herocrew">
+              {cast.map((m, i) => (
+                <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={stage} habit={habitOf(m.look.job, 50, i)} size={cast.length > 3 ? 56 : 64} />
+              ))}
+            </div>
+          )}
         </div>
-        {/* 倒數：主圖正下方的白色卡片。旅行中改顯示第幾天 */}
+        {/* 倒數：主圖正下方。旅行中只寫第幾天，沒有進度條 */}
         {dayIndex >= 0 ? (
           <div class="depart">
             <div class="depart-main"><div class="depart-days"><span>旅行第</span><b>{dayIndex + 1}</b><span>天</span></div></div>
-            <Track p={(dayIndex + 0.5) / days.length} who={who} />
           </div>
         ) : next ? (
           <Countdown who={who} ms={toInstant(next.dep) - now} />
