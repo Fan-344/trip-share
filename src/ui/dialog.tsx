@@ -75,7 +75,7 @@ function Box({ open, close }: { open: Open; close: () => void }) {
       <div class="dialog-wrap" role="alertdialog" aria-modal="true" aria-label={open.title} onClick={cancel}>
         <form class="dialog" aria-label={open.title} onClick={(e) => e.stopPropagation()}
           onSubmit={(e) => { e.preventDefault(); accept() }}>
-          <div class="dialog-icon"><Icon id={danger ? 'trash' : open.kind === 'prompt' ? 'pencil' : 'bell'} size={34} /></div>
+          <div class={`dialog-icon ${danger ? 'danger' : ''}`}><Icon id={danger ? 'trash' : open.kind === 'prompt' ? 'pencil' : 'bell'} size={34} /></div>
           <h3>{open.title}</h3>
           {open.kind === 'confirm' && open.body && <p class="muted">{open.body}</p>}
           {open.kind === 'prompt' && (

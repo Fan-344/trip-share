@@ -2,6 +2,7 @@
 import type { ComponentChildren } from 'preact'
 import { themeOf, type ThemeId } from '../themes'
 import { Icon } from './Icons'
+import { Hills } from './Mascot'
 
 /** 還沒有內容時顯示：主題圖案加一句話。 */
 export function Empty({ icon, children }: { icon: string; children: ComponentChildren }) {
@@ -20,6 +21,7 @@ export function Farewell({ theme, title }: { theme: ThemeId; title: string }) {
     <div class="farewell">
       <div class="row">{t.motifs.map((m) => <Icon key={m} id={m} size={28} />)}</div>
       <span class="row" style="justify-content:center;gap:6px">{title}・{t.farewell}<Icon id="flower" size={16} /></span>
+      <Hills />
     </div>
   )
 }

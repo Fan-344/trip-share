@@ -12,6 +12,7 @@ import { Empty, Farewell } from './bits'
 import { Chevron } from './fold'
 import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
+import { Mascot } from './Mascot'
 import { ImportSheet, type ImportState } from './Import'
 import { EditBar, Field, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
@@ -226,12 +227,12 @@ function TripSheet({ trip, onClose }: { trip: Trip; onClose: () => void }) {
         <span class="muted">佈景主題</span>
         <div class="swatches">
           <button type="button" class={f.theme === '' ? 'on' : ''} onClick={() => setF({ ...f, theme: '' })}>
-            <i style={`background:${THEMES.find((t) => t.id === auto)!.accent}`} />
+            <Mascot theme={auto} size={34} />
             <span>自動<br /><small class="muted">依目的地：{themeName(auto)}</small></span>
           </button>
           {THEMES.map((t) => (
             <button type="button" key={t.id} class={f.theme === t.id ? 'on' : ''} onClick={() => setF({ ...f, theme: t.id })}>
-              <i style={`background:${t.accent}`} />
+              <Mascot theme={t.id} size={34} />
               <span>{t.name}<br /><small class="muted">{t.hint}</small></span>
             </button>
           ))}

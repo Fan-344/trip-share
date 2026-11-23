@@ -8,6 +8,7 @@ import { Art } from './Art'
 import { BackupCard, Recover } from './Backup'
 import { Fold } from './fold'
 import { Icon } from './Icons'
+import { Mascot } from './Mascot'
 import { DialogHost } from './dialog'
 import { Field, PasteInvite, Sheet, useDocs, useHash, value } from './kit'
 import { TripPage } from './TripPage'
@@ -181,7 +182,7 @@ function Home({ reg }: { reg: Registry }) {
       {trips.map((t) => (
         <a class="card tap tripcard" key={t.id} href={`#/t/${t.id}`}>
           {/* 行程卡用它上次開啟時的主題上色 */}
-          <span class="badge" style={`background:${cardTheme(t.theme).accent}`}><Icon id={cardTheme(t.theme).motifs[0]} size={30} /></span>
+          <Mascot theme={cardTheme(t.theme).id} size={50} />
           <span class="grow">
             <b style="display:block;font-size:1.05rem">{t.title}</b>
             <span class="muted">

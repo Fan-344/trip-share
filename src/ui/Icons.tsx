@@ -1,288 +1,297 @@
-// 小圖示：項目類別、每日標題、各主題的代表圖案。全部畫在 32×32 的格子裡，粗線平塗。
+// 小圖示：項目類別、每日標題、各主題的代表圖案。全部畫在 32×32 的格子裡。
+// 畫法：沒有框線的色塊。每個圖示一個主色的大輪廓，加最多兩個別的顏色點出重點，
+// 縮到很小也看得出是什麼；只有介面符號（叉叉、箭頭、加減、勾）是線條。
 import type { JSX } from 'preact'
 import type { ItemCat } from '../model/types'
+import { C } from './Art'
+
+/** 介面符號用的線條。 */
+const LINE = { fill: 'none', stroke: 'var(--ink)', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const
+/** 圖案裡的線（提把、筷子、圖案上的留白線）。 */
+const line = (stroke: string, width = 2.6) => ({ fill: 'none', stroke, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }) as const
+
+const SEA = '#6fa9bf'
+const AQUA = '#6cc3bb'
+const VIOLET = '#a892bd'
+const BROWN = '#c48a66'
+/** 圖案上的留白（窗、鏡頭、文字線）。 */
+const PAPER = '#fff8ee'
 
 const ICONS: Record<string, JSX.Element> = {
   // ---- 介面用的符號（按鈕上的鉛筆、鎖、叉叉等；全部自己畫，不用表情符號） ----
   pencil: (
     <g>
-      <path fill="var(--yellow)" d="M7 25l1.500 -6.500L20.500 6.500l5 5L13.500 23.500z" />
-      <path d="M17.500 9.500l5 5" />
-      <path fill="var(--ink)" stroke-width="1.5" d="M7 25l1 -4.500l3.500 3.500z" />
+      <path fill={C.gold} d="M8 19L20.5 6.5l5 5L13 24z" />
+      <path fill={C.trunk} d="M8 19l5 5l-7 2z" />
     </g>
   ),
   lock: (
     <g>
-      <path d="M11 14v-4a5 5 0 0 1 10 0v4" />
-      <rect x="7" y="14" width="18" height="13" rx="3" fill="var(--yellow)" />
-      <circle cx="16" cy="20.500" r="1.800" fill="var(--ink)" />
+      <path {...line(C.goldD, 3.2)} d="M11 14v-4a5 5 0 0 1 10 0v4" />
+      <rect x="6" y="13" width="20" height="15" rx="4" fill={C.gold} />
+      <circle cx="16" cy="20.500" r="2.600" fill={C.trunk} />
     </g>
   ),
   unlock: (
     <g>
-      <path d="M11 14v-4a5 5 0 0 1 9.600 -2" />
-      <rect x="7" y="14" width="18" height="13" rx="3" fill="var(--green-l)" />
-      <circle cx="16" cy="20.500" r="1.800" fill="var(--ink)" />
+      <path {...line(C.leaf, 3.2)} d="M11 14v-4a5 5 0 0 1 9.600 -2" />
+      <rect x="6" y="13" width="20" height="15" rx="4" fill={C.leafL} />
+      <circle cx="16" cy="20.500" r="2.600" fill={PAPER} />
     </g>
   ),
-  close: <path stroke-width="3" d="M9 9l14 14M23 9L9 23" />,
-  chevron: <path stroke-width="3" d="M8 12l8 8l8 -8" />,
-  back: <path stroke-width="3" d="M26 16H7M14 8l-8 8l8 8" />,
-  plus: <path stroke-width="3" d="M16 7v18M7 16h18" />,
-  minus: <path stroke-width="3" d="M7 16h18" />,
-  check: <path stroke-width="3.200" d="M7 17l6 6L25 10" />,
+  close: <path {...LINE} stroke-width="3" d="M9 9l14 14M23 9L9 23" />,
+  chevron: <path {...LINE} stroke-width="3" d="M8 12l8 8l8 -8" />,
+  back: <path {...LINE} stroke-width="3" d="M26 16H7M14 8l-8 8l8 8" />,
+  plus: <path {...LINE} stroke-width="3" d="M16 7v18M7 16h18" />,
+  minus: <path {...LINE} stroke-width="3" d="M7 16h18" />,
+  check: <path {...LINE} stroke-width="3.200" d="M7 17l6 6L25 10" />,
   more: (
-    <g fill="var(--ink)" stroke="none">
+    <g fill="var(--ink)">
       <circle cx="7" cy="16" r="2.600" /><circle cx="16" cy="16" r="2.600" /><circle cx="25" cy="16" r="2.600" />
     </g>
   ),
   flower: (
-    <g fill="var(--coral-l)">
-      <circle cx="16" cy="9.500" r="4.200" /><circle cx="22.200" cy="14" r="4.200" /><circle cx="19.800" cy="21.200" r="4.200" />
-      <circle cx="12.200" cy="21.200" r="4.200" /><circle cx="9.800" cy="14" r="4.200" />
-      <circle cx="16" cy="16" r="2.400" fill="var(--yellow)" />
+    <g>
+      <g fill={C.pink}>
+        <circle cx="16" cy="9" r="5" /><circle cx="22.600" cy="13.800" r="5" /><circle cx="20.100" cy="21.600" r="5" />
+        <circle cx="11.900" cy="21.600" r="5" /><circle cx="9.400" cy="13.800" r="5" />
+      </g>
+      <circle cx="16" cy="16" r="3.400" fill={C.gold} />
     </g>
   ),
   // ---- 分頁、標題、清單欄位用的小圖 ----
   calendar: (
     <g>
-      <rect x="5" y="7" width="22" height="20" rx="3" fill="#fff" />
-      <path fill="var(--coral)" d="M5 13v-3a3 3 0 0 1 3 -3h16a3 3 0 0 1 3 3v3z" />
-      <path d="M11 4v6M21 4v6" />
-      <g fill="var(--ink)" stroke="none">
-        <circle cx="11" cy="18" r="1.500" /><circle cx="16" cy="18" r="1.500" /><circle cx="21" cy="18" r="1.500" />
-        <circle cx="11" cy="23" r="1.500" /><circle cx="16" cy="23" r="1.500" />
-      </g>
+      <rect x="4" y="6" width="24" height="22" rx="4" fill={C.peach} />
+      <path fill={C.coral} d="M4 13v-3a4 4 0 0 1 4 -4h16a4 4 0 0 1 4 4v3z" />
+      <g fill={PAPER}><rect x="9" y="17" width="4" height="4" rx="1" /><rect x="19" y="17" width="4" height="4" rx="1" /><rect x="14" y="22" width="4" height="4" rx="1" /></g>
     </g>
   ),
   checklist: (
     <g>
-      <rect x="6" y="6" width="20" height="22" rx="3" fill="#fff" />
-      <rect x="12" y="3" width="8" height="6" rx="2" fill="var(--yellow)" />
-      <path stroke-width="2" d="M10 16l2 2l3.500 -4M18.500 16h4M10 23l2 2l3.500 -4M18.500 23h4" />
+      <rect x="5" y="5" width="22" height="23" rx="4" fill={SEA} />
+      <rect x="11" y="2.500" width="10" height="6" rx="2.500" fill={C.gold} />
+      <path {...line(PAPER)} d="M10 15.500l2.500 2.500l4 -5M10 23h12" />
     </g>
   ),
   passport: (
     <g>
-      <rect x="8" y="4" width="16" height="24" rx="3" fill="var(--mizu)" />
-      <circle cx="16" cy="13" r="4" fill="#fff" />
-      <path stroke-width="2" d="M12 16h8M12 22h8" />
+      <rect x="7" y="3" width="18" height="26" rx="4" fill={VIOLET} />
+      <circle cx="16" cy="13" r="5" fill={PAPER} />
+      <path {...line(PAPER)} d="M12 23h8" />
     </g>
   ),
   ticket: (
     <g>
-      <path fill="var(--yellow)" d="M4 10h24v4a2.500 2.500 0 0 0 0 5v4H4v-4a2.500 2.500 0 0 0 0 -5z" />
-      <path stroke-width="2" stroke-dasharray="1 3.500" d="M20 11.500v11" />
-      <path stroke-width="2" d="M9 14.500h6M9 18.500h4" />
+      <path fill={C.gold} d="M3 9h26v4.500a2.500 2.500 0 0 0 0 5V23H3v-4.500a2.500 2.500 0 0 0 0 -5z" />
+      <path {...line(PAPER, 2.200)} stroke-dasharray="0.100 4" d="M20.500 11v10" />
+      <path {...line(PAPER)} d="M8 13.500h7M8 18.500h4" />
     </g>
   ),
   coin: (
     <g>
-      <circle cx="16" cy="16" r="11" fill="var(--yellow)" />
-      <path stroke-width="2" d="M16 9v14M19.500 12.500H14.500a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H12.500" />
+      <circle cx="16" cy="16" r="12" fill={C.gold} />
+      <path {...line(PAPER)} d="M16 9v14M19.500 12.500h-5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4h-5" />
     </g>
   ),
-  shirt: <path fill="var(--coral-l)" d="M11 5l-7 5l3 5l3 -2v14h12V13l3 2l3 -5l-7 -5q-5 4 -10 0z" />,
+  shirt: <path fill={C.pink} d="M11 4l-8 6l3.500 5.500l3.500 -2.500v15h12V13l3.500 2.500L29 10l-8 -6q-5 4.500 -10 0z" />,
   pill: (
     <g transform="rotate(-40 16 16)">
-      <rect x="5" y="11" width="22" height="10" rx="5" fill="#fff" />
-      <path fill="var(--coral)" d="M16 11h6a5 5 0 0 1 0 10h-6z" />
+      <rect x="3" y="10" width="26" height="12" rx="6" fill={C.peach} />
+      <path fill={C.coral} d="M16 10h7a6 6 0 0 1 0 12h-7z" />
     </g>
   ),
   bear: (
-    <g fill="var(--yellow)">
-      <circle cx="9" cy="9" r="4" /><circle cx="23" cy="9" r="4" />
-      <circle cx="16" cy="17" r="10" />
-      <ellipse cx="16" cy="20.500" rx="4" ry="3" fill="#fff" />
-      <g fill="var(--ink)" stroke="none">
-        <circle cx="12" cy="15" r="1.300" /><circle cx="20" cy="15" r="1.300" /><circle cx="16" cy="19.500" r="1.300" />
-      </g>
+    <g>
+      <g fill={BROWN}><circle cx="8.500" cy="8.500" r="5" /><circle cx="23.500" cy="8.500" r="5" /><circle cx="16" cy="17" r="11" /></g>
+      <ellipse cx="16" cy="21" rx="5" ry="4" fill={PAPER} />
+      <g fill={C.trunk}><circle cx="11.500" cy="15" r="1.600" /><circle cx="20.500" cy="15" r="1.600" /><ellipse cx="16" cy="19.800" rx="1.800" ry="1.300" /></g>
     </g>
   ),
   bed: (
     <g>
-      <path d="M4 11v15M28 18v8" />
-      <rect x="7" y="13" width="9" height="5" rx="2.500" fill="#fff" />
-      <rect x="4" y="18" width="24" height="5" fill="var(--mizu-l)" />
+      <path fill={C.trunk} d="M2.500 8h4v10h23v9h-4v-4h-19v4h-4z" />
+      <rect x="8" y="12" width="9" height="6" rx="3" fill={C.peach} />
+      <path fill={SEA} d="M18.500 13h7a4 4 0 0 1 4 4v1h-11z" />
     </g>
   ),
-  heart: <path fill="var(--coral)" d="M16 27C6 20 4 15 4 11.500a6 6 0 0 1 12 -2a6 6 0 0 1 12 2c0 3.500 -2 8.500 -12 15.500z" />,
+  heart: <path fill={C.coral} d="M16 28C5 20.500 3 15 3 11.500a6.500 6.500 0 0 1 13 -2a6.500 6.500 0 0 1 13 2c0 3.500 -2 9 -13 16.500z" />,
   people: (
     <g>
-      <circle cx="22" cy="12" r="3.800" fill="var(--green-l)" /><path fill="var(--green-l)" d="M16 26a6.500 6.500 0 0 1 13 0z" />
-      <circle cx="11" cy="11" r="4.500" fill="var(--yellow)" /><path fill="var(--yellow)" d="M3 26a8 8 0 0 1 16 0z" />
+      <g fill={C.leaf}><circle cx="22.500" cy="11.500" r="4.200" /><path d="M15 27a7.500 7.500 0 0 1 15 0z" /></g>
+      <g fill={C.gold}><circle cx="11" cy="10.500" r="5" /><path d="M2 27a9 9 0 0 1 18 0z" /></g>
     </g>
   ),
   note: (
     <g>
-      <path fill="var(--yellow-l)" d="M7 4h18v17l-7 7H7z" />
-      <path d="M18 28v-7h7" />
-      <path stroke-width="2" d="M11 10h10M11 15h10" />
+      <path fill={C.gold} d="M6 3h20v17l-8 9H6z" />
+      <path fill={C.goldD} d="M18 29v-9h8z" />
+      <path {...line(PAPER)} d="M11 10h10M11 15.500h10" />
     </g>
   ),
   bell: (
     <g>
-      <path d="M16 4v3" />
-      <path fill="var(--yellow)" d="M8 22v-7a8 8 0 0 1 16 0v7l2 3H6z" />
-      <path d="M13 27a3 3 0 0 0 6 0" />
+      <path fill={C.gold} d="M14 5.500a2 2 0 0 1 4 0a8.500 8.500 0 0 1 6.500 8.500v7l2.500 4H5l2.500 -4v-7a8.500 8.500 0 0 1 6.500 -8.500z" />
+      <path fill={C.trunk} d="M12.500 26.500h7a3.500 3.500 0 0 1 -7 0z" />
     </g>
   ),
   globe: (
     <g>
-      <circle cx="16" cy="16" r="11" fill="var(--mizu-l)" />
-      <path stroke-width="2" d="M5 16h22M16 5q-6 11 0 22M16 5q6 11 0 22" />
+      <circle cx="16" cy="16" r="12" fill={AQUA} />
+      <path fill={C.leaf} d="M8 8.500q4.500 -3.500 8 -1q1 3.500 -2.500 4.500q-1 3.500 -4.500 2q-3 -2.500 -1 -5.500zM18 15q4.500 -2 8 1q0 6 -4.500 8q-3.500 -1 -2.500 -4.500q-2 -2.500 -1 -4.500z" />
     </g>
   ),
   gift: (
     <g>
-      <rect x="6" y="14" width="20" height="13" rx="2" fill="var(--coral-l)" />
-      <rect x="4" y="10" width="24" height="5" rx="1.500" fill="var(--coral)" />
-      <path d="M16 10v17M16 10q-6 -7 -8 -3q-1 3 8 3q9 0 8 -3q-2 -4 -8 3z" />
+      <rect x="5" y="13" width="22" height="15" rx="3" fill={C.pink} />
+      <rect x="3" y="9" width="26" height="6" rx="2" fill={C.coral} />
+      <path fill={C.gold} d="M14 9h4v19h-4zM16 9q-7 -8 -9 -3.500q-1 3.500 9 3.500zM16 9q7 -8 9 -3.500q1 3.500 -9 3.500z" />
     </g>
   ),
   trash: (
     <g>
-      <path d="M5 9h22M12 9v-3h8v3" />
-      <path fill="var(--coral-l)" d="M8 9h16l-1.500 18h-13z" />
-      <path stroke-width="2" d="M13.500 14v8M18.500 14v8" />
+      <path fill={C.coral} d="M12 3.500h8v3.500h8v4H4V7h8zM7 12.500h18l-1.500 16h-15z" />
+      <path {...line(PAPER, 2.200)} d="M13 16.500v7.500M19 16.500v7.500" />
     </g>
   ),
   // ---- 類別 ----
   plane: (
-    <g transform="translate(16 16) rotate(-20)" fill="#fff">
-      <path d="M-3 -2l-5 -8h4l7 8z" /><path d="M-3 2l-5 8h4l7 -8z" /><ellipse rx="12" ry="3.2" />
+    <g transform="translate(16 16) rotate(-25)" fill={C.coral}>
+      <path d="M-2 -2l-6 -10h4.500l8 10zM-2 2l-6 10h4.500l8 -10zM-12 -1.500l-3 -5h3l3.500 5z" />
+      <ellipse rx="14" ry="3.800" />
     </g>
   ),
   car: (
     <g>
-      <path fill="var(--coral)" d="M4 21v-6l3 -6h18l3 6v6z" />
-      <path fill="#fff" d="M9.5 10.5h5.5v4.5h-7zM17 10.5h5.5l1.5 4.5h-7z" />
-      <circle cx="10" cy="22" r="3" fill="#fff" /><circle cx="22" cy="22" r="3" fill="#fff" />
+      <path fill={C.coral} d="M3 22v-7l3.500 -7h19L29 15v7z" />
+      <path fill={PAPER} d="M9 10.500h5.500V15h-7.500zM17 10.500h5.500l2 4.500H17z" />
+      <g fill={C.trunk}><circle cx="9.500" cy="23" r="3.600" /><circle cx="22.500" cy="23" r="3.600" /></g>
     </g>
   ),
   food: (
     <g>
-      <path d="M19 3l-4 11M25 5l-7 9" />
-      <path fill="var(--yellow)" d="M4 15h24a12 12 0 0 1 -24 0z" />
+      <path {...line(C.trunk)} d="M19.500 2.500l-4 11M26 4.500l-7.500 9" />
+      <path fill={C.gold} d="M3 14h26a13 13 0 0 1 -26 0z" />
     </g>
   ),
   camera: (
     <g>
-      <path fill="var(--mizu)" d="M11 10l2 -4h6l2 4" />
-      <rect x="4" y="10" width="24" height="16" rx="4" fill="var(--mizu)" />
-      <circle cx="16" cy="18" r="5" fill="#fff" />
+      <path fill={SEA} d="M10.500 9l2.500 -4.500h6l2.500 4.500H25a4 4 0 0 1 4 4v10a4 4 0 0 1 -4 4H7a4 4 0 0 1 -4 -4V13a4 4 0 0 1 4 -4z" />
+      <circle cx="16" cy="18" r="6" fill={PAPER} /><circle cx="16" cy="18" r="3" fill={C.trunk} />
     </g>
   ),
-  star: <path fill="var(--yellow)" d="M16 4l3.5 7.5l8 1l-6 5.6l1.6 8L16 22l-7.1 4.1l1.6 -8l-6 -5.6l8 -1z" />,
+  star: <path fill={C.gold} d="M16 3l3.800 8.200l8.700 1.100l-6.500 6.100l1.700 8.700L16 22.800l-7.700 4.300l1.700 -8.700l-6.500 -6.100l8.700 -1.100z" />,
   moon: (
     <g>
-      <path fill="var(--yellow-l)" d="M21 21a10 10 0 1 1 -8 -16a8 8 0 0 0 8 16z" />
-      <path d="M21 6h6l-6 6h6" />
+      <path fill={C.gold} d="M22 22a11 11 0 1 1 -9 -18a9 9 0 0 0 9 18z" />
+      <path fill={VIOLET} d="M24 5l1.200 3l3 1.200l-3 1.200L24 13.400l-1.200 -3l-3 -1.200l3 -1.200z" />
     </g>
   ),
   bag: (
     <g>
-      <path d="M11 11v-2a5 5 0 0 1 10 0v2" />
-      <path fill="var(--coral-l)" d="M7 11h18l2 16H5z" />
+      <path {...line(C.trunk, 3)} d="M10.500 12V9.500a5.500 5.500 0 0 1 11 0V12" />
+      <path fill={C.pink} d="M6 11h20l2.500 17h-25z" />
     </g>
   ),
   house: (
     <g>
-      <path fill="var(--green-l)" d="M5 15l11 -9l11 9v12H5z" />
-      <rect x="13" y="19" width="6" height="8" fill="#fff" />
+      <path fill={C.peach} d="M6 15h20v13H6z" />
+      <path fill={C.coral} d="M2 17L16 4l14 13z" />
+      <rect x="13" y="19.500" width="6" height="8.500" fill={C.coralD} />
     </g>
   ),
   luggage: (
     <g>
-      <path d="M12 10v-4h8v4" />
-      <rect x="8" y="10" width="16" height="16" rx="3" fill="var(--yellow)" />
-      <path d="M13 13v10M19 13v10" />
-      <circle cx="11" cy="28" r="1.4" fill="#fff" /><circle cx="21" cy="28" r="1.4" fill="#fff" />
+      <path {...line(C.trunk, 3)} d="M12 9.500V5h8v4.500" />
+      <rect x="6.500" y="9" width="19" height="18" rx="4" fill={C.gold} />
+      <path {...line(PAPER)} d="M12.500 13.500v9M19.500 13.500v9" />
+      <g fill={C.trunk}><circle cx="11" cy="28.500" r="1.800" /><circle cx="21" cy="28.500" r="1.800" /></g>
     </g>
   ),
   // ---- 主題圖案 ----
   elephant: (
-    <g fill="var(--mizu)">
-      <circle cx="15" cy="16" r="9" />
-      <path d="M20 13q8 2 7 12q-1 4 -5 2q-1 -2 1 -3q1 -4 -5 -5z" />
-      <ellipse cx="9" cy="15" rx="4.5" ry="6.5" fill="var(--coral-l)" />
-      <circle cx="18" cy="13" r="1.1" fill="var(--ink)" />
+    <g>
+      <g fill={VIOLET}><circle cx="15" cy="15.500" r="10" /><path d="M20 12q9 2 8 13q-1 4.500 -5.500 2.500q-1.500 -2.500 1 -3.500q1 -4.500 -5.500 -5.500z" /></g>
+      <ellipse cx="8.500" cy="15" rx="5" ry="7" fill={C.pink} />
+      <circle cx="18.500" cy="12.500" r="1.500" fill={C.trunk} />
     </g>
   ),
   chedi: (
-    <g fill="var(--yellow)">
-      <path d="M16 3v5" /><path d="M10 22q6 -19 12 0z" /><rect x="7" y="22" width="18" height="5" rx="1.5" />
+    <g>
+      <path fill={C.gold} d="M14.500 9.500L16 2l1.500 7.500q6.500 3.500 6.500 12.500H8q0 -9 6.500 -12.500z" />
+      <rect x="5" y="22" width="22" height="6" rx="2" fill={C.goldD} />
     </g>
   ),
   lantern: (
     <g>
-      <path fill="var(--coral)" d="M9 7h14l-2.5 16h-9z" /><path d="M13 27h6" />
+      <path fill={C.gold} d="M7 23Q3 6 16 3q13 3 9 20z" />
+      <path fill={C.coral} d="M8 22.500h16l-2 5.500H10z" />
     </g>
   ),
   lotus: (
-    <g fill="var(--coral-l)">
-      <path d="M16 25q-11 0 -12 -10q9 0 12 10z" /><path d="M16 25q11 0 12 -10q-9 0 -12 10z" />
-      <path d="M16 7q6 9 0 18q-6 -9 0 -18z" />
+    <g>
+      <path fill={C.pink} d="M16 27Q4 27 3 15q10 0 13 12zM16 27q12 0 13 -12q-10 0 -13 12z" />
+      <path fill="#ee8fa3" d="M16 5q7 11 0 22q-7 -11 0 -22z" />
     </g>
   ),
   sakura: (
-    <g fill="var(--coral-l)">
-      <circle cx="16" cy="9" r="4.6" /><circle cx="22.6" cy="13.8" r="4.6" /><circle cx="20.1" cy="21.6" r="4.6" />
-      <circle cx="11.9" cy="21.6" r="4.6" /><circle cx="9.4" cy="13.8" r="4.6" />
-      <circle cx="16" cy="16" r="2.6" fill="var(--yellow)" />
+    <g>
+      <g fill={C.pinkL}>
+        <circle cx="16" cy="9" r="5" /><circle cx="22.600" cy="13.800" r="5" /><circle cx="20.100" cy="21.600" r="5" />
+        <circle cx="11.900" cy="21.600" r="5" /><circle cx="9.400" cy="13.800" r="5" />
+      </g>
+      <circle cx="16" cy="16" r="3.400" fill={C.coral} />
     </g>
   ),
-  torii: (
-    <g fill="var(--coral)">
-      <rect x="9" y="12" width="3.5" height="16" /><rect x="19.5" y="12" width="3.5" height="16" />
-      <rect x="7" y="16" width="18" height="3" /><path d="M4 8q12 -3 24 0v4.5q-12 -2.5 -24 0z" />
-    </g>
-  ),
+  torii: <path fill={C.coral} d="M3 6q13 -3.500 26 0v5q-13 -3 -26 0zM8 11h4v5h8v-5h4v18h-4V19.500h-8V29H8z" />,
   fuji: (
     <g>
-      <path fill="var(--mizu)" d="M3 27L13 9q3 -2 6 0L29 27z" />
-      <path fill="#fff" d="M10.5 13.5L13 9q3 -2 6 0l2.5 4.5l-2.8 -1.6l-2.7 2.4l-2.7 -2.4z" />
+      <path fill={VIOLET} d="M1 28L12.500 8q3.500 -2.500 7 0L31 28z" />
+      <path fill={PAPER} d="M9.500 13.500l3 -5.500q3.500 -2.500 7 0l3 5.500l-3.300 -2l-3.200 3l-3.200 -3z" />
     </g>
   ),
   palm: (
-    <g fill="var(--green)">
-      <path d="M16 28q2 -9 -1 -15" fill="none" stroke-width="3" />
-      <path d="M15 13q-8 -5 -12 0q7 -1 12 0z" /><path d="M15 13q8 -6 13 -1q-7 -1 -13 1z" />
-      <path d="M15 13q-3 -9 -9 -9q6 2 9 9z" /><path d="M15 13q4 -9 10 -8q-6 2 -10 8z" />
+    <g>
+      <path {...line(C.trunk, 3.400)} d="M16.500 29q2 -9 -1 -16" />
+      <path fill={C.leaf} d="M15 13Q6 7 1 13q8 -1 14 0zM15 13q9 -7 15 -1q-8 -1 -15 1zM15 13Q11.500 3 5 3q6.500 2.500 10 10zM15 13q4.500 -10 11.500 -9q-7 2 -11.500 9z" />
     </g>
   ),
-  wave: <path fill="var(--mizu)" d="M3 19q4 -8 9 -3q3 3 6 -2q5 -7 11 1v10H3z" />,
+  wave: (
+    <g>
+      <path fill={AQUA} d="M2 18q4.500 -9 10 -3.500q3 3 6 -2q5.500 -8 12 1V29H2z" />
+      <path {...line(PAPER)} d="M6 23q3.500 -3 7 0t7 0t6 0" />
+    </g>
+  ),
   sun: (
     <g>
-      <circle cx="16" cy="16" r="6" fill="var(--yellow)" />
-      <path d="M16 4v3M16 25v3M4 16h3M25 16h3M7.5 7.5l2.1 2.1M22.4 22.4l2.1 2.1M24.5 7.5l-2.1 2.1M9.6 22.4l-2.1 2.1" />
+      <path {...line(C.gold, 3)} d="M16 2.500v3M16 26.500v3M2.500 16h3M26.500 16h3M6.500 6.500l2.100 2.100M23.400 23.400l2.100 2.100M25.500 6.500l-2.100 2.100M8.600 23.400l-2.100 2.100" />
+      <circle cx="16" cy="16" r="7.500" fill={C.gold} />
     </g>
   ),
   building: (
     <g>
-      <path d="M11 9v-5" />
-      <rect x="5" y="9" width="12" height="18" fill="var(--mizu)" /><rect x="17" y="15" width="10" height="12" fill="var(--yellow)" />
-      <path stroke-width="1.6" d="M8.5 13h2M12.5 13h2M8.5 17h2M12.5 17h2M8.5 21h2M12.5 21h2M20 19h1.5M23 19h1.5M20 23h1.5M23 23h1.5" />
+      <rect x="4" y="5" width="14" height="23" rx="2" fill={VIOLET} />
+      <rect x="18" y="13" width="10" height="15" rx="2" fill={C.pink} />
+      <g fill={PAPER}><rect x="7.500" y="9" width="3" height="4" /><rect x="12" y="9" width="3" height="4" /><rect x="7.500" y="16" width="3" height="4" /><rect x="12" y="16" width="3" height="4" /><rect x="21.500" y="17" width="3" height="4" /></g>
     </g>
   ),
   wheel: (
     <g>
-      <path d="M16 14l-5 14M16 14l5 14" />
-      <circle cx="16" cy="14" r="10" fill="#fff" />
-      <path stroke-width="1.6" d="M6 14h20M16 4v20M9 7l14 14M23 7L9 21" />
-      <circle cx="16" cy="14" r="2.4" fill="var(--coral)" />
+      <path {...line(VIOLET, 2.800)} d="M16 14l-5.500 15M16 14l5.500 15" />
+      <circle cx="16" cy="14" r="10" fill="none" stroke={VIOLET} stroke-width="2.800" />
+      <g fill={C.coral}><circle cx="16" cy="4" r="3" /><circle cx="26" cy="14" r="3" /><circle cx="16" cy="24" r="3" /><circle cx="6" cy="14" r="3" /><circle cx="16" cy="14" r="3" /></g>
     </g>
   ),
   pin: (
     <g>
-      <path fill="var(--coral)" d="M16 28c-6 -8 -9 -12 -9 -16.5a9 9 0 0 1 18 0c0 4.500 -3 8.500 -9 16.500z" />
-      <circle cx="16" cy="11.500" r="3" fill="#fff" />
+      <path fill={C.coral} d="M16 29.500c-7 -9 -10 -13 -10 -17.500a10 10 0 0 1 20 0c0 4.500 -3 8.500 -10 17.500z" />
+      <circle cx="16" cy="12" r="3.800" fill={PAPER} />
     </g>
   ),
   compass: (
     <g>
-      <circle cx="16" cy="16" r="11" fill="#fff" />
-      <path fill="var(--coral)" d="M16 8l3 8l-3 8l-3 -8z" />
+      <circle cx="16" cy="16" r="12.500" fill={C.gold} /><circle cx="16" cy="16" r="9" fill={PAPER} />
+      <path fill={C.coral} d="M16 8l3.500 8l-3.500 8l-3.500 -8z" />
     </g>
   ),
 }
@@ -293,8 +302,7 @@ export function Icon({ id, size = 24, cls = '' }: { id: string; size?: number; c
   const body = ICONS[id]
   if (!body) return null
   return (
-    <svg class={`icon ${cls}`} viewBox="0 0 32 32" width={size} height={size} aria-hidden="true"
-      fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <svg class={`icon ${cls}`} viewBox="0 0 32 32" width={size} height={size} aria-hidden="true" fill="none" stroke-width="2.4">
       {body}
     </svg>
   )

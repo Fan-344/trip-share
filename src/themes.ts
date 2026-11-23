@@ -17,11 +17,11 @@ export interface Theme {
 }
 
 export const THEMES: Theme[] = [
-  { id: 'general', name: '出發', hint: '飛機與山丘', accent: '#b9daa5', motifs: ['compass', 'pin', 'sun', 'camera'], farewell: '一路順風' },
-  { id: 'thai', name: '泰北山城', hint: '佛塔與大象', accent: '#f6d27a', motifs: ['elephant', 'chedi', 'lantern', 'lotus'], farewell: '一路順風，薩瓦迪卡' },
-  { id: 'japan', name: '日本', hint: '富士山與鳥居', accent: '#f2a497', motifs: ['sakura', 'torii', 'fuji', 'lantern'], farewell: '一路順風，いってらっしゃい' },
-  { id: 'island', name: '海島', hint: '椰子樹與帆船', accent: '#a8d3e6', motifs: ['palm', 'wave', 'sun', 'star'], farewell: '一路順風，記得擦防曬' },
-  { id: 'city', name: '城市', hint: '高樓與摩天輪', accent: '#c9c3e6', motifs: ['building', 'wheel', 'camera', 'bag'], farewell: '一路順風，玩得開心' },
+  { id: 'general', name: '出發', hint: '山丘與拱門', accent: '#c3cdb0', motifs: ['compass', 'pin', 'sun', 'camera'], farewell: '一路順風' },
+  { id: 'thai', name: '泰北山城', hint: '佛塔與拱門', accent: '#e7b9a6', motifs: ['elephant', 'chedi', 'lantern', 'lotus'], farewell: '一路順風，薩瓦迪卡' },
+  { id: 'japan', name: '日本', hint: '富士山與落日', accent: '#e3b4b4', motifs: ['sakura', 'torii', 'fuji', 'lantern'], farewell: '一路順風，いってらっしゃい' },
+  { id: 'island', name: '海島', hint: '海與帆船', accent: '#b9cdd3', motifs: ['palm', 'wave', 'sun', 'star'], farewell: '一路順風，記得擦防曬' },
+  { id: 'city', name: '城市', hint: '拱形的天際線', accent: '#cfc3d6', motifs: ['building', 'wheel', 'camera', 'bag'], farewell: '一路順風，玩得開心' },
 ]
 
 export const themeOf = (id: ThemeId): Theme => THEMES.find((t) => t.id === id)!
