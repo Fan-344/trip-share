@@ -429,8 +429,9 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 .photo.wait { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 120px; color: var(--muted); font-size: 0.85rem; border-style: dashed; }
 
 /* 每頁右上角的「編輯」開關；編輯中整列變色，提醒現在點東西會進入修改 */
-.editbar { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; min-height: 32px; }
-.editbar.on { background: var(--yellow-l); border: 2px dashed var(--ink); border-radius: 12px; padding: 4px 6px 4px 10px; }
+.editbar { display: flex; justify-content: center; margin: 14px 0 4px; }
+.editbar.on { position: sticky; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 5; }
+.editbar.on button { min-width: 140px; }
 /* 清單標題列上的鎖：鎖著的清單不能勾，避免滑手機時誤觸 */
 .lockbtn { border: 0; background: transparent; padding: 4px; min-height: 0; display: flex; box-shadow: none; }
 .lockbtn.locked { opacity: 0.55; }
@@ -445,5 +446,11 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 /* 編輯模式：整個框可以點，點了在這一欄新增項目 */
 .sect.tap { border-style: dashed; cursor: pointer; }
 .sect.loose { border: 2px dashed var(--ink); border-radius: 14px; padding: 2px 12px 6px; margin-top: 8px; }
-.addhint { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.85rem; padding: 8px 0 4px; }
+.addhint { display: flex; justify-content: center; color: var(--muted); padding: 6px 0 2px; }
 .addrow { padding: 8px 0 4px; }
+
+/* 分頁：小圖在上、字在下 */
+.tabs a { display: flex; flex-direction: column; align-items: center; gap: 0; border-radius: 16px; padding: 4px 0 2px; font-size: 0.78rem; line-height: 1.25; }
+/* 有小圖的標題：不要前面那顆圓點 */
+h2.plain .icon, .cardhead h3 .icon, .sect legend .icon { flex: none; }
+.cardhead h3 { display: flex; align-items: center; gap: 6px; }

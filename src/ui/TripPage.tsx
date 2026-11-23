@@ -26,7 +26,7 @@ export interface TabProps {
   photos: PhotoStore
 }
 
-const TABS: [string, string][] = [['home', '總覽'], ['plan', '行程'], ['lists', '準備'], ['shop', '購物'], ['more', '更多']]
+const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['shop', '購物', 'bag'], ['more', '更多', 'more']]
 
 export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; tab: string }) {
   const [opened, setOpened] = useState<OpenTrip | null>(null)
@@ -175,8 +175,8 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
           <SyncBadge sync={sync} />
         </div>
         <nav class="tabs">
-          {TABS.map(([key, label]) => (
-            <a key={key} class={tab === key ? 'on' : ''} href={`#/t/${meta.id}/${key}`}>{label}</a>
+          {TABS.map(([key, label, icon]) => (
+            <a key={key} class={tab === key ? 'on' : ''} href={`#/t/${meta.id}/${key}`}><Icon id={icon} size={20} />{label}</a>
           ))}
         </nav>
       </div>

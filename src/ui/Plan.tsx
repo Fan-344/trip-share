@@ -36,7 +36,6 @@ export function Plan({ trip, theme }: TabProps) {
 
   return (
     <div>
-      <EditBar on={editing} onChange={setEditing} hint="編輯中：點開項目可以修改" />
       <div class="days">
         {days.map((d) => {
           const { md, wd } = dayLabel(d)
@@ -130,6 +129,7 @@ export function Plan({ trip, theme }: TabProps) {
       </div>
       {editing && <button class="add" onClick={() => setSheet({ kind: 'item' })}><Icon id="plus" size={18} />新增項目</button>}
       <Farewell theme={theme} title={meta.title} />
+      <EditBar on={editing} onChange={setEditing} />
 
       {sheet?.kind === 'item' && <ItemSheet trip={trip} id={sheet.id} day={day} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'day' && (

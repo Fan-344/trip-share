@@ -48,7 +48,6 @@ export function Overview({ trip, theme }: TabProps) {
 
   return (
     <div>
-      <EditBar on={editing} onChange={setEditing} hint="編輯中：可以新增、修改航班與住宿" />
       <div class="card hero">
         <Art theme={theme} />
         <div class="body">
@@ -75,7 +74,7 @@ export function Overview({ trip, theme }: TabProps) {
         </div>
       </div>
 
-      <h2>航班</h2>
+      <h2 class="plain"><Icon id="ticket" size={24} />航班</h2>
       {flights.map((f) => {
         const mins = Math.round((toInstant(f.arr) - toInstant(f.dep)) / 60_000)
         const pnr = trip.getPnr(f.id)
@@ -139,7 +138,7 @@ export function Overview({ trip, theme }: TabProps) {
         <button class="add" onClick={() => { setTicket(null); setSheet({ kind: 'import' }) }}><Icon id="camera" size={18} />匯入機票</button>
       </div>}
 
-      <h2>住宿</h2>
+      <h2 class="plain"><Icon id="bed" size={24} />住宿</h2>
       {stays.map((s) => {
         const map = safeUrl(s.mapUrl)
         const nights = nightsBetween(s.checkIn, s.checkOut)
@@ -162,6 +161,7 @@ export function Overview({ trip, theme }: TabProps) {
       {editing && <button class="add" onClick={() => setSheet({ kind: 'stay' })}><Icon id="plus" size={18} />新增住宿</button>}
 
       <Farewell theme={theme} title={meta.title} />
+      <EditBar on={editing} onChange={setEditing} />
 
       {sheet?.kind === 'trip' && <TripSheet trip={trip} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'flight' && (
@@ -307,7 +307,7 @@ function FlightSheet({ trip, id, initial, onSaved, onClose }: {
   return (
     <Sheet title={id ? '編輯航班' : initial ? '核對航班' : '新增航班'} onClose={onClose}>
       <form onSubmit={(e) => { e.preventDefault(); if (ok) save() }}>
-        {initial && <div class="notice" style="display:block">這些是從機票讀出來的，請對照機票核對每一欄，空的要自己補。</div>}
+        {initial && <div class="notice" style="display:block">請對照機票核對，空的自己補。</div>}
         <div class="two">
           <Field label="航班代號"><input value={f.code} onInput={(e) => set({ code: value(e) })} placeholder="JX1751" autocapitalize="characters" /></Field>
           <Field label="艙等"><input value={f.cabin} onInput={(e) => set({ cabin: value(e) })} placeholder="經濟艙" /></Field>

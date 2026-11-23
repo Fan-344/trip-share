@@ -43,6 +43,103 @@ const ICONS: Record<string, JSX.Element> = {
       <circle cx="16" cy="16" r="2.400" fill="var(--yellow)" />
     </g>
   ),
+  // ---- 分頁、標題、清單欄位用的小圖 ----
+  calendar: (
+    <g>
+      <rect x="5" y="7" width="22" height="20" rx="3" fill="#fff" />
+      <path fill="var(--coral)" d="M5 13v-3a3 3 0 0 1 3 -3h16a3 3 0 0 1 3 3v3z" />
+      <path d="M11 4v6M21 4v6" />
+      <g fill="var(--ink)" stroke="none">
+        <circle cx="11" cy="18" r="1.500" /><circle cx="16" cy="18" r="1.500" /><circle cx="21" cy="18" r="1.500" />
+        <circle cx="11" cy="23" r="1.500" /><circle cx="16" cy="23" r="1.500" />
+      </g>
+    </g>
+  ),
+  checklist: (
+    <g>
+      <rect x="6" y="6" width="20" height="22" rx="3" fill="#fff" />
+      <rect x="12" y="3" width="8" height="6" rx="2" fill="var(--yellow)" />
+      <path stroke-width="2" d="M10 16l2 2l3.500 -4M18.500 16h4M10 23l2 2l3.500 -4M18.500 23h4" />
+    </g>
+  ),
+  passport: (
+    <g>
+      <rect x="8" y="4" width="16" height="24" rx="3" fill="var(--mizu)" />
+      <circle cx="16" cy="13" r="4" fill="#fff" />
+      <path stroke-width="2" d="M12 16h8M12 22h8" />
+    </g>
+  ),
+  ticket: (
+    <g>
+      <path fill="var(--yellow)" d="M4 10h24v4a2.500 2.500 0 0 0 0 5v4H4v-4a2.500 2.500 0 0 0 0 -5z" />
+      <path stroke-width="2" stroke-dasharray="1 3.500" d="M20 11.500v11" />
+      <path stroke-width="2" d="M9 14.500h6M9 18.500h4" />
+    </g>
+  ),
+  coin: (
+    <g>
+      <circle cx="16" cy="16" r="11" fill="var(--yellow)" />
+      <path stroke-width="2" d="M16 9v14M19.500 12.500H14.500a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H12.500" />
+    </g>
+  ),
+  shirt: <path fill="var(--coral-l)" d="M11 5l-7 5l3 5l3 -2v14h12V13l3 2l3 -5l-7 -5q-5 4 -10 0z" />,
+  pill: (
+    <g transform="rotate(-40 16 16)">
+      <rect x="5" y="11" width="22" height="10" rx="5" fill="#fff" />
+      <path fill="var(--coral)" d="M16 11h6a5 5 0 0 1 0 10h-6z" />
+    </g>
+  ),
+  bear: (
+    <g fill="var(--yellow)">
+      <circle cx="9" cy="9" r="4" /><circle cx="23" cy="9" r="4" />
+      <circle cx="16" cy="17" r="10" />
+      <ellipse cx="16" cy="20.500" rx="4" ry="3" fill="#fff" />
+      <g fill="var(--ink)" stroke="none">
+        <circle cx="12" cy="15" r="1.300" /><circle cx="20" cy="15" r="1.300" /><circle cx="16" cy="19.500" r="1.300" />
+      </g>
+    </g>
+  ),
+  bed: (
+    <g>
+      <path d="M4 11v15M28 18v8" />
+      <rect x="7" y="13" width="9" height="5" rx="2.500" fill="#fff" />
+      <rect x="4" y="18" width="24" height="5" fill="var(--mizu-l)" />
+    </g>
+  ),
+  heart: <path fill="var(--coral)" d="M16 27C6 20 4 15 4 11.500a6 6 0 0 1 12 -2a6 6 0 0 1 12 2c0 3.500 -2 8.500 -12 15.500z" />,
+  people: (
+    <g>
+      <circle cx="22" cy="12" r="3.800" fill="var(--green-l)" /><path fill="var(--green-l)" d="M16 26a6.500 6.500 0 0 1 13 0z" />
+      <circle cx="11" cy="11" r="4.500" fill="var(--yellow)" /><path fill="var(--yellow)" d="M3 26a8 8 0 0 1 16 0z" />
+    </g>
+  ),
+  note: (
+    <g>
+      <path fill="var(--yellow-l)" d="M7 4h18v17l-7 7H7z" />
+      <path d="M18 28v-7h7" />
+      <path stroke-width="2" d="M11 10h10M11 15h10" />
+    </g>
+  ),
+  bell: (
+    <g>
+      <path d="M16 4v3" />
+      <path fill="var(--yellow)" d="M8 22v-7a8 8 0 0 1 16 0v7l2 3H6z" />
+      <path d="M13 27a3 3 0 0 0 6 0" />
+    </g>
+  ),
+  globe: (
+    <g>
+      <circle cx="16" cy="16" r="11" fill="var(--mizu-l)" />
+      <path stroke-width="2" d="M5 16h22M16 5q-6 11 0 22M16 5q6 11 0 22" />
+    </g>
+  ),
+  gift: (
+    <g>
+      <rect x="6" y="14" width="20" height="13" rx="2" fill="var(--coral-l)" />
+      <rect x="4" y="10" width="24" height="5" rx="1.500" fill="var(--coral)" />
+      <path d="M16 10v17M16 10q-6 -7 -8 -3q-1 3 8 3q9 0 8 -3q-2 -4 -8 3z" />
+    </g>
+  ),
   // ---- 類別 ----
   plane: (
     <g transform="translate(16 16) rotate(-20)" fill="#fff">
@@ -208,11 +305,21 @@ export const CATS: { id: Exclude<ItemCat, ''>; name: string; icon: string; color
   { id: 'stay', name: '住宿', icon: 'house', color: 'var(--green-l)' },
 ]
 
-export const catOf = (id: string | undefined) => CATS.find((c) => c.id === id)
+/** 清單或欄位叫這個名字時配什麼小圖（看關鍵字猜）；猜不到回傳空字串。 */
+const NAME_ICONS: [RegExp, string][] = [
+  [/護照|證件|簽證/, 'passport'], [/機票|航班|登機/, 'ticket'], [/錢|換匯|現金|卡|費/, 'coin'],
+  [/衣|穿|鞋/, 'shirt'], [/藥|醫|急救/, 'pill'], [/小朋友|兒童|孩|寶寶|玩具/, 'bear'],
+  [/飯店|住宿|旅館|民宿/, 'bed'], [/線上|申報|網路|上網/, 'globe'], [/行李|隨身|打包/, 'luggage'],
+  [/買|購|伴手禮/, 'bag'], [/禮物/, 'gift'], [/吃|食|餐|零食/, 'food'], [/拍|相機|照/, 'camera'],
+  [/出發|待辦|確認|準備/, 'checklist'], [/其他|雜/, 'star'],
+]
+export const iconForName = (name: string): string => NAME_ICONS.find(([re]) => re.test(name))?.[1] ?? ''
+
+export const catOf =(id: string | undefined) => CATS.find((c) => c.id === id)
 
 /** 每日標題可以選的圖示：類別的加上所有主題圖案。 */
 export const DAY_ICONS: string[] = [
   'luggage', 'plane', 'car', 'food', 'camera', 'star', 'moon', 'bag', 'house',
   'elephant', 'chedi', 'lantern', 'lotus', 'sakura', 'torii', 'fuji', 'palm', 'wave', 'sun',
-  'building', 'wheel', 'pin', 'compass',
+  'building', 'wheel', 'pin', 'compass', 'heart', 'bear', 'bed', 'ticket', 'gift', 'calendar',
 ]

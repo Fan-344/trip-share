@@ -33,7 +33,6 @@ export function Shop({ trip, theme, photos }: TabProps) {
 
   return (
     <div>
-      <EditBar on={editing} onChange={setEditing} hint="編輯中：可以新增、修改要買的東西" />
       <div class="card">
         <div class="row">
           <b class="grow">已買到</b>
@@ -45,14 +44,11 @@ export function Shop({ trip, theme, photos }: TabProps) {
           <button class="primary" style="width:100%" onClick={() => setSheet({ ask: true })}><Icon id="camera" size={20} />現場問大家</button>
           {editing && <button onClick={() => setSheet({ ask: false })}><Icon id="plus" size={18} />事先要買的</button>}
         </div>
-        <p class="muted" style="margin-bottom:0">
-          在店裡看到東西，按「現場問大家」拍張照，大家各自回要幾個。{editing && '出發前就想好要買的，用「事先要買的」。'}
-        </p>
       </div>
 
       {items.length === 0 && <Empty icon="bag">還沒有要買的東西。</Empty>}
 
-      {asking.length > 0 && <h2>正在問大家</h2>}
+      {asking.length > 0 && <h2 class="plain"><Icon id="bell" size={24} />正在問大家</h2>}
       {asking.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={editing ? () => setSheet({ id: i.id, ask: true }) : undefined} />)}
 
       {dates.map((date) => {
@@ -81,6 +77,7 @@ export function Shop({ trip, theme, photos }: TabProps) {
       )}
 
       <Farewell theme={theme} title={trip.meta.title} />
+      <EditBar on={editing} onChange={setEditing} />
       {sheet && <ShopSheet trip={trip} photos={photos} id={sheet.id} ask={sheet.ask} days={range} onClose={() => setSheet(null)} />}
     </div>
   )

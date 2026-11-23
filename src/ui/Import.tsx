@@ -12,10 +12,10 @@ export interface ImportState extends ImportResult {
 }
 
 const VIA: Record<ImportResult['via'], string> = {
-  text: '從貼上的文字讀到',
-  pdf: '從 PDF 讀到',
-  barcode: '從登機證條碼讀到（條碼裡沒有時間，要自己填）',
-  ocr: '從圖片辨識出來的，可能有錯字，請仔細核對',
+  text: '貼上的文字',
+  pdf: 'PDF',
+  barcode: '登機證條碼（沒有時間）',
+  ocr: '圖片辨識，可能有錯字',
 }
 
 export function ImportSheet({ near, state, onState, onPick, onClose }: {
@@ -64,7 +64,7 @@ export function ImportSheet({ near, state, onState, onPick, onClose }: {
     const left = state.flights.filter((_, i) => !state.added.includes(i)).length
     return (
       <Sheet title="匯入機票" onClose={onClose}>
-        <p class="muted">{VIA[state.via]}。點一班核對內容，確認後才會加進行程。</p>
+        <p class="muted">{VIA[state.via]}</p>
         {state.flights.map((f, i) => {
           const done = state.added.includes(i)
           const missing = missingFields(f)
@@ -79,13 +79,13 @@ export function ImportSheet({ near, state, onState, onPick, onClose }: {
                 {f.depTime && `　${f.depTime}`}{f.arrTime && ` → ${f.arrTime}`}
                 {(airportName(f.from) || airportName(f.to)) && `　${airportName(f.from) || f.from}→${airportName(f.to) || f.to}`}
               </p>
-              {!done && missing.length > 0 && <p class="muted">沒讀到：{missing.join('、')}，下一步自己補。</p>}
+              {!done && missing.length > 0 && <p class="muted">缺：{missing.join('、')}</p>}
               {!done && <button class="small primary" onClick={() => onPick(i)}>核對並加入</button>}
             </div>
           )
         })}
         {state.flights.some((f) => f.pnr) && (
-          <p class="muted"><Icon id="lock" size={14} /> 訂位代號只會存在這支手機上，不會同步給任何人。</p>
+          <p class="muted"><Icon id="lock" size={14} /> 訂位代號只存在這支手機</p>
         )}
         <div class="actions">
           <button type="button" onClick={() => onState(null)}>重新匯入</button>
@@ -97,8 +97,8 @@ export function ImportSheet({ near, state, onState, onPick, onClose }: {
 
   return (
     <Sheet title="匯入機票" onClose={onClose}>
-      <p class="muted">全部在這支手機上處理，機票不會傳到任何地方。讀到的內容會先給你核對。</p>
-      <Field label="把確認信或電子機票的文字貼在這裡（最準）">
+      <p class="muted">只在這支手機上處理</p>
+      <Field label="貼上確認信的文字（最準）">
         <textarea style="min-height:120px" value={text} onInput={(e) => setText(value(e))} placeholder={'例如：\nJX1751 3月5日 TPE 07:10 → CNX 10:20'} />
       </Field>
       <button class="primary" style="width:100%" disabled={!text.trim() || !!busy}
@@ -109,7 +109,7 @@ export function ImportSheet({ near, state, onState, onPick, onClose }: {
       <button type="button" class="add" disabled={!!busy} onClick={() => input.current?.click()}>
         <Icon id="camera" size={22} />{busy || '選 PDF、截圖或登機證照片'}
       </button>
-      <p class="muted">截圖只認得英文和數字；登機證請把條碼整個拍進去。第一次用圖片要下載辨識工具（約 7 MB）。</p>
+      <p class="muted">截圖只認英數字；第一次要下載約 7 MB</p>
       {error && <div class="notice" style="display:block">{error}</div>}
     </Sheet>
   )

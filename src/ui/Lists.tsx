@@ -6,15 +6,16 @@ import type { ListItemView, Trip } from '../model/trip'
 import type { List, ListKind, Meta } from '../model/types'
 import { Empty, Farewell } from './bits'
 import { Chevron, useStored } from './fold'
-import { Icon } from './Icons'
+import { Icon, iconForName } from './Icons'
 import { EditBar, Field, Seg, Sheet, value } from './kit'
 import type { TabProps } from './TripPage'
 
 const KIND_NAME: Record<ListKind, string> = { shared: '共用', personal: '個人', private: '私人' }
+const KIND_ICON: Record<ListKind, string> = { shared: 'people', personal: 'heart', private: 'lock' }
 const KIND_HINT: Record<ListKind, string> = {
-  shared: '大家都看得到、都能勾。',
-  personal: '大家都看得到，只有擁有者改；爸媽可以一起管小孩的清單。',
-  private: '只存在這支手機，其他人看不到。',
+  shared: '大家都能勾',
+  personal: '大家看得到，擁有者才能改',
+  private: '只存在這支手機',
 }
 
 export function Lists({ trip, theme }: TabProps) {
@@ -31,19 +32,18 @@ export function Lists({ trip, theme }: TabProps) {
 
   return (
     <div>
-      <EditBar on={editing} onChange={setEditing} hint="編輯中：點項目可以改，改完按完成" />
       {lists.length === 0 && notes.length === 0 && (
-        <Empty icon="luggage">還沒有清單。按右上角的「編輯」，先建一份「行李清單」或「出發前要辦的事」吧。</Empty>
+        <Empty icon="luggage">還沒有清單。</Empty>
       )}
       {groups.map(([kind, ls]) => ls.length > 0 && (
         <div key={kind}>
-          <h2>{KIND_NAME[kind]}清單</h2>
+          <h2 class="plain"><Icon id={KIND_ICON[kind]} size={24} />{KIND_NAME[kind]}清單</h2>
           {ls.map((l) => <ListCard key={l.id} trip={trip} list={l} editing={editing} />)}
         </div>
       ))}
       {editing && <button class="add" onClick={() => setCreating(true)}><Icon id="plus" size={18} />新增清單</button>}
 
-      {(notes.length > 0 || editing) && <h2>重點說明</h2>}
+      {(notes.length > 0 || editing) && <h2 class="plain"><Icon id="note" size={24} />重點說明</h2>}
       {/* 預設只顯示標題，點開才看內容 */}
       {notes.map((n) => {
         const open = openNote === n.id
@@ -64,10 +64,10 @@ export function Lists({ trip, theme }: TabProps) {
           </div>
         )
       })}
-      {editing && notes.length === 0 && <p class="muted">簽證、入境規定、集合地點這類不用打勾、只是要記得的事，可以寫在這裡。</p>}
       {editing && <button class="add" onClick={() => setNoteSheet({})}><Icon id="plus" size={18} />新增重點說明</button>}
 
       <Farewell theme={theme} title={trip.meta.title} />
+      <EditBar on={editing} onChange={setEditing} />
       {creating && <CreateList trip={trip} onClose={() => setCreating(false)} />}
       {noteSheet && <NoteSheet trip={trip} id={noteSheet.id} onClose={() => setNoteSheet(null)} />}
     </div>
@@ -146,14 +146,14 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
   /** 編輯模式下，一個區塊最底下的「點這裡新增」或正在打字的那一列。 */
   const adder = (s: string) => editing && (
     adding === s
-      ? <AddRow placeholder={s ? `加到「${s}」` : '新增項目'} onAdd={(name) => trip.addListItem(list, name, { section: s })} onDone={() => setAdding((cur) => (cur === s ? null : cur))} />
-      : <div class="addhint"><Icon id="plus" size={16} />點這裡新增項目</div>
+      ? <AddRow placeholder={s || '新增項目'} onAdd={(name) => trip.addListItem(list, name, { section: s })} onDone={() => setAdding((cur) => (cur === s ? null : cur))} />
+      : <div class="addhint" aria-label="新增項目"><Icon id="plus" size={20} /></div>
   )
 
   return (
     <div class={`card ${open ? '' : 'shut'}`}>
       <div class="cardhead" role="button" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <h3 class="grow">{list.title}</h3>
+        <h3 class="grow">{iconForName(list.title) && <Icon id={iconForName(list.title)} size={22} />}{list.title}</h3>
         <span class="muted">{done}／{items.length}</span>
         <button class={`small ghost lockbtn ${locked ? 'locked' : ''}`} aria-pressed={locked}
           aria-label={locked ? `「${list.title}」鎖定中，點一下解鎖` : `「${list.title}」可以勾，點一下鎖定`}
@@ -195,7 +195,7 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
               return (
                 <fieldset class={`sect ${editing ? 'tap' : ''}`} key={s} onClick={() => { if (editing) setAdding(s) }}>
                   <legend>
-                    {s}
+                    {iconForName(s) && <Icon id={iconForName(s)} size={18} />}{s}
                     <span class="muted">{its.filter((i) => i.checked).length}／{its.length}</span>
                     {editing && (
                       <button type="button" class="small ghost" aria-label={`把「${s}」改名`} onClick={(e) => { e.stopPropagation(); renameSection(s) }}>
@@ -209,7 +209,7 @@ function ListCard({ trip, list, editing }: { trip: Trip; list: List & Meta; edit
               )
             })}
           </div>
-          {items.length === 0 && !editing && <p class="muted">這份清單還是空的。按右上角的「編輯」加項目。</p>}
+          {items.length === 0 && !editing && <p class="muted">還是空的。</p>}
         </div>
       )}
       {picked && <ItemSheet trip={trip} kind={list.kind} item={items.find((i) => i.id === picked)} sections={sections} onClose={() => setPicked(null)} />}
@@ -305,7 +305,7 @@ function CreateList({ trip, onClose }: { trip: Trip; onClose: () => void }) {
         </Field>
         {kind === 'personal' && (
           <div>
-            <span class="muted">誰可以改（可以選多人）</span>
+            <span class="muted">誰可以改</span>
             {members.map((m) => (
               <label class="check" key={m.id}>
                 <input type="checkbox" checked={owners.includes(m.id)}

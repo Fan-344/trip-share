@@ -103,14 +103,13 @@ export function Field({ label, children }: { label: string; children: ComponentC
 }
 
 /**
- * 每一頁右上角的「編輯」開關。平常畫面只給人看和勾，新增、修改、刪除的按鈕都收起來，
- * 按了「編輯」才出現；改完按「完成」。切到別的分頁會自動回到平常的樣子。
+ * 每一頁最下方的「編輯」開關。平常畫面只給人看和勾，新增、修改、刪除的按鈕都收起來，
+ * 按了「編輯」才出現；編輯中「完成」會黏在畫面底部，捲到哪都按得到。切到別的分頁會自動回到平常的樣子。
  */
-export function EditBar({ on, onChange, hint = '' }: { on: boolean; onChange: (on: boolean) => void; hint?: string }) {
+export function EditBar({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
   return (
     <div class={`editbar ${on ? 'on' : ''}`}>
-      <span class="muted grow">{on ? hint : ''}</span>
-      <button class={`small ${on ? 'primary' : ''}`} aria-pressed={on} onClick={() => onChange(!on)}>
+      <button class={on ? 'primary' : 'small'} aria-pressed={on} onClick={() => onChange(!on)}>
         <Icon id={on ? 'check' : 'pencil'} size={16} />{on ? '完成' : '編輯'}
       </button>
     </div>
