@@ -789,3 +789,6 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .banner { position: sticky; top: 0; z-index: 6; padding-top: max(8px, env(safe-area-inset-top)); }
 .has-banner .topbar { top: var(--banner-h, 0px); padding-top: 10px; }
 .has-banner .page.top { padding-top: 20px; }
+
+/* 分頁最上面如果是小標，不要再留小標平常上面那一大段空白（選單和小標之間會空一塊） */
+.editslot + div > h2:first-child, .editslot + div > div:first-child > h2:first-child { margin-top: 6px; }
