@@ -253,11 +253,11 @@ function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Phot
       <div class="row wrap">
         {/* 負責的人自己的數量在編輯裡改；其他人用這兩顆按鈕加減代買數量 */}
         {item.owner !== me && !item.bought && (
-          <button class="small" onClick={() => trip.setWant(item.id, mine + 1)}><Icon id="plus" size={14} />幫我代買</button>
+          <button class="small" aria-label="幫我代買，多一個" onClick={() => trip.setWant(item.id, mine + 1)}>+1</button>
         )}
         {mine > 0 && !item.bought && (
           // 減到零就是收回代買，不是回覆「不用」
-          <button class="small" onClick={() => trip.setWant(item.id, mine > 1 ? mine - 1 : null)}>少一個（我要 {mine} 個）</button>
+          <button class="small" aria-label="幫我代買，少一個" onClick={() => trip.setWant(item.id, mine > 1 ? mine - 1 : null)}>-1</button>
         )}
         <button class={`small ${item.bought ? '' : 'primary'}`} onClick={() => trip.shop.update(item.id, { bought: !item.bought })}>
           {item.bought ? '改回還沒買' : '買到了'}
