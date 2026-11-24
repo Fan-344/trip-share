@@ -16,7 +16,8 @@ import { PhotoStore } from './photos'
 
 /**
  * 內建的公共中繼站。2026-11-22 在台灣用 scripts/relay-probe.mjs 實測：
- * 這四台都能寫入並讀回 40 KB 的事件，同一個網路同時開六條連線也都連得上；泰國的連線品質尚未實測。
+ * 這六台都能寫入並讀回 40 KB 的事件，同一個網路同時開六條連線也都連得上；泰國的連線品質尚未實測。
+ * 最後兩台（日本的 wirednet、yakihonne）是之後補測加進來的，從亞洲連比較快；它們會把資料留多久還不知道。
  * 原本還有 offchain.pub：它同一個網路只准一條連線，同一個 Wi-Fi 下第二支手機起就一直連不上，所以拿掉了。
  */
 export const DEFAULT_RELAYS = [
@@ -24,6 +25,8 @@ export const DEFAULT_RELAYS = [
   'wss://relay.primal.net',
   'wss://nostr.mom',
   'wss://relay.nostr.net',
+  'wss://relay.nostr.wirednet.jp',
+  'wss://nostr-01.yakihonne.com',
 ]
 
 async function persist(name: string, doc: Y.Doc): Promise<IndexeddbPersistence> {
