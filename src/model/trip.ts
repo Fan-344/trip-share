@@ -377,6 +377,18 @@ export class Trip {
 
   // ---- 修改紀錄 ----
 
+  /**
+   * 修改紀錄只留最近 keep 筆，更早的丟掉；回傳丟掉幾筆。丟掉的救不回來。
+   * 修改紀錄跟行程內容存在同一份文件裡，全部留著的話只增不減，會佔掉將近一半的大小，
+   * 而每次同步都要把整份文件傳一遍。
+   */
+  trimHistory(keep: number): number {
+    const extra = this.history.length - keep
+    if (extra <= 0) return 0
+    this.docs.main.transact(() => this.history.delete(0, extra))
+    return extra
+  }
+
   historyEntries(): HistoryEntry[] {
     return this.history.toArray()
   }

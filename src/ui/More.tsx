@@ -10,7 +10,7 @@ import { Fold } from './fold'
 import { useNow } from './kit'
 import { BUILD } from './Start'
 import { confirmBox } from './dialog'
-import { leaveTrip, type TabProps } from './TripPage'
+import { HISTORY_KEEP, leaveTrip, type TabProps } from './TripPage'
 
 const COLL: Record<string, string> = {
   trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', days: '每日標題', lists: '清單', listItems: '清單項目', notes: '重點說明', shop: '購物',
@@ -66,7 +66,7 @@ function describe(trip: Trip, e: HistoryEntry): string {
 
 export function More({ trip, reg, sync }: TabProps) {
   const now = useNow(60_000)
-  const [shown, setShown] = useState(10)
+  const [shown, setShown] = useState(HISTORY_KEEP)
   const [exporting, setExporting] = useState(false)
   const [showRelays, setShowRelays] = useState(false)
   const me = trip.actor.pubkey
@@ -83,6 +83,7 @@ export function More({ trip, reg, sync }: TabProps) {
       <Fold title="修改紀錄" summary={`${history.length} 筆`}>
       <div class="card">
         {history.length === 0 && <p class="empty">還沒有紀錄。</p>}
+        <p class="muted" style="margin-top:0">只留最近 {HISTORY_KEEP} 筆。</p>
         <ul class="plain">
           {history.slice(-shown).reverse().map((h) => (
             <li class="row" key={h.id}>

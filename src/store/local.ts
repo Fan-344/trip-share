@@ -239,6 +239,7 @@ export async function removeTrip(reg: Registry, tripId: string): Promise<void> {
   try {
     localStorage.removeItem(`lastSync:${tripId}`)
     localStorage.removeItem(`photoVerify:${tripId}`)
+    localStorage.removeItem(`slim:${tripId}`)
   } catch {
     // 沒有 localStorage（測試環境）就略過。
   }

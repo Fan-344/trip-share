@@ -32,6 +32,9 @@ export interface TabProps {
 const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['bags', '行李', 'luggage'], ['shop', '購物', 'bag'], ['more', '更多', 'more']]
 const TAB_KEYS = TABS.map(([key]) => key)
 
+/** 修改紀錄留最近幾筆。 */
+export const HISTORY_KEEP = 15
+
 /**
  * 換分頁。用「取代目前這一頁」的方式，不在瀏覽紀錄裡多留一筆：
  * 這樣不管在行程裡換過幾個分頁，手機的「上一頁」（從螢幕左邊緣往內滑）都是直接退出行程、回到我的行程，
@@ -130,6 +133,37 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
   useEffect(() => {
     if (current && !removed && !meta.deleted && untidy) trip.tidyLists()
   }, [current, untidy, !removed, !meta.deleted])
+
+  // 修改紀錄只留最近 HISTORY_KEEP 筆。全部留著的話它會佔掉將近一半的大小，而每次同步都要傳整份文件。
+  // 每多一筆就丟掉最舊的一筆；還沒更新的舊版 App 不會丟，由更新過的手機看到時代為丟掉。
+  // 第一次丟掉一大批之後，中繼站上我這支手機的那份快照還是舊的、大的那一份，所以重新放一次縮小後的；
+  // 每支手機對每份行程只主動重放一次（之後除非一次丟掉很多筆），平常一筆換一筆不用重傳整份。
+  const logged = trip.historyEntries().length
+  useEffect(() => {
+    if (!current || removed || meta.deleted || !meta.id) return
+    const dropped = trip.trimHistory(HISTORY_KEEP)
+    if (!sync) return
+    const key = `slim:${meta.id}`
+    let done = false
+    try {
+      done = localStorage.getItem(key) === '1'
+    } catch {
+      // 沒有 localStorage 就當成還沒做過。
+    }
+    if (done && dropped < 30) return
+    // 等一下再放：剛打開時還在連線、還在抓別人的資料
+    const timer = setTimeout(() => {
+      void sync.publishSnapshotNow().then((n) => {
+        if (n === 0) return
+        try {
+          localStorage.setItem(key, '1')
+        } catch {
+          // 記不住就下次再放一次。
+        }
+      }).catch(() => {})
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [current, logged, !removed, !meta.deleted, meta.id, sync])
 
   useEffect(() => {
     if (!meta.id) return

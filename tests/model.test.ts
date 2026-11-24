@@ -139,6 +139,42 @@ describe('修改紀錄', () => {
     expect(b.historyEntries()).toHaveLength(a.historyEntries().length)
   })
 
+  it('只留最近幾筆：更早的丟掉，內容不變，文件變小，別的手機也跟著丟', () => {
+    const { a, b } = twoPhones()
+    const id = a.items.create(item('晚餐'))
+    for (let i = 0; i < 60; i++) a.items.update(id, { note: `第 ${i} 次修改，寫一段夠長的說明讓紀錄有點份量` })
+    sync(a, b)
+    const total = a.historyEntries().length
+    expect(total).toBeGreaterThan(60)
+    const before = Y.encodeStateAsUpdate(a.docs.main).length
+
+    expect(a.trimHistory(15)).toBe(total - 15)
+    sync(a, b)
+    // 留下來的是最後那 15 筆，順序不變
+    expect(a.historyEntries()).toHaveLength(15)
+    expect(b.historyEntries()).toHaveLength(15)
+    expect(a.historyEntries().at(-1)).toMatchObject({ recId: id, field: 'note', old: '第 58 次修改，寫一段夠長的說明讓紀錄有點份量' })
+    expect(b.items.get(id)!.note).toBe('第 59 次修改，寫一段夠長的說明讓紀錄有點份量')
+    expect(Y.encodeStateAsUpdate(a.docs.main).length).toBeLessThan(before / 2)
+    // 留下來的還是可以還原
+    a.revert(a.historyEntries().at(-1)!)
+    expect(a.items.get(id)!.note).toBe('第 58 次修改，寫一段夠長的說明讓紀錄有點份量')
+    // 沒超過就不動
+    expect(b.trimHistory(15)).toBe(0)
+  })
+
+  it('兩支手機同時丟：不會多丟，也不會出事', () => {
+    const { a, b } = twoPhones()
+    const id = a.items.create(item('晚餐'))
+    for (let i = 0; i < 30; i++) a.items.update(id, { note: `n${i}` })
+    sync(a, b)
+    a.trimHistory(15)
+    b.trimHistory(15)
+    sync(a, b)
+    expect(a.historyEntries()).toHaveLength(15)
+    expect(b.historyEntries()).toHaveLength(15)
+  })
+
   it('刪除可從紀錄還原；行程標題也可還原', () => {
     const { a } = twoPhones()
     const id = a.items.create(item('晚餐'))
