@@ -21,8 +21,17 @@ const CHUNK = 30_000
 const UPDATE_TTL = 30 * 86400
 /** 自己的快照在中繼站上超過這麼久，就算內容沒變也重發一次。 */
 const SNAPSHOT_MAX_AGE = 7 * 86400
-/** 抓更新時往回多抓的時間，容忍各手機時鐘不一致。 */
-const SINCE_MARGIN = 3 * 86400
+/**
+ * 抓更新時往回多抓的時間，容忍各手機時鐘不一致。
+ * 原本是三天，等於每次重連（手機每次切回畫面都會重連）都把三天份的修改從每一台中繼站重抓一遍，很耗流量。
+ * 手機的時鐘都是自動對時的，一小時已經很寬；真的漏了，不加 since 的快照會補齊。
+ */
+const SINCE_MARGIN = 3600
+/**
+ * 重連時只要「上次從這台讀完之後才重發」的快照，往回多抓這麼久（秒）。
+ * 比更新的短：快照一份上百 KB，有人在網路不穩時改過東西就會重發一次；留太寬的話，那之後一小時內大家每次重連都會把它重抓一遍。
+ */
+const SNAP_SINCE_MARGIN = 600
 const REMOTE = 'remote'
 
 export interface SyncStatus {
@@ -45,6 +54,8 @@ export interface SyncOptions {
   /** 記住上次同步到什麼時候（秒），下次只抓之後的更新。 */
   lastSync?: { get(): number | null; set(t: number): void }
   flushMs?: number
+  /** 往回多抓的時間（秒）；不給就用內建的。測試用。 */
+  sinceMargin?: number
   /** 快照沒送成功時，隔多久再試。 */
   retryMs?: number
 }
@@ -63,6 +74,8 @@ interface RelayState {
   /** 這台中繼站完整給過的訊息（依文件）。 */
   served: Map<string, Set<string>>
   eosed: Set<string>
+  /** 這台中繼站上一次把某份文件的現有資料全部給完（EOSE）是什麼時候（秒）。重連時只要它之後的快照。 */
+  eoseAt: Map<string, number>
   /** 哪些文件有改動沒送到這台。 */
   dirty: Set<string>
   sending: Set<string>
@@ -115,14 +128,14 @@ export class TripSync {
     }
     for (const relay of this.o.relays) {
       const st: RelayState = {
-        parts: new Map(), served: new Map(), eosed: new Set(), dirty: new Set(),
+        parts: new Map(), served: new Map(), eosed: new Set(), eoseAt: new Map(), dirty: new Set(),
         sending: new Set(), mySnapAt: new Map(), lastSnapTry: 0, unsubs: [],
       }
       this.states.set(relay, st)
       relay.onChange(() => this.emit())
       for (const ch of this.channels) {
         st.unsubs.push(relay.subscribe(
-          () => this.filters(ch),
+          () => this.filters(st, ch),
           (ev) => this.enqueue(() => this.onEvent(relay, st, ch, ev)),
           () => this.enqueue(() => this.onEose(relay, st, ch)),
         ))
@@ -210,12 +223,18 @@ export class TripSync {
 
   // ---- 收 ----
 
-  private filters(ch: Channel): Filter[] {
+  private filters(st: RelayState, ch: Channel): Filter[] {
+    const margin = this.o.sinceMargin ?? SINCE_MARGIN
     const last = this.o.lastSync?.get()
     const updates: Filter = { kinds: [KIND], '#t': [ch.room + 'u'] }
-    if (last) updates.since = last - SINCE_MARGIN
-    // 快照不加 since：數量少（每支手機一份），而且是補齊資料的最後防線。
-    return [{ kinds: [KIND], '#t': [ch.room + 's'] }, updates]
+    if (last) updates.since = last - margin
+    // 快照：第一次問這台中繼站時不加 since，全部拿（補齊資料的最後防線，也用來確認這台有沒有我手上的全部內容）。
+    // 這次開著期間已經從這台完整讀過一遍之後，斷線重連就只要「那之後才重發」的快照。
+    // 每支手機的快照是整份行程，一份上百 KB；手機每次切回畫面都會重連，不這樣做的話每次都從每一台把所有人的快照重抓一遍。
+    const snaps: Filter = { kinds: [KIND], '#t': [ch.room + 's'] }
+    const readAt = st.eoseAt.get(ch.name)
+    if (readAt) snaps.since = readAt - (this.o.sinceMargin ?? SNAP_SINCE_MARGIN)
+    return [snaps, updates]
   }
 
   private async onEvent(relay: Relay, st: RelayState, ch: Channel, ev: NostrEvent): Promise<void> {
@@ -268,6 +287,7 @@ export class TripSync {
   private async onEose(relay: Relay, st: RelayState, ch: Channel): Promise<void> {
     const first = !st.eosed.has(ch.name)
     st.eosed.add(ch.name)
+    st.eoseAt.set(ch.name, nowSec())
     this.o.lastSync?.set(nowSec())
     let need = st.dirty.has(ch.name)
     if (first) {

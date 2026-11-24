@@ -21,6 +21,8 @@ const matches = (f: Filter, ev: NostrEvent) =>
 export class FakeRelay implements Relay {
   url = 'fake'
   online = true
+  /** 連上（或重連）時，中繼站把既有資料重送給這條連線的每一則事件。測試用來看重連時重抓了多少。 */
+  replayed: NostrEvent[] = []
   private subs = new Set<{ filters: () => Filter[]; onEvent: (ev: NostrEvent) => void; onEose: () => void }>()
   private listeners: (() => void)[] = []
 
@@ -60,7 +62,11 @@ export class FakeRelay implements Relay {
 
   private replay(sub: { filters: () => Filter[]; onEvent: (ev: NostrEvent) => void; onEose: () => void }) {
     const fs = sub.filters()
-    for (const ev of this.server.events.values()) if (fs.some((f) => matches(f, ev))) queueMicrotask(() => sub.onEvent(ev))
+    for (const ev of this.server.events.values()) {
+      if (!fs.some((f) => matches(f, ev))) continue
+      this.replayed.push(ev)
+      queueMicrotask(() => sub.onEvent(ev))
+    }
     queueMicrotask(() => sub.onEose())
   }
 }

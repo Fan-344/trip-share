@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { generateSecretKey } from 'nostr-tools/pure'
+import { generateSecretKey, getPublicKey } from 'nostr-tools/pure'
 import { Trip, newTripDocs } from '../src/model/trip'
 import type { Item } from '../src/model/types'
 import { b64, importKey, newKeyBytes, type TripKey } from '../src/sync/crypto'
@@ -22,14 +22,14 @@ interface Phone {
 const open: TripSync[] = []
 afterEach(() => { open.splice(0).forEach((s) => s.stop()) })
 
-async function phone(name: string, key: TripKey, servers: FakeServer[], from?: Phone): Promise<Phone> {
+async function phone(name: string, key: TripKey, servers: FakeServer[], from?: Phone, extra: { sinceMargin?: number } = {}): Promise<Phone> {
   const trip = from ? from.trip : new Trip(newTripDocs(), { pubkey: `pub${name}`, device: `dev${name}` })
   const relays = servers.map((s) => s.connect())
   const lastSync = { v: null as number | null, get() { return this.v }, set(t: number) { this.v = t } }
   const secretKey = from?.secretKey ?? generateSecretKey()
   const sync = new TripSync({
     tripId: 't1', key, docs: { main: trip.docs.main, comments: trip.docs.comments },
-    secretKey, device: `dev${name}`, relays, lastSync, flushMs: 10, retryMs: 20,
+    secretKey, device: `dev${name}`, relays, lastSync, flushMs: 10, retryMs: 20, ...extra,
   })
   await sync.start()
   open.push(sync)
@@ -111,6 +111,46 @@ describe('同步', () => {
     await settle(a)
     expect(a.sync.relayStatus()[1].behind).toEqual([])
     expect(bad.events.size).toBeGreaterThan(0)
+  })
+
+  it('斷線重連不會把別人的整份快照重抓一遍；離線期間的改動照樣拿得到', async () => {
+    const key = await newKey()
+    const server = new FakeServer()
+    const a = await phone('A', key, [server])
+    // A 先離線編輯再連上：這樣 A 會把整份內容用「快照」補送到中繼站
+    a.relays[0].setOnline(false)
+    a.trip.init({ id: 't1', title: '清邁', startDate: '2027-03-05', endDate: '2027-03-09' }, '爸爸')
+    const id = a.trip.items.create(item('晚餐'))
+    await settle(a)
+    a.relays[0].setOnline(true)
+    await settle(a)
+    // 事件的時間以秒計：等過一秒，B 讀完的時間才會晚於 A 快照的時間
+    await new Promise((r) => setTimeout(r, 1100))
+    const b = await phone('B', key, [server], undefined, { sinceMargin: 0 })
+    await settle(a, b)
+    expect(b.trip.items.get(id)?.title).toBe('晚餐')
+
+    const others = (evs: { pubkey: string; tags: string[][] }[]) =>
+      evs.filter((e) => e.pubkey !== getPublicKey(b.secretKey) && e.tags.some((t) => t[0] === 't' && t[1].endsWith('s')))
+    // 第一次連上時拿過 A 的快照
+    expect(others(b.relays[0].replayed).length).toBeGreaterThan(0)
+
+    // B 斷線；這段期間 A 又改了東西
+    b.relays[0].setOnline(false)
+    const late = a.trip.items.create(item('夜市'))
+    await settle(a)
+    b.relays[0].replayed = []
+    b.relays[0].setOnline(true)
+    await settle(a, b)
+    // 重連：A 沒有重發快照，所以不會重抓；A 離線期間的改動是用「更新」送的，照樣拿得到
+    expect(others(b.relays[0].replayed)).toEqual([])
+    expect(b.trip.items.get(late)?.title).toBe('夜市')
+
+    // 之後才加入的新手機沒讀過這台，照樣拿得到整份
+    const c = await phone('C', key, [server], undefined, { sinceMargin: 0 })
+    await settle(a, b, c)
+    expect(c.trip.items.get(id)?.title).toBe('晚餐')
+    expect(c.trip.items.get(late)?.title).toBe('夜市')
   })
 
   it('中繼站只看得到密文；金鑰不對的人什麼都拿不到', async () => {
