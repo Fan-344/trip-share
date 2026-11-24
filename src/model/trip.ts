@@ -37,6 +37,8 @@ export type ListItemView = ListItem & Meta & CheckState
 
 export class Trip {
   readonly history: Y.Array<HistoryEntry>
+  /** 每位成員的 App 會什麼（目前只有一項：讀得懂壓縮過的快照）。以成員的公鑰當 key。 */
+  private readonly caps: Y.Map<number>
   readonly members: Table<Member>
   readonly flights: Table<Flight>
   readonly stays: Table<Stay>
@@ -58,6 +60,7 @@ export class Trip {
     const { main, comments, priv, device } = docs
     this.history = main.getArray('history')
     this.metaMap = main.getMap('trip')
+    this.caps = main.getMap('caps')
     this.members = new Table(main, 'members', actor, this.history)
     this.flights = new Table(main, 'flights', actor, this.history)
     this.stays = new Table(main, 'stays', actor, this.history)
@@ -164,6 +167,20 @@ export class Trip {
       .filter((l) => l.kind === 'personal' && l.owners.includes(pubkey))
       .flatMap((l) => this.listItemsOf(l))
     return items.length > 0 && items.every((i) => i.checked)
+  }
+
+  /**
+   * 登記「我的 App 讀得懂壓縮過的快照」。全團都登記了，大家才開始發壓縮過的快照；
+   * 還有人沒更新的話，壓縮過的他讀不到，所以先維持舊的做法。
+   */
+  markCanZip(): void {
+    if (this.caps.get(this.actor.pubkey) !== 1) this.caps.set(this.actor.pubkey, 1)
+  }
+
+  /** 是不是每一位有手機的成員都登記過了。（不用手機的成員沒有 App，不算。） */
+  allCanZip(): boolean {
+    const phones = this.members.all().filter((m) => !m.managed)
+    return phones.length > 0 && phones.every((m) => this.caps.get(m.id) === 1)
   }
 
   /** 這個成員如果已經不在名單上：是誰、什麼時候把他拿掉的。還在名單上就是 null。 */

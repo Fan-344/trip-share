@@ -204,6 +204,8 @@ export async function openTrip(reg: Registry, tripId: string, withSync = true): 
       docs: { main: docs.main, comments: docs.comments },
       secretKey: hex.dec(me.sk),
       device: me.device,
+      // 全團的 App 都讀得懂壓縮了，快照才壓縮過再放上去
+      zipSnapshots: () => trip.allCanZip(),
       relays,
       lastSync: {
         get: () => Number(localStorage.getItem(lastKey)) || null,
@@ -240,6 +242,7 @@ export async function removeTrip(reg: Registry, tripId: string): Promise<void> {
     localStorage.removeItem(`lastSync:${tripId}`)
     localStorage.removeItem(`photoVerify:${tripId}`)
     localStorage.removeItem(`slim:${tripId}`)
+    localStorage.removeItem(`zip:${tripId}`)
   } catch {
     // 沒有 localStorage（測試環境）就略過。
   }

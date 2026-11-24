@@ -15,10 +15,10 @@ export async function importKey(raw: Uint8Array): Promise<TripKey> {
   return { raw, aes }
 }
 
-/** 輸出：12 位元組隨機 IV ＋ 密文（含驗證碼）。 */
-export async function encrypt(key: TripKey, plain: Uint8Array): Promise<Uint8Array> {
+/** 輸出：12 位元組隨機 IV ＋ 密文（含驗證碼）。aad 是一起驗證、但不加密的標記；解密時要給一樣的才解得開。 */
+export async function encrypt(key: TripKey, plain: Uint8Array, aad?: Uint8Array): Promise<Uint8Array> {
   const iv = crypto.getRandomValues(new Uint8Array(12))
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: buf(iv) }, key.aes, buf(plain)))
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: buf(iv), ...(aad && { additionalData: buf(aad) }) }, key.aes, buf(plain)))
   const out = new Uint8Array(12 + ct.length)
   out.set(iv)
   out.set(ct, 12)
@@ -26,11 +26,46 @@ export async function encrypt(key: TripKey, plain: Uint8Array): Promise<Uint8Arr
 }
 
 /** 金鑰不對或內容被改過會丟出例外。 */
-export async function decrypt(key: TripKey, data: Uint8Array): Promise<Uint8Array> {
+export async function decrypt(key: TripKey, data: Uint8Array, aad?: Uint8Array): Promise<Uint8Array> {
   const plain = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: buf(data.subarray(0, 12)) }, key.aes, buf(data.subarray(12)),
+    { name: 'AES-GCM', iv: buf(data.subarray(0, 12)), ...(aad && { additionalData: buf(aad) }) }, key.aes, buf(data.subarray(12)),
   )
   return new Uint8Array(plain)
+}
+
+// ---- 壓縮（整份行程的快照用）----
+//
+// 行程資料裡同樣的東西一再出現（成員代號、欄位名稱），壓縮後只剩四分之一左右。
+// 要先壓縮再加密：加密過的內容看起來像亂數，壓不動。
+// 太小的東西壓了反而變大，所以平常一筆一筆的小變動不壓。
+
+/** 這個瀏覽器有沒有內建的壓縮功能（比較舊的 iPhone 沒有）。 */
+export const canZip = (): boolean =>
+  typeof CompressionStream === 'function' && typeof DecompressionStream === 'function'
+
+async function through(data: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
+  const piped = new Blob([buf(data)]).stream().pipeThrough(stream as unknown as ReadableWritablePair<Uint8Array, Uint8Array>)
+  return new Uint8Array(await new Response(piped).arrayBuffer())
+}
+
+export const gzip = (data: Uint8Array): Promise<Uint8Array> => through(data, new CompressionStream('gzip'))
+export const gunzip = (data: Uint8Array): Promise<Uint8Array> => through(data, new DecompressionStream('gzip'))
+
+/**
+ * 壓縮過的內容加密時多帶這個標記。
+ * 還不認得壓縮的舊版 App 會用「沒有標記」的方式去解，一定解不開、直接放棄；
+ * 不這樣做的話，它會把壓縮過的位元組當成行程內容塞進文件裡。
+ */
+const ZIP_MARK = new TextEncoder().encode('all-aboard:gzip:1')
+
+/** 先壓縮再加密。 */
+export async function sealZipped(key: TripKey, plain: Uint8Array): Promise<Uint8Array> {
+  return encrypt(key, await gzip(plain), ZIP_MARK)
+}
+
+/** 解開 sealZipped 的內容。金鑰不對、內容被改過、或其實不是壓縮過的，都會丟出例外。 */
+export async function openZipped(key: TripKey, data: Uint8Array): Promise<Uint8Array> {
+  return gunzip(await decrypt(key, data, ZIP_MARK))
 }
 
 /**

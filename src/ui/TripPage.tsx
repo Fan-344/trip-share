@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import { followChain, type ChainResult } from '../model/rekey'
 import type { Trip } from '../model/trip'
-import { hex } from '../sync/crypto'
+import { canZip, hex } from '../sync/crypto'
 import { openTrip, removeTrip, type OpenTrip, type Registry } from '../store/local'
 import type { PhotoStore } from '../store/photos'
 import type { TripSync } from '../sync/engine'
@@ -164,6 +164,32 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
     }, 6000)
     return () => clearTimeout(timer)
   }, [current, logged, !removed, !meta.deleted, meta.id, sync])
+
+  // 快照壓縮：先登記「我的 App 讀得懂壓縮」；等全團都登記了（allCanZip），之後發的快照才會是壓縮過的。
+  // 從那一刻起，把我這支手機放在中繼站上的那份快照重新放一次（換成壓縮過的），每份行程只主動做這一次。
+  const zipReady = trip.allCanZip()
+  useEffect(() => {
+    if (!current || removed || meta.deleted || !meta.id || !canZip()) return
+    trip.markCanZip()
+    if (!zipReady || !sync) return
+    const key = `zip:${meta.id}`
+    try {
+      if (localStorage.getItem(key) === '1') return
+    } catch {
+      // 沒有 localStorage 就當成還沒做過。
+    }
+    const timer = setTimeout(() => {
+      void sync.publishSnapshotNow().then((n) => {
+        if (n === 0) return
+        try {
+          localStorage.setItem(key, '1')
+        } catch {
+          // 記不住就下次再放一次。
+        }
+      }).catch(() => {})
+    }, 9000)
+    return () => clearTimeout(timer)
+  }, [current, zipReady, !removed, !meta.deleted, meta.id, sync])
 
   useEffect(() => {
     if (!meta.id) return

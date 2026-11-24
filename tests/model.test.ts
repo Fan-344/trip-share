@@ -113,6 +113,42 @@ describe('衝突規則', () => {
   })
 })
 
+describe('全團都更新了才開始壓縮', () => {
+  it('每位有手機的成員都登記過才算；不用手機的成員不算', () => {
+    const { a, b } = twoPhones()
+    expect(a.allCanZip()).toBe(false)
+    a.markCanZip()
+    sync(a, b)
+    // 媽媽的手機還沒更新
+    expect(a.allCanZip()).toBe(false)
+    expect(b.allCanZip()).toBe(false)
+    b.markCanZip()
+    sync(a, b)
+    expect(a.allCanZip()).toBe(true)
+    expect(b.allCanZip()).toBe(true)
+    // 小孩沒有手機，不影響
+    a.addManaged('小孩')
+    sync(a, b)
+    expect(b.allCanZip()).toBe(true)
+  })
+
+  it('之後有新的人加入、他的 App 還沒登記：先退回不壓縮', () => {
+    const { a, b } = twoPhones()
+    a.markCanZip()
+    b.markCanZip()
+    sync(a, b)
+    const c = new Trip(newTripDocs(), { pubkey: 'pubC', device: 'devC' })
+    sync(a, c)
+    c.join('阿姨')
+    sync(a, c)
+    sync(a, b)
+    expect(a.allCanZip()).toBe(false)
+    c.markCanZip()
+    sync(a, c)
+    expect(a.allCanZip()).toBe(true)
+  })
+})
+
 describe('修改紀錄', () => {
   it('記下誰改了哪個欄位與舊值，並可還原', () => {
     const { a, b } = twoPhones()

@@ -1,6 +1,6 @@
 import * as Y from 'yjs'
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure'
-import { b64, decrypt, encrypt, hex, roomTag, type TripKey } from './crypto'
+import { b64, canZip, decrypt, encrypt, hex, openZipped, roomTag, sealZipped, type TripKey } from './crypto'
 import type { Filter, NostrEvent, Relay } from './relay'
 
 /**
@@ -54,6 +54,8 @@ export interface SyncOptions {
   /** 記住上次同步到什麼時候（秒），下次只抓之後的更新。 */
   lastSync?: { get(): number | null; set(t: number): void }
   flushMs?: number
+  /** 現在可不可以把快照壓縮過再放上去：全團的 App 都讀得懂壓縮時才回 true。每次要發快照時問一次。 */
+  zipSnapshots?: () => boolean
   /** 往回多抓的時間（秒）；不給就用內建的。測試用。 */
   sinceMargin?: number
   /** 快照沒送成功時，隔多久再試。 */
@@ -80,6 +82,10 @@ interface RelayState {
   dirty: Set<string>
   sending: Set<string>
   mySnapAt: Map<string, number>
+  /** 我這支手機的快照在這台中繼站上佔到第幾塊（最大的塊編號）。快照變小時要把後面多出來的舊塊清掉。 */
+  mySnapTop: Map<string, number>
+  /** 我這支手機最新的那份快照一共幾塊。 */
+  mySnapParts: Map<string, number>
   lastSnapTry: number
   unsubs: (() => void)[]
 }
@@ -89,6 +95,8 @@ interface Assembly {
   parts: (Uint8Array | undefined)[]
   have: number
   done: boolean
+  /** 這則訊息是先壓縮再加密的（事件上有 z 標籤）。 */
+  z: boolean
 }
 
 const nowSec = () => Math.floor(Date.now() / 1000)
@@ -129,7 +137,7 @@ export class TripSync {
     for (const relay of this.o.relays) {
       const st: RelayState = {
         parts: new Map(), served: new Map(), eosed: new Set(), eoseAt: new Map(), dirty: new Set(),
-        sending: new Set(), mySnapAt: new Map(), lastSnapTry: 0, unsubs: [],
+        sending: new Set(), mySnapAt: new Map(), mySnapTop: new Map(), mySnapParts: new Map(), lastSnapTry: 0, unsubs: [],
       }
       this.states.set(relay, st)
       relay.onChange(() => this.emit())
@@ -210,6 +218,7 @@ export class TripSync {
       }
       st.dirty.delete(ch.name)
       st.mySnapAt.set(ch.name, nowSec())
+      await this.clearStale(relay, st, ch, events.length)
       return true
     }))
     this.emit()
@@ -248,7 +257,10 @@ export class TripSync {
 
     const d = ev.tags.find((t) => t[0] === 'd')?.[1] ?? ''
     if (ev.pubkey === this.pubkey && d.startsWith(`${ch.room}:s:${this.o.device}:`)) {
+      // 最新的那份快照是幾塊（比它舊、編號更後面的塊就是沒被蓋掉的殘留）
+      if (ev.created_at >= (st.mySnapAt.get(ch.name) ?? 0)) st.mySnapParts.set(ch.name, n)
       st.mySnapAt.set(ch.name, Math.max(st.mySnapAt.get(ch.name) ?? 0, ev.created_at))
+      st.mySnapTop.set(ch.name, Math.max(st.mySnapTop.get(ch.name) ?? 0, Number(d.slice(d.lastIndexOf(':') + 1)) || 0))
     }
 
     let seen = st.parts.get(msgId)
@@ -261,7 +273,7 @@ export class TripSync {
     }
 
     let m = this.msgs.get(msgId)
-    if (!m) this.msgs.set(msgId, (m = { n, parts: new Array(n), have: 0, done: false }))
+    if (!m) this.msgs.set(msgId, (m = { n, parts: new Array(n), have: 0, done: false, z: ev.tags.some((t) => t[0] === 'z') }))
     if (m.done || m.n !== n || m.parts[i]) return
     try {
       m.parts[i] = b64.dec(ev.content)
@@ -274,7 +286,7 @@ export class TripSync {
     const data = concat(m.parts as Uint8Array[])
     m.parts = []
     try {
-      const update = await decrypt(this.o.key, data)
+      const update = m.z ? await openZipped(this.o.key, data) : await decrypt(this.o.key, data)
       Y.applyUpdate(ch.doc, update, REMOTE)
       this.plain?.set(msgId, update)
       if (ev.pubkey !== this.pubkey) this.lastSyncAt = Date.now()
@@ -295,6 +307,11 @@ export class TripSync {
       if (age > SNAPSHOT_MAX_AGE || !this.covered(st, ch)) need = true
     }
     if (need) await this.sendSnapshot(relay, st, ch)
+    // 不用重發快照，但這台中繼站上還留著我以前比較大的快照的殘塊：清掉
+    else if (first) {
+      const parts = st.mySnapParts.get(ch.name)
+      if (parts && (st.mySnapTop.get(ch.name) ?? 0) >= parts) await this.clearStale(relay, st, ch, parts)
+    }
     this.emit()
   }
 
@@ -360,12 +377,36 @@ export class TripSync {
     }
     if (snapshot) st.sending.delete(ch.name)
     if (!ok) st.dirty.add(ch.name)
-    else if (snapshot) st.mySnapAt.set(ch.name, nowSec())
+    else if (snapshot) {
+      st.mySnapAt.set(ch.name, nowSec())
+      await this.clearStale(relay, st, ch, events.length)
+    }
     this.emit()
   }
 
+  /**
+   * 快照是切成幾塊放的，每一塊在中繼站上有固定的位置，新的會蓋掉舊的。
+   * 快照變小（清掉修改紀錄、改用壓縮）之後用到的塊數變少，後面那幾個位置上的舊塊沒人去蓋，
+   * 會一直留著、每次都被所有人下載。這裡用一則空的事件把它們蓋掉；
+   * 空的事件不帶行程的標籤，所以之後沒有人會再抓到它。
+   */
+  private async clearStale(relay: Relay, st: RelayState, ch: Channel, used: number): Promise<void> {
+    const top = st.mySnapTop.get(ch.name) ?? 0
+    for (let i = used; i <= top; i++) {
+      const blank = finalizeEvent(
+        { kind: KIND, created_at: nowSec(), tags: [['d', `${ch.room}:s:${this.o.device}:${i}`]], content: '' },
+        this.o.secretKey,
+      )
+      if (!(await relay.publish(blank))) return
+    }
+    st.mySnapTop.set(ch.name, Math.max(0, used - 1))
+  }
+
   private async build(ch: Channel, update: Uint8Array, type: 'u' | 's'): Promise<NostrEvent[]> {
-    const data = await encrypt(this.o.key, update)
+    // 快照（整份行程）先壓縮再加密，大約剩四分之一；平常的小變動太小，壓了反而變大，不壓。
+    // 要等全團的 App 都讀得懂壓縮才開始用（zipSnapshots），不然還沒更新的手機會拿不到快照裡的內容。
+    const zip = type === 's' && canZip() && !!this.o.zipSnapshots?.()
+    const data = zip ? await sealZipped(this.o.key, update) : await encrypt(this.o.key, update)
     const n = Math.max(1, Math.ceil(data.length / CHUNK))
     const msgId = hex.enc(crypto.getRandomValues(new Uint8Array(12)))
     const created_at = nowSec()
@@ -379,6 +420,7 @@ export class TripSync {
         ['c', msgId, String(i), String(n)],
       ]
       if (type === 'u') tags.push(['expiration', String(created_at + UPDATE_TTL)])
+      if (zip) tags.push(['z', '1'])
       events.push(finalizeEvent(
         { kind: KIND, created_at, tags, content: b64.enc(data.subarray(i * CHUNK, (i + 1) * CHUNK)) },
         this.o.secretKey,

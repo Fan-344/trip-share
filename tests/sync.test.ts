@@ -22,7 +22,7 @@ interface Phone {
 const open: TripSync[] = []
 afterEach(() => { open.splice(0).forEach((s) => s.stop()) })
 
-async function phone(name: string, key: TripKey, servers: FakeServer[], from?: Phone, extra: { sinceMargin?: number } = {}): Promise<Phone> {
+async function phone(name: string, key: TripKey, servers: FakeServer[], from?: Phone, extra: { sinceMargin?: number; zipSnapshots?: () => boolean } = {}): Promise<Phone> {
   const trip = from ? from.trip : new Trip(newTripDocs(), { pubkey: `pub${name}`, device: `dev${name}` })
   const relays = servers.map((s) => s.connect())
   const lastSync = { v: null as number | null, get() { return this.v }, set(t: number) { this.v = t } }
@@ -151,6 +151,81 @@ describe('同步', () => {
     await settle(a, b, c)
     expect(c.trip.items.get(id)?.title).toBe('晚餐')
     expect(c.trip.items.get(late)?.title).toBe('夜市')
+  })
+
+  /** 一支手機離線編了一堆東西再連上：它放到中繼站上的那份快照有多大、有沒有壓縮。 */
+  async function offlineSnapshot(zip: boolean) {
+    const key = await newKey()
+    const server = new FakeServer()
+    const a = await phone('A', key, [server], undefined, { zipSnapshots: () => zip })
+    a.relays[0].setOnline(false)
+    a.trip.init({ id: 't1', title: '清邁', startDate: '2027-03-05', endDate: '2027-03-09' }, '爸爸')
+    const ids = Array.from({ length: 40 }, (_, i) => a.trip.items.create(item(`第 ${i} 個行程`)))
+    await settle(a)
+    a.relays[0].setOnline(true)
+    await settle(a)
+    const snaps = [...server.events.values()].filter((e) => e.tags.some((t) => t[0] === 't' && t[1].endsWith('s')))
+    return { key, server, a, ids, snaps, bytes: snaps.reduce((s, e) => s + e.content.length, 0), zipped: snaps.every((e) => e.tags.some((t) => t[0] === 'z')) }
+  }
+
+  it('快照壓縮過再放上去：小很多，別的手機照樣讀得到整份內容', async () => {
+    const plain = await offlineSnapshot(false)
+    const zipped = await offlineSnapshot(true)
+    expect(plain.zipped).toBe(false)
+    expect(zipped.zipped).toBe(true)
+    expect(zipped.bytes).toBeLessThan(plain.bytes / 2)
+
+    // 之後才加入的手機：只靠這份壓縮過的快照就拿到全部
+    const b = await phone('B', zipped.key, [zipped.server])
+    await settle(zipped.a, b)
+    expect(b.trip.meta.title).toBe('清邁')
+    for (const id of zipped.ids) expect(b.trip.items.get(id)?.title).toMatch(/^第 \d+ 個行程$/)
+  })
+
+  it('還沒輪到壓縮時（有人還沒更新）照舊發沒壓縮的；讀的時候兩種都認得', async () => {
+    const plain = await offlineSnapshot(false)
+    // 這支手機自己已經會壓縮了，但它讀別人沒壓縮的快照一樣沒問題
+    const b = await phone('B', plain.key, [plain.server], undefined, { zipSnapshots: () => true })
+    await settle(plain.a, b)
+    expect(b.trip.items.get(plain.ids[0])?.title).toBe('第 0 個行程')
+    // 平常一筆一筆的小變動不壓縮
+    b.trip.items.update(plain.ids[0], { title: '改過了' })
+    await settle(plain.a, b)
+    const updates = [...plain.server.events.values()].filter((e) => e.tags.some((t) => t[0] === 't' && t[1].endsWith('u')))
+    expect(updates.length).toBeGreaterThan(0)
+    expect(updates.some((e) => e.tags.some((t) => t[0] === 'z'))).toBe(false)
+    expect(plain.a.trip.items.get(plain.ids[0])?.title).toBe('改過了')
+  })
+
+  it('快照變小之後，中繼站上多出來的舊塊會被清掉，新加入的人不會再抓到', async () => {
+    const key = await newKey()
+    const server = new FakeServer()
+    let zip = false
+    const a = await phone('A', key, [server], undefined, { zipSnapshots: () => zip })
+    a.relays[0].setOnline(false)
+    a.trip.init({ id: 't1', title: '清邁', startDate: '2027-03-05', endDate: '2027-03-09' }, '爸爸')
+    const ids = Array.from({ length: 150 }, (_, i) => a.trip.items.create(item(`第 ${i} 個行程，寫長一點讓整份內容大到要切成好幾塊`)))
+    await settle(a)
+    a.relays[0].setOnline(true)
+    await settle(a)
+    const snapChunks = () => [...server.events.values()].filter((e) => e.tags.some((t) => t[0] === 't' && t[1].endsWith('s')))
+    const big = snapChunks().length
+    expect(big).toBeGreaterThan(1)
+
+    // 改用壓縮後重新放一次：只需要一塊
+    zip = true
+    expect(await a.sync.publishSnapshotNow()).toBe(1)
+    await settle(a)
+    expect(snapChunks()).toHaveLength(1)
+    // 原本那幾個位置還在，但被空的蓋掉了
+    const blanks = [...server.events.values()].filter((e) => e.content === '')
+    expect(blanks).toHaveLength(big - 1)
+
+    // 新加入的手機：只收到那一塊，內容完整
+    const b = await phone('B', key, [server])
+    await settle(a, b)
+    expect(b.relays[0].replayed.filter((e) => e.content === '')).toEqual([])
+    expect(b.trip.items.get(ids[149])?.title).toContain('第 149 個行程')
   })
 
   it('中繼站只看得到密文；金鑰不對的人什麼都拿不到', async () => {
