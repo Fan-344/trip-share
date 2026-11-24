@@ -784,3 +784,8 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
   transform: rotate(-9deg); margin: 0 6px 0 4px; animation: sealin 0.32s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 @media (prefers-reduced-motion: reduce) { .seal { animation: none; } }
+
+/* ---- 「有新版本」的提示：黏在畫面最上面；行程頁的選單改黏在它下面 ---- */
+.banner { position: sticky; top: 0; z-index: 6; padding-top: max(8px, env(safe-area-inset-top)); }
+.has-banner .topbar { top: var(--banner-h, 0px); padding-top: 10px; }
+.has-banner .page.top { padding-top: 20px; }

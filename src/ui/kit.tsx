@@ -121,7 +121,9 @@ export function EditBar({ on, onChange, drop = 0, row = false }: { on: boolean; 
     slot.classList.toggle('on', on)
     slot.style.setProperty('--drop', `${drop}px`)
     slot.classList.toggle('row', row)
-    slot.style.top = on ? `${(document.querySelector<HTMLElement>('.topbar')?.offsetHeight ?? 0) + 6 - drop}px` : ''
+    // 選單上面如果還有「有新版本」的提示，也要算進去
+    const above = (document.querySelector<HTMLElement>('.topbar')?.offsetHeight ?? 0) + (document.querySelector<HTMLElement>('.banner')?.offsetHeight ?? 0)
+    slot.style.top = on ? `${above + 6 - drop}px` : ''
     return () => { slot.classList.remove('on', 'row'); slot.style.top = '' }
   }, [slot, on, drop, row])
   // 長按頁面上任何一處（按鈕、連結、輸入框除外）也能進入編輯模式

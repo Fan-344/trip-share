@@ -30,13 +30,32 @@ export function App() {
   return (
     <div>
       <DialogHost />
-      {applyUpdate && (
-        <div class="banner">
-          <span class="grow">有新版本</span>
-          <button class="small primary" onClick={applyUpdate}>點此更新</button>
-        </div>
-      )}
+      {applyUpdate && <UpdateBanner onApply={applyUpdate} />}
       <Routes reg={reg} hash={hash} />
+    </div>
+  )
+}
+
+/**
+ * 「有新版本」的提示。固定黏在畫面最上面，捲到哪都看得到。
+ * 行程頁的選單本來也黏在最上面，所以把提示的高度記在 --banner-h，讓選單改成黏在提示的下面。
+ */
+function UpdateBanner({ onApply }: { onApply: () => void }) {
+  const [el, setEl] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!el) return
+    const root = document.documentElement
+    root.style.setProperty('--banner-h', `${el.offsetHeight}px`)
+    root.classList.add('has-banner')
+    return () => {
+      root.style.removeProperty('--banner-h')
+      root.classList.remove('has-banner')
+    }
+  }, [el])
+  return (
+    <div class="banner" ref={setEl}>
+      <span class="grow">有新版本</span>
+      <button class="small primary" onClick={onApply}>點此更新</button>
     </div>
   )
 }
