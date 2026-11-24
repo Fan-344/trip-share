@@ -36,8 +36,11 @@
 :root[data-theme="general"] { --accent: #c3cdb0; --accent-l: #e6eadc; }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+/* 滑到頂或滑到底就停住，不要整頁被拉過頭露出後面的空白（iPhone 的回彈）；也不能左右拖動整頁 */
+html { -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
 body {
+  overscroll-behavior: none;
+  overflow-x: clip;
   margin: 0;
   background: var(--paper);
   color: var(--text);
