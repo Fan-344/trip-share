@@ -6,7 +6,7 @@ import type { Trip } from '../model/trip'
 import type { ShopItem, ShopItemView } from '../model/types'
 import { ago, daysBetween, fullDay, today } from '../time'
 import { Empty, Farewell } from './bits'
-import { Chevron, Fold } from './fold'
+import { Fold } from './fold'
 import { Icon } from './Icons'
 import { Field, Sheet, useNow, value } from './kit'
 import { CURRENCIES, detectCurrency, formatPrice, parsePrice } from '../money'
@@ -102,6 +102,24 @@ function Photo({ trip, photos, id, name }: { trip: Trip; photos: PhotoStore; id:
   )
 }
 
+/**
+ * 買到了、縮起來的樣子：正方形的照片縮圖、名稱、數量，右邊蓋一個「買到了」的章。點一下展開。
+ * 沒有照片的東西用一個袋子的圖示佔住縮圖的位置，每一列才會對齊。
+ */
+function BoughtRow({ trip, photos, item, onOpen }: { trip: Trip; photos: PhotoStore; item: ShopItemView; onOpen: () => void }) {
+  const { url } = usePhoto(photos, item.id, trip.photoRecord(item.id)?.id)
+  return (
+    <div class="card tap mini bought" role="button" aria-expanded="false" onClick={onOpen}>
+      {url ? <img class="thumb" src={url} alt="" /> : <span class="thumb none"><Icon id="bag" size={24} /></span>}
+      <span class="grow boughtname">
+        <b>{item.name}</b>
+        <small class="muted">{item.total} 個</small>
+      </span>
+      <span class="seal">買到了</span>
+    </div>
+  )
+}
+
 /** 名字 ×數量 的小標籤列：要的人、說不用的人、還沒回的人。 */
 function Answers({ trip, item, pending }: { trip: Trip; item: ShopItemView; pending: string[] }) {
   const wants = Object.entries(item.wants)
@@ -129,12 +147,7 @@ function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Photo
   // 買完的縮成一行
   if (item.bought && !open) {
     return (
-      <div class="card tap mini bought" role="button" aria-expanded="false" onClick={() => setOpen(true)}>
-        <Icon id="check" size={18} />
-        <span class="grow">{item.name}</span>
-        <span class="muted">{item.total} 個</span>
-        <Chevron open={false} />
-      </div>
+      <BoughtRow trip={trip} photos={photos} item={item} onOpen={() => setOpen(true)} />
     )
   }
 
@@ -213,12 +226,7 @@ function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Phot
   const [open, setOpen] = useState(false)
   if (item.bought && !open) {
     return (
-      <div class="card tap mini bought" role="button" aria-expanded="false" onClick={() => setOpen(true)}>
-        <Icon id="check" size={18} />
-        <span class="grow">{item.name}</span>
-        <span class="muted">{item.total} 個</span>
-        <Chevron open={false} />
-      </div>
+      <BoughtRow trip={trip} photos={photos} item={item} onOpen={() => setOpen(true)} />
     )
   }
   return (

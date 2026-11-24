@@ -770,3 +770,17 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .a-sos.l { transform-origin: 100% 100%; }
 .a-sos.r { transform-origin: 0% 100%; animation-name: soswave-r; }
 @media (prefers-reduced-motion: reduce) { .a-sosjump, .a-sos { animation: none; } }
+
+/* ---- 購物：買到了、縮起來的那一列 ---- */
+.mini .thumb { flex: none; width: 52px; height: 52px; border-radius: 12px; object-fit: cover; background: #fff; }
+.mini .thumb.none { display: grid; place-items: center; background: color-mix(in srgb, #fff 60%, transparent); }
+.mini .boughtname { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.mini .boughtname b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 蓋上去的章：紅色雙框、歪一點，出現時從大縮到定位 */
+@keyframes sealin { 0% { transform: rotate(-9deg) scale(1.8); opacity: 0; } 100% { transform: rotate(-9deg) scale(1); opacity: 1; } }
+.seal {
+  flex: none; padding: 2px 9px; border: 2px solid var(--pop); border-radius: 8px; outline: 1.5px solid var(--pop); outline-offset: 2px;
+  color: var(--pop); font-weight: 700; font-size: 0.9rem; letter-spacing: 0.08em; white-space: nowrap;
+  transform: rotate(-9deg); margin: 0 6px 0 4px; animation: sealin 0.32s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@media (prefers-reduced-motion: reduce) { .seal { animation: none; } }
