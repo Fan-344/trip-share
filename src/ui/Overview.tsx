@@ -477,7 +477,7 @@ function WeatherCard({ airport, start, end }: { airport: string; start: string; 
             <small>{Number(d.date.slice(5, 7))}/{Number(d.date.slice(8, 10))}</small>
             <Icon id={WX_ICON[d.kind]} size={26} />
             <b>{d.hi}°</b><span class="muted">{d.lo}°</span>
-            <small class="wx-rain">{d.rain >= 30 ? '雨 ' + d.rain + '%' : ' '}</small>
+            <small class="wx-rain">{d.rain >= 30 || (d.kind === 'rain' && d.rain > 0) ? '雨 ' + d.rain + '%' : ' '}</small>
           </div>
         ))}
       </div>

@@ -46,8 +46,27 @@ export function kindOf(code: number): WxKind {
   return 'cloudy'
 }
 
+/**
+ * 一整天的天氣。服務給的「當日代碼」是那天最壞的一刻：只要有一小時飄毛毛雨，整天就算雨天，
+ * 所以不能直接拿來當圖示（乾季會變成天天下雨）。改成：
+ * - 雷雨、雪、霧照代碼。
+ * - 代碼是雨的：降雨機率四成以上，或機率兩成以上而且雨量有 1 毫米，才算雨天。機率沒給的話只看雨量。
+ * - 其餘看整天的平均雲量：兩成以下是晴，七成以下是多雲時晴，再多是陰。沒給雲量就照代碼。
+ */
+export function dayKind(code: number, prob: number | null, mm: number | null, cloud: number | null): WxKind {
+  const base = kindOf(code)
+  if (base === 'storm' || base === 'snow' || base === 'fog') return base
+  if (base === 'rain') {
+    const wet = prob === null ? (mm ?? 1) >= 1 : prob >= 40 || (prob >= 20 && (mm ?? 0) >= 1)
+    if (wet) return 'rain'
+  }
+  if (cloud === null) return base === 'rain' ? 'partly' : base
+  return cloud < 20 ? 'clear' : cloud <= 70 ? 'partly' : 'cloudy'
+}
+
 const HOUR = 3_600_000
-const keyOf = (airport: string) => `wx:${airport.toUpperCase()}`
+// 判斷天氣的方式改過，換一個名字，舊的暫存就不會再被拿來用
+const keyOf = (airport: string) => `wx2:${airport.toUpperCase()}`
 
 /** 上次查到的結果；沒查過、或資料壞了就是 null。 */
 export function cachedWeather(airport: string): Weather | null {
@@ -63,7 +82,7 @@ export function cachedWeather(airport: string): Weather | null {
 export function parseWeather(json: unknown, at: number): Weather {
   const j = json as {
     current: { temperature_2m: number; weather_code: number }
-    daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max?: (number | null)[] }
+    daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max?: (number | null)[]; precipitation_sum?: (number | null)[]; cloud_cover_mean?: (number | null)[] }
   }
   if (typeof j?.current?.temperature_2m !== 'number' || !Array.isArray(j?.daily?.time)) throw new Error('天氣資料格式不對')
   return {
@@ -71,7 +90,7 @@ export function parseWeather(json: unknown, at: number): Weather {
     now: { temp: Math.round(j.current.temperature_2m), kind: kindOf(j.current.weather_code) },
     days: j.daily.time.map((date, i) => ({
       date,
-      kind: kindOf(j.daily.weather_code[i]),
+      kind: dayKind(j.daily.weather_code[i], j.daily.precipitation_probability_max?.[i] ?? null, j.daily.precipitation_sum?.[i] ?? null, j.daily.cloud_cover_mean?.[i] ?? null),
       hi: Math.round(j.daily.temperature_2m_max[i]),
       lo: Math.round(j.daily.temperature_2m_min[i]),
       rain: Math.round(j.daily.precipitation_probability_max?.[i] ?? 0),
@@ -89,7 +108,7 @@ export async function loadWeather(airport: string, now = Date.now()): Promise<We
   if (old && now - old.at < HOUR) return old
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${at[0]}&longitude=${at[1]}`
-      + '&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+      + '&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,cloud_cover_mean'
       + '&timezone=auto&forecast_days=16'
     const res = await fetch(url)
     if (!res.ok) throw new Error(`天氣服務回應 ${res.status}`)

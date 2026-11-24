@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasWeather, kindOf, parseWeather, pickDays } from '../src/weather'
+import { dayKind, hasWeather, kindOf, parseWeather, pickDays } from '../src/weather'
 
 const sample = {
   current: { temperature_2m: 24.7, weather_code: 0 },
@@ -32,6 +32,33 @@ describe('天氣', () => {
     const w = parseWeather(sample, 0)
     expect(pickDays(w, '2027-03-05', '2027-03-09').map((d) => d.date)).toEqual(['2027-03-05', '2027-03-06', '2027-03-07'])
     expect(pickDays(w, '2027-06-01', '2027-06-05').map((d) => d.date)).toEqual(['2027-03-01', '2027-03-02', '2027-03-03', '2027-03-04', '2027-03-05'])
+  })
+
+  it('一整天的天氣：飄一下毛毛雨不算雨天', () => {
+    // 實際查到的一組乾季預報（代碼、降雨機率、雨量、雲量），對照手機內建天氣的圖示
+    expect(dayKind(51, 61, 1.1, 62)).toBe('rain') // 內建：雨 50%
+    expect(dayKind(53, 83, 2.9, 42)).toBe('rain') // 內建：雨 60%
+    expect(dayKind(51, 23, 0.1, 18)).toBe('clear') // 內建：多雲時晴
+    expect(dayKind(51, 16, 0.1, 50)).toBe('partly') // 內建：多雲時晴
+    expect(dayKind(51, 27, 1.1, 68)).toBe('rain') // 內建：雨 35%
+  })
+
+  it('一整天的天氣：雷雨、雪、霧照代碼；沒下雨的看雲量', () => {
+    expect(dayKind(95, 10, 0, 10)).toBe('storm')
+    expect(dayKind(71, 0, 0, 10)).toBe('snow')
+    expect(dayKind(45, 0, 0, 10)).toBe('fog')
+    // 當日代碼是陰，但整天平均雲量不高
+    expect(dayKind(3, 0, 0, 42)).toBe('partly')
+    expect(dayKind(1, 0, 0, 85)).toBe('cloudy')
+  })
+
+  it('一整天的天氣：服務沒給機率或雲量時的退路', () => {
+    // 沒給機率：只看雨量
+    expect(dayKind(61, null, 3, 50)).toBe('rain')
+    expect(dayKind(61, null, 0.2, 50)).toBe('partly')
+    // 什麼都沒給（舊格式）：照代碼
+    expect(dayKind(61, null, null, null)).toBe('rain')
+    expect(dayKind(2, null, null, null)).toBe('partly')
   })
 
   it('只有認得的機場才查天氣', () => {
