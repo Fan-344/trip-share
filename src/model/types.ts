@@ -58,6 +58,8 @@ export interface Member {
   look?: Partial<Look>
   /** 不用手機的成員（小孩、長輩）：沒有金鑰，由其他人代管。 */
   managed?: boolean
+  /** 現在的託運行李大約幾公斤（行李分頁）；沒填是 0 或沒有這個欄位。 */
+  luggageKg?: number
 }
 
 export interface Flight {

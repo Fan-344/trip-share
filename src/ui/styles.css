@@ -723,3 +723,9 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .hero .depart:not(:has(.depart-track)) { padding-bottom: 12px; }
 /* 主圖的容器要當定位基準，疊在上面的小人才會貼著主圖的下緣 */
 .heroart { position: relative; }
+
+/* ---- 行李重量（行李分頁） ---- */
+.lug-total { margin: 10px 0 0; }
+.lug-total b { font-size: 1.6rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.lug-total b.over, .bar i.over { color: var(--pop); }
+.bar i.over { background: var(--pop); }

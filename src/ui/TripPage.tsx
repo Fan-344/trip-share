@@ -17,6 +17,7 @@ import { More } from './More'
 import { Overview } from './Overview'
 import { Plan } from './Plan'
 import { Shop } from './Shop'
+import { LuggagePage } from './Luggage'
 
 export interface TabProps {
   trip: Trip
@@ -28,7 +29,7 @@ export interface TabProps {
   photos: PhotoStore
 }
 
-const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['shop', '購物', 'bag'], ['more', '更多', 'more']]
+const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['bags', '行李', 'luggage'], ['shop', '購物', 'bag'], ['more', '更多', 'more']]
 const TAB_KEYS = TABS.map(([key]) => key)
 
 export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; tab: string }) {
@@ -209,7 +210,7 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
       <div class={`page ${shown.tab === tab ? shown.from : ''}`} key={tab} ref={setPageEl}>
         {/* 各分頁的「編輯」開關放這裡：選單下方、靠右（kit.tsx 的 EditBar 送過來）；沒有編輯功能的分頁就是空的 */}
         <div id="editslot" class="editslot" />
-        {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'shop' ? <Shop {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}
+        {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'bags' ? <LuggagePage {...props} /> : tab === 'shop' ? <Shop {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}
       </div>
     </div>
   )
