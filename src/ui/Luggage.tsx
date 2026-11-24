@@ -2,7 +2,7 @@
 import { useState } from 'preact/hooks'
 import { amount } from '../baggage'
 import { lookOf, titleOf } from '../avatar'
-import { allowanceOf, ledger, pickLeg, type Row } from '../luggage'
+import { allowanceOf, barParts, ledger, pickLeg, type LuggageState, type Row } from '../luggage'
 import type { Trip } from '../model/trip'
 import { fullDay } from '../time'
 import { Empty, Farewell } from './bits'
@@ -27,6 +27,44 @@ export function LuggagePage({ trip, theme }: TabProps) {
   )
 }
 
+/**
+ * 重量的進度條。底下那條軌道比整列短一截，長度固定，代表額度；沒超過時用掉多少就填多少。
+ * 超過額度時，超出的公斤數畫成紅色線段，從軌道的尾端突破出去，伸進右邊預留的空白。
+ * （超過得比預留的還多時，軌道會縮短一點，讓紅色那段裝得下。）
+ */
+function Gauge({ kg, each, cls = '' }: { kg: number; each: number; cls?: string }) {
+  const p = barParts(kg, each)
+  const pct = each > 0 ? Math.round((kg / each) * 100) : 0
+  return (
+    <div class={`gauge ${cls}`} role="img" aria-label={`用了額度的 ${pct}%`}>
+      <span class="track" style={`width:${p.limit}%`} />
+      {p.ok > 0 && <i class={p.over > 0 ? 'full' : ''} style={`width:${p.ok}%`} />}
+      {p.over > 0 && <i class="over" style={`left:${p.limit}%;width:${p.over}%`} />}
+    </div>
+  )
+}
+
+/** 存在成員資料裡的狀態（可能是舊資料沒有、或別的版本寫的值）整理成認得的三種。 */
+const stateOf = (v: unknown): LuggageState => (v === 'full' || v === 'help' ? v : '')
+
+/**
+ * 兩顆狀態按鈕：「我的行李滿了」和「救救我」。按了只會在自己那一列貼上一張貼紙給大家看，不影響任何計算。
+ * 再按一次同一顆就取消；兩個不會同時成立。全團都看得到。
+ */
+function StateButtons({ state, onPick }: { state: LuggageState; onPick: (s: LuggageState) => void }) {
+  const pick = (s: LuggageState) => onPick(state === s ? '' : s)
+  return (
+    <div class="two lug-state">
+      <button type="button" class={`small ${state === 'full' ? 'on' : ''}`} aria-pressed={state === 'full'} onClick={() => pick('full')}>
+        {state === 'full' && <Icon id="check" size={16} />}我的行李滿了
+      </button>
+      <button type="button" class={`small help ${state === 'help' ? 'on' : ''}`} aria-pressed={state === 'help'} onClick={() => pick('help')}>
+        {state === 'help' && <Icon id="check" size={16} />}救救我
+      </button>
+    </div>
+  )
+}
+
 /** 去掉多餘的小數：18 就寫 18，18.5 寫 18.5。 */
 const kgText = (n: number) => String(Math.round(n * 10) / 10)
 
@@ -47,6 +85,12 @@ export function LuggageCard({ trip }: { trip: Trip }) {
   const memberOf = (id: string) => members.find((m) => m.id === id)!
   const who = members.find((m) => m.id === picked && m.managed)
   const mine = l.rows.find((r) => r.id === me)
+  const bar = (r: Row) => <Gauge kg={r.kg} each={l.each} cls="lug-bar" />
+  // 自己按的狀態：只是貼在那一列名字旁邊的貼紙，不影響上面的數字和下面的建議
+  const sticker = (id: string) => {
+    const s = stateOf(memberOf(id).luggageState)
+    return s ? <span class={`lug-sticker ${s}`}>{s === 'full' ? '滿了' : '救救我'}</span> : null
+  }
   const status = (r: Row) => !r.filled ? <span class="chip">還沒填</span>
     : r.left < 0 ? <span class="chip coral">超過 {kgText(-r.left)}</span>
     : <span class="chip green">還有 {kgText(r.left)}</span>
@@ -55,11 +99,12 @@ export function LuggageCard({ trip }: { trip: Trip }) {
       <h2 class="plain"><Icon id="luggage" size={24} />行李重量</h2>
       {mine && (
         <div class="card lug-mine">
-          <Figure look={lookOf(memberOf(me))} stage="go" size={84} />
+          <Figure look={lookOf(memberOf(me))} stage="go" size={84} sos={stateOf(memberOf(me).luggageState) === 'help'} />
           <div class="grow">
-            <div class="row"><b class="grow">我的行李</b>{status(mine)}</div>
+            <div class="row"><b>我的行李</b>{sticker(me)}<span class="grow" />{status(mine)}</div>
             <MyWeight kg={mine.kg} onSave={(kg) => trip.members.update(me, { luggageKg: kg })} />
-            <div class="muted">託運的全部加起來，大約就好</div>
+            {bar(mine)}
+            <StateButtons state={stateOf(memberOf(me).luggageState)} onPick={(s) => trip.members.update(me, { luggageState: s })} />
           </div>
         </div>
       )}
@@ -76,7 +121,7 @@ export function LuggageCard({ trip }: { trip: Trip }) {
             : l.left >= 0 ? <span>全團還能裝 <b>{kgText(l.left)}</b> 公斤</span>
             : <span>全團超重 <b class="over">{kgText(-l.left)}</b> 公斤</span>}
         </p>
-        <div class="bar"><i class={l.left < 0 ? 'over' : ''} style={`width:${l.total ? Math.min(100, (l.used / l.total) * 100) : 0}%`} /></div>
+        <Gauge kg={l.used} each={l.total} />
         <ul class="plain">
           {l.rows.map((r) => {
             const m = memberOf(r.id)
@@ -84,15 +129,17 @@ export function LuggageCard({ trip }: { trip: Trip }) {
             // 只有不用手機的成員可以由別人代填；自己的在上面那一格填
             const canFill = !!m.managed
             return (
-              <li class={`row ${canFill ? 'tapRow' : ''}`} key={r.id} role={canFill ? 'button' : undefined} onClick={canFill ? () => setPicked(r.id) : undefined}>
-                <Figure look={look} size={40} />
+              <li class={`row wrap lug-row ${canFill ? 'tapRow' : ''}`} key={r.id} role={canFill ? 'button' : undefined} onClick={canFill ? () => setPicked(r.id) : undefined}>
+                <Figure look={look} size={40} sos={stateOf(m.luggageState) === 'help'} />
                 <span class="grow lug-name">
-                  <span>{r.name}{r.id === me && <span class="muted">（我）</span>}</span>
+                  <span>{r.name}{r.id === me && <span class="muted">（我）</span>}{sticker(r.id)}</span>
                   {titleOf(look) && <small class="muted">{titleOf(look)}</small>}
                 </span>
                 {r.filled && <span class="muted">{kgText(r.kg)} 公斤</span>}
                 {status(r)}
                 {canFill && <Icon id="pencil" size={16} />}
+                {/* 這個人的行李佔了自己額度的幾成；超過就整條變紅 */}
+                {bar(r)}
               </li>
             )
           })}
@@ -100,10 +147,8 @@ export function LuggageCard({ trip }: { trip: Trip }) {
         {l.moves.map((m) => (
           <p class="muted" key={`${m.from}>${m.to}`}>{nameOf(m.from)} 可以分 {kgText(m.kg)} 公斤給 {nameOf(m.to)}。</p>
         ))}
-        {l.blank > 0 && l.used > 0 && <p class="muted">還有 {l.blank} 個人沒填，上面的數字先當他們是空的。</p>}
-        <p class="muted">每個人填自己的；不用手機的成員可以點那一列幫他填。</p>
       </div>
-      {who && <WeightSheet trip={trip} id={who.id} name={who.nickname} kg={who.luggageKg ?? 0} onClose={() => setPicked(null)} />}
+      {who && <WeightSheet trip={trip} id={who.id} name={who.nickname} kg={who.luggageKg ?? 0} state={stateOf(who.luggageState)} onClose={() => setPicked(null)} />}
     </div>
   )
 }
@@ -132,20 +177,22 @@ function MyWeight({ kg, onSave }: { kg: number; onSave: (kg: number) => void }) 
   )
 }
 
-function WeightSheet({ trip, id, name, kg, onClose }: { trip: Trip; id: string; name: string; kg: number; onClose: () => void }) {
+function WeightSheet({ trip, id, name, kg, state, onClose }: { trip: Trip; id: string; name: string; kg: number; state: LuggageState; onClose: () => void }) {
   const [text, setText] = useState(kg > 0 ? kgText(kg) : '')
+  const [st, setSt] = useState<LuggageState>(state)
   return (
     <Sheet title={`${name}的行李`} onClose={onClose}>
       <form onSubmit={(e) => {
         e.preventDefault()
         // 沒填或填 0 就是清掉
-        trip.members.update(id, { luggageKg: amount(text) })
+        trip.members.update(id, { luggageKg: amount(text), luggageState: st })
         onClose()
       }}>
         <Field label="現在大約幾公斤（託運的全部加起來）">
           <input inputMode="decimal" value={text} onInput={(e) => setText(value(e))} placeholder="例如 18.5" />
         </Field>
         <p class="muted">空著存就是清掉。</p>
+        <StateButtons state={st} onPick={setSt} />
         <div class="actions"><button class="primary">儲存</button></div>
       </form>
     </Sheet>

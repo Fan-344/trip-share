@@ -20,6 +20,8 @@ export function pickLeg<F extends Pick<Flight, 'dep' | 'bags' | 'bagKg'>>(flight
   return legs.find((f) => toInstant(f.dep) >= now) ?? legs[legs.length - 1]
 }
 
+/** 自己按的行李狀態，只是貼在那一列上的標籤，不影響任何計算：full 是「我的行李滿了」，help 是「救救我」。 */
+export type LuggageState = '' | 'full' | 'help'
 export interface Person { id: string; name: string; /** 現在的行李幾公斤；還沒填是 0。 */ kg: number }
 export interface Row extends Person {
   filled: boolean
@@ -62,4 +64,20 @@ export function ledger(people: Person[], each: number): Ledger {
     }
   }
   return { each, rows, total, used, left: round1(total - used), blank: rows.filter((r) => !r.filled).length, moves }
+}
+
+/** 進度條在額度後面預留多少長度給「超過的部分」（額度的幾成）。 */
+const RESERVE = 0.25
+
+/**
+ * 進度條怎麼畫（都是佔整列寬度的百分比）。代表額度的軌道比整列短，長度是 limit，右邊留一截空白；
+ * 沒超過時 limit 是固定的，用掉多少就在軌道裡填多少。
+ * ok 是沒超過的那一段；over 是超過額度的那一段，接在 limit 後面，突破軌道伸進預留的空白（畫成紅色）。
+ * 超過得比預留的還多時，軌道縮短到剛好讓超出的那段裝得下。
+ */
+export function barParts(kg: number, each: number): { ok: number; over: number; limit: number } {
+  if (each <= 0) return { ok: 0, over: 0, limit: 100 }
+  const max = Math.max(each * (1 + RESERVE), kg)
+  const pct = (n: number) => Math.round((n / max) * 1000) / 10
+  return { ok: pct(Math.min(Math.max(kg, 0), each)), over: pct(Math.max(kg - each, 0)), limit: pct(each) }
 }

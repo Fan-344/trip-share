@@ -727,8 +727,15 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 /* ---- 行李重量（行李分頁） ---- */
 .lug-total { margin: 10px 0 0; }
 .lug-total b { font-size: 1.6rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
-.lug-total b.over, .bar i.over { color: var(--pop); }
-.bar i.over { background: var(--pop); }
+.lug-total b.over { color: var(--pop); }
+/* 重量的進度條：軌道比整列短、長度固定；超過額度時紅色那段突破軌道，伸進右邊預留的空白 */
+.gauge { position: relative; height: 8px; margin: 8px 0 4px; }
+.gauge .track, .gauge i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+.gauge .track { background: var(--edge); }
+.gauge i { background: var(--accent); transition: width 0.45s ease; }
+/* 滿額的那段右邊是平的，緊接著紅色；紅色那段左邊是平的、右邊圓頭，看起來像從軌道尾端衝出去 */
+.gauge i.full { border-radius: 999px 0 0 999px; }
+.gauge i.over { background: var(--pop); border-radius: 0 999px 999px 0; }
 /* 自己的行李：小人在左，右邊一個大格子直接打公斤數 */
 .lug-mine { display: flex; align-items: center; gap: 12px; }
 .lug-mine .figure { flex: none; }
@@ -736,3 +743,30 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .lug-input input { width: 0; flex: 1; min-width: 0; font-size: 2rem; font-weight: 600; line-height: 1.2; padding: 4px 12px; text-align: right; font-variant-numeric: tabular-nums; }
 .lug-name { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
 .lug-name small { font-size: 0.78rem; }
+/* 每個人自己的額度用了幾成：一條細的，佔滿那一列的寬度 */
+.lug-bar { flex: 0 0 100%; height: 6px; margin: 2px 0 0; }
+.lug-row { row-gap: 6px; }
+.lug-mine .lug-bar { margin: 4px 0 6px; }
+/* 「我的行李滿了」「救救我」：按下去的那顆填色；救救我用醒目的紅 */
+.lug-state { margin-top: 10px; gap: 8px; }
+.lug-state button { justify-content: center; white-space: nowrap; }
+.lug-state button.on { background: var(--accent); border-color: var(--accent); }
+.lug-state button.help { border-color: var(--pop); color: var(--pop); }
+.lug-state button.help.on { background: var(--pop); color: #fff; }
+/* 貼在名字旁邊的狀態貼紙：微微歪一點，像手貼上去的 */
+.lug-sticker { display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; line-height: 1.5; white-space: nowrap; transform: rotate(-4deg); box-shadow: 0 2px 0 var(--shade); vertical-align: 1px; }
+.lug-sticker.full { background: #f5c561; color: var(--text); }
+.lug-sticker.help { background: var(--pop); color: #fff; }
+.lug-mine .row { flex-wrap: wrap; row-gap: 4px; }
+.lug-mine .row b { flex: none; white-space: nowrap; }
+.lug-mine .lug-sticker { margin-left: 0; }
+
+/* ---- 求救的小人（行李頁按了「救救我」）：整個人一直跳，兩隻手以肩膀為支點快速左右揮 ---- */
+@keyframes sosjump { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-4.5px); } }
+@keyframes soswave-l { from { transform: rotate(-24deg); } to { transform: rotate(20deg); } }
+@keyframes soswave-r { from { transform: rotate(24deg); } to { transform: rotate(-20deg); } }
+.a-sosjump { animation: sosjump 0.55s ease-in-out infinite; }
+.a-sos { transform-box: fill-box; animation: soswave-l 0.28s ease-in-out infinite alternate; }
+.a-sos.l { transform-origin: 100% 100%; }
+.a-sos.r { transform-origin: 0% 100%; animation-name: soswave-r; }
+@media (prefers-reduced-motion: reduce) { .a-sosjump, .a-sos { animation: none; } }

@@ -34,6 +34,18 @@ function HairFront({ look }: { look: Look }) {
   return <path fill={c} d="M-3.700 -21.800a3.700 3.700 0 0 1 7.400 0q-3.700 -1.800 -7.400 0z" />
 }
 
+/** 求救：兩隻手舉高、各自以肩膀為支點左右揮，頭上三道紅色的急迫線。 */
+function Sos({ coat }: { coat: string }) {
+  const arm = { fill: 'none', stroke: coat, 'stroke-width': 2.4, 'stroke-linecap': 'round' } as const
+  return (
+    <g>
+      <path class="a-sos l" {...arm} d="M-3 -16l-4.500 -8" />
+      <path class="a-sos r" {...arm} d="M3 -16l4.500 -8" />
+      <path class="a-blink" fill="none" stroke={CORAL} stroke-width="1.300" stroke-linecap="round" d="M-6 -28.500l-2 -2.500M0 -29.500v-3.200M6 -28.500l2 -2.500" />
+    </g>
+  )
+}
+
 /** 角色手上的東西和手的動作。 */
 function Hands({ look, stage, pull = false }: { look: Look; stage: Stage; pull?: boolean }) {
   const arm = { fill: 'none', stroke: look.coat, 'stroke-width': 2.4, 'stroke-linecap': 'round' } as const
@@ -133,8 +145,9 @@ function Lying({ look }: { look: Look }) {
  * 小人本體。walk 是腿前後擺（進度條上用）；luggage 設成 false 就不畫身邊的行李。
  * 廢人是坐著的，其他角色站著；氣氛擔當整個人會跳。
  */
-export function FigureBody({ look, stage, packed, walk = false, luggage = true }: { look: Look; stage: Stage; packed: boolean; walk?: boolean; luggage?: boolean }) {
-  const lazy = look.job === 'lazy'
+export function FigureBody({ look, stage, packed, walk = false, luggage = true, sos = false }: { look: Look; stage: Stage; packed: boolean; walk?: boolean; luggage?: boolean; sos?: boolean }) {
+  // 求救中（行李頁按了「救救我」）：不管什麼角色都站起來，跳著揮雙手，手上的東西先放下
+  const lazy = look.job === 'lazy' && !sos
   // 正拖著行李走（出發前最後 24 小時的進度條）：後面那隻手往後拉著箱子，不甩
   const pull = walk && luggage && stage === 'go' && !lazy
   const upper = (
@@ -144,7 +157,7 @@ export function FigureBody({ look, stage, packed, walk = false, luggage = true }
       <path fill={look.coat} d="M-3.500 -18h7l1.500 11h-10z" />
       <circle cx="0" cy="-21.500" r="3.300" fill={look.skin} />
       <HairFront look={look} />
-      <Hands look={look} stage={stage} pull={pull} />
+      {sos ? <Sos coat={look.coat} /> : <Hands look={look} stage={stage} pull={pull} />}
     </g>
   )
   return (
@@ -153,7 +166,7 @@ export function FigureBody({ look, stage, packed, walk = false, luggage = true }
       {luggage && <Luggage stage={stage} color={look.bag} drag={pull} x={lazy ? 16.500 : -12} />}
       {/* 拉著箱子的手：畫在身體後面、不跟著身體搖（箱子不動，手才不會離開箱子），肩膀那端藏在衣服底下 */}
       {pull && <g><path fill="none" stroke={look.coat} stroke-width="2.4" stroke-linecap="round" d="M-1.500 -16L-6.200 -13.200" /><circle cx="-6.600" cy="-13" r="1.300" fill={look.skin} /></g>}
-      <g class={look.job === 'cheer' ? 'a-bounce' : lazy ? '' : 'a-breathe'}>
+      <g class={sos ? 'a-sosjump' : look.job === 'cheer' ? 'a-bounce' : lazy ? '' : 'a-breathe'}>
         {lazy ? (
           <g>
             <Lying look={look} />
@@ -176,12 +189,12 @@ export function FigureBody({ look, stage, packed, walk = false, luggage = true }
 }
 
 /** 單獨一個小人的圖，給一般畫面用（成員名單、選角色的預覽、進度條）。 */
-export function Figure({ look, stage = 'plan', packed = false, size = 44, walk = false, luggage = true, cls = '' }: {
-  look: Look; stage?: Stage; packed?: boolean; size?: number; walk?: boolean; luggage?: boolean; cls?: string
+export function Figure({ look, stage = 'plan', packed = false, size = 44, walk = false, luggage = true, sos = false, cls = '' }: {
+  look: Look; stage?: Stage; packed?: boolean; size?: number; walk?: boolean; luggage?: boolean; sos?: boolean; cls?: string
 }) {
   return (
     <svg class={`figure ${cls}`} viewBox="-22 -38 44 40" width={size * 1.1} height={size} aria-hidden="true">
-      <FigureBody look={look} stage={stage} packed={packed} walk={walk} luggage={luggage} />
+      <FigureBody look={look} stage={stage} packed={packed} walk={walk} luggage={luggage} sos={sos} />
     </svg>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allowanceOf, ledger, pickLeg } from '../src/luggage'
+import { allowanceOf, barParts, ledger, pickLeg } from '../src/luggage'
 
 const leg = (code: string, local: string, bags?: number, bagKg?: number) => ({ code, dep: { local, tz: 'Asia/Taipei' }, bags, bagKg })
 const at = (local: string) => new Date(`${local}:00+08:00`).getTime()
@@ -34,6 +34,18 @@ describe('行李重量', () => {
     // 甲超過 4：丙的空位最多（8），全部給丙；還沒填的丁不列入
     expect(l.moves).toEqual([{ from: 'a', to: 'c', kg: 4 }])
     expect(l.left).toBe(30)
+  })
+
+  it('進度條：軌道是較短的固定長度；超過的部分突破出去', () => {
+    // 額度 40：軌道固定佔整列的八成，右邊留兩成
+    expect(barParts(0, 40)).toEqual({ ok: 0, over: 0, limit: 80 })
+    expect(barParts(20, 40)).toEqual({ ok: 40, over: 0, limit: 80 })
+    expect(barParts(40, 40)).toEqual({ ok: 80, over: 0, limit: 80 })
+    // 超過 5：紅色那段從八成的位置往右伸出一成
+    expect(barParts(45, 40)).toEqual({ ok: 80, over: 10, limit: 80 })
+    // 超過得比預留的還多：軌道縮短，讓超出的那段裝得下
+    expect(barParts(80, 40)).toEqual({ ok: 50, over: 50, limit: 50 })
+    expect(barParts(10, 0)).toEqual({ ok: 0, over: 0, limit: 100 })
   })
 
   it('一個人的空位不夠就分給好幾個人；全團都滿了就分不完', () => {

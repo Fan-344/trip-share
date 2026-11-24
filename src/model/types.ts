@@ -60,6 +60,8 @@ export interface Member {
   managed?: boolean
   /** 現在的託運行李大約幾公斤（行李分頁）；沒填是 0 或沒有這個欄位。 */
   luggageKg?: number
+  /** 自己按的行李狀態：full 是「我的行李滿了」，help 是「救救我」；沒按是空字串或沒有這個欄位。 */
+  luggageState?: '' | 'full' | 'help'
 }
 
 export interface Flight {
