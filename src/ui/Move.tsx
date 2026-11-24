@@ -72,7 +72,7 @@ export function MoveIn({ reg, primary = false }: { reg: Registry; primary?: bool
         } catch {
           setError('讀不到剪貼簿。請在下面的格子長按、選「貼上」。')
         }
-      }}>{busy ? '搬家中…' : '貼上搬家碼'}</button>
+      }}>{busy ? '搬家中…' : '從剪貼簿貼上'}</button>
       <div class="row" style="margin-top:10px">
         <input class="grow" value={text} onInput={(e) => setText(value(e))} placeholder="或把搬家碼貼在這裡" />
         <button disabled={!text.trim() || busy}>搬家</button>

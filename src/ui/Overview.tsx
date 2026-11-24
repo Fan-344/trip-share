@@ -14,6 +14,7 @@ import { Chevron } from './fold'
 import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
 import { lookOf, stageOf, titleOf, type Job, type Look, type Stage } from '../avatar'
+import { amount, bagText } from '../baggage'
 import { Figure } from './Figure'
 import { between, nextSpot, rng, seedOf } from '../random'
 import { Mascot } from './Mascot'
@@ -158,7 +159,9 @@ export function Overview({ trip, theme }: TabProps) {
                 <div class="muted">{placeName(f.arr.tz, flights)}當地時間</div>
               </div>
             </div>
-            <div class="row">
+            <div class="row wrap">
+              {/* 託運行李額度：有填才顯示 */}
+              {bagText(f) && <span class="chip mizu">{bagText(f)}</span>}
               <span class="muted grow">
                 {f.aircraft}{f.aircraft && pnr && '・'}{pnr && `訂位代號 ${pnr.code}（只存在這支手機）`}
               </span>
@@ -278,12 +281,13 @@ function FlightSheet({ trip, id, initial, onSaved, onClose }: {
     code: initial.code, from: initial.from, to: initial.to,
     depDate: initial.depDate || start, depTime: initial.depTime, depTz: AIRPORTS[initial.from]?.tz ?? '',
     arrDate: initial.arrDate || initial.depDate || start, arrTime: initial.arrTime, arrTz: AIRPORTS[initial.to]?.tz ?? '',
-    cabin: initial.cabin, aircraft: '', pnr: initial.pnr,
+    cabin: initial.cabin, aircraft: '', bags: '', bagKg: '', pnr: initial.pnr,
   } : {
     code: old?.code ?? '', from: old?.from ?? '', to: old?.to ?? '',
     depDate: old?.dep.local.slice(0, 10) ?? start, depTime: old ? hm(old.dep.local) : '', depTz: old?.dep.tz ?? '',
     arrDate: old?.arr.local.slice(0, 10) ?? start, arrTime: old ? hm(old.arr.local) : '', arrTz: old?.arr.tz ?? '',
     cabin: old?.cabin ?? '', aircraft: old?.aircraft ?? '',
+    bags: old?.bags ? String(old.bags) : '', bagKg: old?.bagKg ? String(old.bagKg) : '',
     pnr: (id && trip.getPnr(id)?.code) || '',
   })
   const set = (patch: Partial<typeof f>) => setF({ ...f, ...patch })
@@ -302,6 +306,8 @@ function FlightSheet({ trip, id, initial, onSaved, onClose }: {
       dep: { local: `${f.depDate}T${f.depTime}`, tz: f.depTz },
       arr: { local: `${f.arrDate}T${f.arrTime}`, tz: f.arrTz },
       cabin: f.cabin.trim(), aircraft: f.aircraft.trim(),
+      // 沒填就存 0（清掉原本填的）
+      bags: amount(f.bags), bagKg: amount(f.bagKg),
     }
     let fid = id
     if (fid) trip.flights.update(fid, data)
@@ -351,6 +357,10 @@ function FlightSheet({ trip, id, initial, onSaved, onClose }: {
           <Field label="抵達時間（當地）"><input type="time" value={f.arrTime} onInput={(e) => set({ arrTime: value(e) })} /></Field>
         </div>
         <Field label="抵達時間是哪裡的時間">{tzSelect('arrTz')}</Field>
+        <div class="two">
+          <Field label="託運行李幾件（可不填）"><input inputMode="numeric" value={f.bags} onInput={(e) => set({ bags: value(e) })} placeholder="1" /></Field>
+          <Field label="每件幾公斤（可不填）"><input inputMode="decimal" value={f.bagKg} onInput={(e) => set({ bagKg: value(e) })} placeholder="23" /></Field>
+        </div>
         <Field label="機型（可不填）"><input value={f.aircraft} onInput={(e) => set({ aircraft: value(e) })} placeholder="A330-900neo" /></Field>
         <Field label="訂位代號（只存在這支手機）">
           <input value={f.pnr} onInput={(e) => set({ pnr: value(e) })} autocapitalize="characters" autocomplete="off" />

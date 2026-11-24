@@ -46,7 +46,7 @@ interface Sealed {
 
 export class BackupError extends Error {
   constructor(readonly code: 'bad-file' | 'need-password' | 'bad-password') {
-    super({ 'bad-file': '這不是旅遊共編的備份檔，或檔案已損壞。', 'need-password': '這份備份有密碼。', 'bad-password': '密碼不對。' }[code])
+    super({ 'bad-file': '這不是 All Aboard 的備份檔，或檔案已損壞。', 'need-password': '這份備份有密碼。', 'bad-password': '密碼不對。' }[code])
   }
 }
 

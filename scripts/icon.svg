@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- App 圖示：氣氛擔當（丸子頭），兩手舉高跳起來。畫法和顏色跟 src/ui/Figure.tsx 的小人一樣。
+       圖形留在中央八成以內，Android 把圖示裁成圓形時不會被切到。改完重跑 node scripts/make-icons.mjs -->
+  <rect width="512" height="512" fill="#f6cf72"/>
+  <!-- 跳起來時地上的影子 -->
+  <ellipse cx="256" cy="408" rx="62" ry="11" fill="#e8b650"/>
+  <!-- 小人：原點在腳底正中，一個單位放大成 10.5 像素；離地一點點 -->
+  <g transform="translate(256 388) scale(10.5)">
+    <!-- 丸子 -->
+    <circle cx="-0.5" cy="-26.8" r="2.3" fill="#3b2a22"/>
+    <!-- 腿 -->
+    <rect x="-3" y="-8" width="2.4" height="8" rx="1.2" fill="#8a5a4a"/>
+    <rect x="0.6" y="-8" width="2.4" height="8" rx="1.2" fill="#8a5a4a"/>
+    <!-- 兩隻舉高的手 -->
+    <path d="M3 -16l4.5 -8M-3 -16l-4.5 -8" fill="none" stroke="#e9755c" stroke-width="2.4" stroke-linecap="round"/>
+    <!-- 上衣 -->
+    <path d="M-3.5 -18h7l1.500 11h-10z" fill="#e9755c"/>
+    <!-- 頭和瀏海 -->
+    <circle cx="0" cy="-21.5" r="3.3" fill="#f7dcc4"/>
+    <path d="M-3.7 -21.8a3.7 3.7 0 0 1 7.4 0q-3.7 -1.8 -7.4 0z" fill="#3b2a22"/>
+    <!-- 歡呼的小星星 -->
+    <path transform="translate(-13 -19) scale(1.5)" fill="#fdf0dc" d="M0 -3.4l1 2.400l2.400 1l-2.400 1l-1 2.400l-1 -2.400l-2.400 -1l2.400 -1z"/>
+    <path transform="translate(13.5 -20.5) scale(1.2)" fill="#f4a8b8" d="M0 -3.4l1 2.400l2.400 1l-2.400 1l-1 2.400l-1 -2.400l-2.400 -1l2.400 -1z"/>
+    <path transform="translate(11.5 -10) scale(0.8)" fill="#78ccc5" d="M0 -3.4l1 2.400l2.400 1l-2.400 1l-1 2.400l-1 -2.400l-2.400 -1l2.400 -1z"/>
+  </g>
+</svg>

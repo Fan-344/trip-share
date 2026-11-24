@@ -137,7 +137,7 @@ function InstallHint({ reg }: { reg: Registry }) {
           <li>先按這個：<MoveOut reg={reg} /></li>
           <li>點 Safari 的「分享」。</li>
           <li>選「加入主畫面」。</li>
-          <li>從主畫面打開，按「貼上搬家碼」。不要重新取暱稱，不然會變成另一個人。</li>
+          <li>從主畫面打開，按「從剪貼簿貼上」。不要重新取暱稱，不然會變成另一個人。</li>
         </ol>
       ) : (
         <button class="small" onClick={() => setOpen(true)}>怎麼加</button>

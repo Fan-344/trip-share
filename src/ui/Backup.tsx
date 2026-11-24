@@ -108,7 +108,7 @@ export function DownloadSheet({ reg, only, onClose }: { reg: Registry; only?: { 
       const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       // 檔名裡的行程名稱只留安全的字，避免奇怪的符號讓檔案存不了
       const safe = (only?.title ?? '').replace(/[\\/:*?"<>|\s]+/g, '').slice(0, 20)
-      const name = only ? `旅遊共編-${safe || '行程'}-${day}.json` : `旅遊共編備份-${day}.json`
+      const name = only ? `AllAboard-${safe || '行程'}-${day}.json` : `AllAboard備份-${day}.json`
       if (await saveFile(name, text)) {
         // 只有完整備份才算「備份過了」：單趟的檔案救不回身分和其他行程
         if (!only) reg.setLastBackup(Date.now())

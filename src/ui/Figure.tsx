@@ -150,7 +150,7 @@ export function FigureBody({ look, stage, packed, walk = false, luggage = true }
   return (
     <g>
       {/* 廢人躺著，頭在左邊：他的行李箱立在腳邊，不拖 */}
-      {luggage && <Luggage stage={stage} packed={packed} color={look.bag} drag={pull} x={lazy ? 16.500 : -12} />}
+      {luggage && <Luggage stage={stage} color={look.bag} drag={pull} x={lazy ? 16.500 : -12} />}
       {/* 拉著箱子的手：畫在身體後面、不跟著身體搖（箱子不動，手才不會離開箱子），肩膀那端藏在衣服底下 */}
       {pull && <g><path fill="none" stroke={look.coat} stroke-width="2.4" stroke-linecap="round" d="M-1.500 -16L-6.200 -13.200" /><circle cx="-6.600" cy="-13" r="1.300" fill={look.skin} /></g>}
       <g class={look.job === 'cheer' ? 'a-bounce' : lazy ? '' : 'a-breathe'}>
@@ -237,12 +237,13 @@ function Duffel({ x, w, h, c, packed }: BagProps & { x: number; w: number; h: nu
 /**
  * 小人身邊的一個行李箱（選角色的預覽、出發前一天的進度條）：畫在左後方。出發一週前和旅行中不畫。
  * drag 是正在拖著走：箱子退到身後一點，以靠小人那一側的輪子為支點往小人那邊斜（那個輪子一直貼著地面），
- * 斜到箱頂剛好在手的高度；拉桿握在手裡，只露出一小截。
+ * 斜到箱頂剛好在手的高度，手直接握在箱頂，拉桿不露出來。
+ * 這個箱子一律是乾淨的外形：不管清單勾完沒，都不畫夾在外面的衣角（那是行李堆才有的細節）。
  */
-function Luggage({ stage, packed, color, drag = false, x = -12 }: { stage: Stage; packed: boolean; color: string; drag?: boolean; x?: number }) {
+function Luggage({ stage, color, drag = false, x = -12 }: { stage: Stage; color: string; drag?: boolean; x?: number }) {
   if (stage !== 'pack' && stage !== 'go') return null
-  if (drag) return <g class="lug" transform="rotate(38 -13 -1.3)"><Upright x={-16} w={10} h={12} c={color} packed={packed} grip={1.5} /></g>
-  return <g class="lug"><Upright x={x} w={10} h={12} c={color} packed={packed} /></g>
+  if (drag) return <g class="lug" transform="rotate(38 -13 -1.3)"><Upright x={-16} w={10} h={12} c={color} packed grip={0} /></g>
+  return <g class="lug"><Upright x={x} w={10} h={12} c={color} packed /></g>
 }
 
 /**

@@ -68,6 +68,9 @@ export interface Flight {
   arr: LocalTime
   cabin: string
   aircraft: string
+  /** 託運行李：幾件、每件幾公斤。沒填是 0 或沒有這個欄位（舊資料）。 */
+  bags?: number
+  bagKg?: number
 }
 
 /** 訂位代號：只存本機，永不同步、不進備份。 */
@@ -85,6 +88,8 @@ export interface Stay {
 }
 
 export type ItemKind = 'normal' | 'must' | 'reminder'
+/** 提醒要放在當天的哪裡：空字串是照時間排，top 置頂，bottom 置底。只對提醒有效。 */
+export type ItemPin = '' | 'top' | 'bottom'
 
 export interface Item {
   date: string
@@ -96,6 +101,8 @@ export interface Item {
   place: string
   transport: string
   kind: ItemKind
+  /** 提醒的位置（置頂／置底）；舊資料沒有這個欄位，就是照時間。 */
+  pin?: ItemPin
   /** 類別（交通、用餐、景點…），決定時間軸上的圖示；舊資料沒有這個欄位。 */
   cat?: ItemCat
   /** 時間是大約的（顯示「約」）。 */

@@ -1,7 +1,8 @@
 // 每日行程：上方選日期，接著是當天的標頭（圖示與標題），下方是時間軸。
 import { useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
-import type { Item, ItemCat, ItemKind } from '../model/types'
+import type { Item, ItemCat, ItemKind, ItemPin } from '../model/types'
+import { byDayOrder } from '../order'
 import { defaultDayIcon, themeOf } from '../themes'
 import { ago, dayLabel, daysBetween, defaultTz, fullDay, mapLink, mapSearchOn, placeName, safeUrl, today, zoneOptions } from '../time'
 import { Empty, Farewell } from './bits'
@@ -11,6 +12,7 @@ import { EditBar, Field, Seg, Sheet, useNow, value } from './kit'
 import type { TabProps } from './TripPage'
 
 const KINDS: [ItemKind, string][] = [['normal', '一般'], ['must', '必去'], ['reminder', '提醒']]
+const PINS: [ItemPin, string][] = [['', '照時間'], ['top', '置頂'], ['bottom', '置底']]
 
 export function Plan({ trip, theme }: TabProps) {
   const now = useNow(60_000)
@@ -27,8 +29,8 @@ export function Plan({ trip, theme }: TabProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [editing, setEditing] = useState(false)
 
-  // 沒填時間的排最前面（整天的事），其餘照時間。
-  const list = items.filter((i) => i.date === day).sort((a, b) => a.time.localeCompare(b.time) || a.createdAt - b.createdAt)
+  // 置頂的提醒最前、置底的最後；其餘沒填時間的排前面（整天的事），再照時間。
+  const list = items.filter((i) => i.date === day).sort(byDayOrder)
   const n = range.indexOf(day)
   const info = trip.days.get(day)
   const dayIcon = (!info?.deleted && info?.icon) || defaultDayIcon(theme, n, range.length)
@@ -180,7 +182,7 @@ function ItemSheet({ trip, id, day, onClose }: { trip: Trip; id?: string; day: s
   const [f, setF] = useState<Item>({
     date: old?.date ?? day, time: old?.time ?? '', tz: old?.tz ?? defaultTz(day, flights),
     title: old?.title ?? '', note: old?.note ?? '', place: old?.place ?? '', transport: old?.transport ?? '',
-    kind: old?.kind ?? 'normal', cat: old?.cat ?? '', approx: old?.approx ?? false, mapUrl: old?.mapUrl ?? '', mapSearch: old?.mapSearch,
+    kind: old?.kind ?? 'normal', pin: old?.pin ?? '', cat: old?.cat ?? '', approx: old?.approx ?? false, mapUrl: old?.mapUrl ?? '', mapSearch: old?.mapSearch,
   })
   const set = (patch: Partial<Item>) => setF({ ...f, ...patch })
   const badUrl = (f.mapUrl ?? '').trim() !== '' && !safeUrl(f.mapUrl ?? '')
@@ -193,6 +195,8 @@ function ItemSheet({ trip, id, day, onClose }: { trip: Trip; id?: string; day: s
         const data = {
           ...f, title: f.title.trim(), note: f.note.trim(), place: f.place.trim(), transport: f.transport.trim(),
           mapUrl: (f.mapUrl ?? '').trim(), mapSearch: mapSearchOn(f),
+          // 置頂／置底只有提醒才有；改成別的類型就清掉
+          pin: f.kind === 'reminder' ? f.pin ?? '' : '',
         }
         if (id) trip.items.update(id, data)
         else trip.items.create(data)
@@ -209,6 +213,12 @@ function ItemSheet({ trip, id, day, onClose }: { trip: Trip; id?: string; day: s
           ))}
         </div>
         <Seg value={f.kind} options={KINDS} onChange={(kind) => set({ kind })} />
+        {f.kind === 'reminder' && (
+          <div style="margin-top:10px">
+            <span class="muted">這則提醒放在當天的哪裡</span>
+            <Seg value={f.pin ?? ''} options={PINS} onChange={(pin) => set({ pin })} />
+          </div>
+        )}
         <div class="two">
           <Field label="日期">
             {/* 新增時換日期，時區跟著換成那天人在的地方；編輯既有項目時不自動改。 */}

@@ -19,14 +19,14 @@ const FIELD: Record<string, string> = {
   title: '名稱', startDate: '出發日', endDate: '回程日', theme: '佈景主題', desc: '簡介', nickname: '暱稱', role: '角色',
   cat: '類別', approx: '大約時間', icon: '圖示', group: '分類', section: '欄位', body: '內容', itemId: '搭配的行程',
   owner: '負責人', qty: '數量', bought: '是否買到', wants: '要的數量', ask: '現場詢問', price: '價錢',
-  mapSearch: '用地點找地圖',
-  code: '航班代號', from: '出發機場', to: '抵達機場', dep: '起飛時間', arr: '抵達時間', cabin: '艙等', aircraft: '機型',
+  mapSearch: '用地點找地圖', pin: '提醒位置',
+  code: '航班代號', from: '出發機場', to: '抵達機場', dep: '起飛時間', arr: '抵達時間', cabin: '艙等', aircraft: '機型', bags: '行李件數', bagKg: '行李公斤數',
   name: '名稱', checkIn: '入住', checkOut: '退房', mapUrl: '地圖連結', confirmed: '確認狀態',
   date: '日期', time: '時間', tz: '時區', note: '說明', place: '地點', transport: '交通', kind: '類型',
   checked: '勾選', owners: '擁有者',
 }
 const OP = { create: '新增了', update: '修改了', delete: '刪除了', restore: '還原了' }
-const VALUE: Record<string, string> = { normal: '一般', must: '必去', reminder: '提醒', admin: '管理員', member: '成員' }
+const VALUE: Record<string, string> = { normal: '一般', must: '必去', reminder: '提醒', top: '置頂', bottom: '置底', admin: '管理員', member: '成員' }
 
 /** 修改紀錄裡這筆資料叫什麼（用現在的名稱）。 */
 function recordName(trip: Trip, e: HistoryEntry): string {
