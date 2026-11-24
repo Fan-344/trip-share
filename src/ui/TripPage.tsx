@@ -1,5 +1,5 @@
 // 一份行程的外框：頂端的名稱、同步狀態與分頁。
-import { useEffect, useState } from 'preact/hooks'
+import { useCallback, useEffect, useState } from 'preact/hooks'
 import { followChain, type ChainResult } from '../model/rekey'
 import type { Trip } from '../model/trip'
 import { hex } from '../sync/crypto'
@@ -10,7 +10,8 @@ import { resolveTheme, type ThemeId } from '../themes'
 import { Icon } from './Icons'
 import { confirmBox } from './dialog'
 import { ago } from '../time'
-import { useDocs } from './kit'
+import { useDocs, useSwipe } from './kit'
+import { swipeTarget } from '../swipe'
 import { Lists } from './Lists'
 import { More } from './More'
 import { Overview } from './Overview'
@@ -28,6 +29,7 @@ export interface TabProps {
 }
 
 const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['shop', '購物', 'bag'], ['more', '更多', 'more']]
+const TAB_KEYS = TABS.map(([key]) => key)
 
 export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; tab: string }) {
   const [opened, setOpened] = useState<OpenTrip | null>(null)
@@ -91,6 +93,27 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
     chain?.status === 'removed' ? { by: chain.by, at: chain.at } :
     gone && gone.by !== trip.actor.pubkey && !invited ? gone : null
   useEffect(() => window.scrollTo(0, 0), [tab])
+
+  // 左右滑切換分頁：整頁跟著手指走，手指往左看下一個分頁，往右看上一個；到頭就拖不太動
+  const [pageEl, setPageEl] = useState<HTMLElement | null>(null)
+  const onSwipe = useCallback((dir: -1 | 1) => {
+    const to = swipeTarget(TAB_KEYS, tab, dir)
+    if (to && meta.id) location.hash = `#/t/${meta.id}/${to}`
+  }, [tab, meta.id])
+  const canGo = useCallback((dir: -1 | 1) => swipeTarget(TAB_KEYS, tab, dir) !== null, [tab])
+  useSwipe(pageEl, canGo, onSwipe)
+
+  // 換分頁時新的那一頁從哪邊滑進來：往後面的分頁就從右邊進來，往前面的從左邊。第一次打開不滑。
+  // （在畫的時候就比對，新的一頁第一次出現就帶著方向；見 React 的「依前一次的值調整 state」寫法）
+  const [shown, setShown] = useState({ tab, from: '' })
+  if (shown.tab !== tab) setShown({ tab, from: TAB_KEYS.indexOf(tab) > TAB_KEYS.indexOf(shown.tab) ? 'from-right' : 'from-left' })
+  // 滑完就把方向拿掉，頁面裡的卡片之後才會照平常的方式浮上來（例如行程頁換一天）。
+  // 等久一點再拿：太早拿掉，剛被壓成瞬間完成的卡片動畫會從中間接著播，閃一下。
+  useEffect(() => {
+    if (!shown.from) return
+    const timer = setTimeout(() => setShown((s) => (s.from ? { ...s, from: '' } : s)), 500)
+    return () => clearTimeout(timer)
+  }, [shown.tab, shown.from])
 
   // 舊版的清單資料（分類記在別的欄位、或被拆成好幾份清單）：整理成「清單底下有欄位」的樣子。同步進來舊資料時再整理一次。
   const untidy = trip.listsNeedTidy()
@@ -182,7 +205,8 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
           ))}
         </nav>
       </div>
-      <div class="page">
+      {/* key 用分頁：每換一頁就是新的一塊，滑進來的動畫才會重播，拖到一半的位移也不會留到下一頁 */}
+      <div class={`page ${shown.tab === tab ? shown.from : ''}`} key={tab} ref={setPageEl}>
         {/* 各分頁的「編輯」開關放這裡：選單下方、靠右（kit.tsx 的 EditBar 送過來）；沒有編輯功能的分頁就是空的 */}
         <div id="editslot" class="editslot" />
         {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'shop' ? <Shop {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}

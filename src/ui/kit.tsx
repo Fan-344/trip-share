@@ -6,6 +6,7 @@ import { encode } from 'uqr'
 import { Icon } from './Icons'
 import type * as Y from 'yjs'
 import { parseInvite } from '../store/local'
+import { dragIntent, swipeDone } from '../swipe'
 
 /** 文件有任何改動（本機或同步進來的）就重畫。 */
 export function useDocs(docs: Y.Doc[]): void {
@@ -123,6 +124,8 @@ export function EditBar({ on, onChange, drop = 0, row = false }: { on: boolean; 
     slot.style.top = on ? `${(document.querySelector<HTMLElement>('.topbar')?.offsetHeight ?? 0) + 6 - drop}px` : ''
     return () => { slot.classList.remove('on', 'row'); slot.style.top = '' }
   }, [slot, on, drop, row])
+  // 長按頁面上任何一處（按鈕、連結、輸入框除外）也能進入編輯模式
+  useLongPress(slot?.parentElement ?? null, !on, () => onChange(true))
   if (!slot) return null
   return createPortal(
     <button class={`small editbtn ${on ? 'primary' : ''}`} aria-pressed={on} onClick={() => onChange(!on)}>
@@ -130,6 +133,173 @@ export function EditBar({ on, onChange, drop = 0, row = false }: { on: boolean; 
     </button>,
     slot,
   )
+}
+
+/** 長按要按多久（毫秒）、手指可以晃動多少（像素）還算長按。 */
+const PRESS_MS = 550
+const PRESS_SLOP = 10
+
+/**
+ * 在 el 裡長按就呼叫 fire。按在按鈕、連結、輸入框上不算（它們有自己的事要做）；
+ * 手指移動超過一點點、或畫面開始捲動，就當成是在滑頁面，不算長按。
+ * 長按成立後，放開手指那一下不會再被當成點擊（不然長按一張卡片會順便把它展開）。
+ * el 會加上 data-pressable，樣式表用它關掉長按選字和系統選單，免得跟長按搶。
+ * （用 data 屬性不用 class：el 的 class 是畫面那邊在管的，重畫時會把別人加的 class 洗掉。）
+ */
+export function useLongPress(el: HTMLElement | null, enabled: boolean, fire: () => void): void {
+  useEffect(() => {
+    if (!el || !enabled) return
+    el.dataset.pressable = ''
+    let timer = 0
+    let x = 0
+    let y = 0
+    let firedAt = 0
+    const cancel = () => { clearTimeout(timer); timer = 0 }
+    const down = (e: PointerEvent) => {
+      cancel()
+      if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return
+      if ((e.target as Element).closest('button, a, input, select, textarea')) return
+      x = e.clientX
+      y = e.clientY
+      timer = window.setTimeout(() => {
+        timer = 0
+        firedAt = Date.now()
+        fire()
+      }, PRESS_MS)
+    }
+    const move = (e: PointerEvent) => {
+      if (timer && Math.hypot(e.clientX - x, e.clientY - y) > PRESS_SLOP) cancel()
+    }
+    // 長按剛成立：吃掉緊接著的那一下點擊和系統的長按選單
+    const swallow = (e: Event) => {
+      if (Date.now() - firedAt > 800) return
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    el.addEventListener('pointerdown', down)
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', cancel)
+    el.addEventListener('pointercancel', cancel)
+    el.addEventListener('pointerleave', cancel)
+    el.addEventListener('click', swallow, true)
+    el.addEventListener('contextmenu', swallow)
+    addEventListener('scroll', cancel, true)
+    return () => {
+      cancel()
+      delete el.dataset.pressable
+      el.removeEventListener('pointerdown', down)
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', cancel)
+      el.removeEventListener('pointercancel', cancel)
+      el.removeEventListener('pointerleave', cancel)
+      // 進入編輯模式的那一刻這裡就會被拆掉，但放開手指的點擊還沒來：多留一下再拆
+      setTimeout(() => {
+        el.removeEventListener('click', swallow, true)
+        el.removeEventListener('contextmenu', swallow)
+      }, 900)
+      removeEventListener('scroll', cancel, true)
+    }
+  }, [el, enabled])
+}
+
+/**
+ * 在 el 裡左右滑：整個 el 跟著手指移動，放開時滑得夠遠（或夠快）就滑出去並呼叫 onSwipe，不夠就彈回原位。
+ * dir 是 -1（手指往左）或 1（往右）；canGo 說那個方向有沒有地方可以去，沒有的話拖起來會很重、放開就彈回。
+ * 從自己會左右捲的東西（日期那排、成員那排）或輸入框開始滑的不算；兩根手指的也不算；
+ * 一開始是上下動的就當成在捲頁面，這一次都不再管它。
+ * 使用者要求減少動態效果時不跟手、不滑出，只在放開時判斷。
+ */
+export function useSwipe(el: HTMLElement | null, canGo: (dir: -1 | 1) => boolean, onSwipe: (dir: -1 | 1) => void): void {
+  useEffect(() => {
+    if (!el) return
+    const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    let x = 0
+    let y = 0
+    let at = 0
+    let live = false
+    let locked = false
+    let leaving = 0
+    const scrollsSideways = (from: Element): boolean => {
+      for (let e: Element | null = from; e && e !== el; e = e.parentElement) {
+        if (e.matches('input, textarea, select')) return true
+        // 設成可以左右捲的就算，不管現在內容有沒有超出（寬一點的手機上日期那排剛好放得下）
+        if (/auto|scroll/.test(getComputedStyle(e).overflowX)) return true
+      }
+      return false
+    }
+    let shifted = false
+    const place = (dx: number, ms: number) => {
+      el.style.transition = ms ? `transform ${ms}ms ease-out` : 'none'
+      el.style.transform = dx ? `translateX(${dx}px)` : ''
+      shifted = dx !== 0
+    }
+    // 手指移動和放開的事件，掛在「手指一開始碰到的那個東西」上，不掛在 el 上：
+    // 拖到一半畫面重畫（同步進來新資料、時鐘跳一秒）把那個東西換掉的話，事件只會送給它、不會再傳到 el，
+    // 掛在 el 上就收不到放開，整頁會卡在拖到一半的位置。
+    let held: EventTarget | null = null
+    const release = () => {
+      held?.removeEventListener('touchmove', move as EventListener)
+      held?.removeEventListener('touchend', end as EventListener)
+      held?.removeEventListener('touchcancel', stop)
+      held = null
+    }
+    const start = (e: TouchEvent) => {
+      release()
+      // 上一次沒收乾淨（例如第二根手指放上來）：先回到原位
+      if (shifted && !leaving) place(0, 200)
+      live = !leaving && e.touches.length === 1 && !scrollsSideways(e.target as Element)
+      locked = false
+      if (!live) return
+      x = e.touches[0].clientX
+      y = e.touches[0].clientY
+      at = Date.now()
+      held = e.target
+      held?.addEventListener('touchmove', move as EventListener, { passive: false })
+      held?.addEventListener('touchend', end as EventListener)
+      held?.addEventListener('touchcancel', stop)
+    }
+    const move = (e: TouchEvent) => {
+      if (!live) return
+      // 多了一根手指（縮放）：這次不算，回到原位
+      if (e.touches.length !== 1) return stop()
+      const dx = e.touches[0].clientX - x
+      const dy = e.touches[0].clientY - y
+      if (!locked) {
+        const intent = dragIntent(dx, dy)
+        if (intent === 'y') { live = false; release() }
+        if (intent !== 'x') return
+        locked = true
+      }
+      // 已經認定是左右滑：不要同時上下捲
+      if (e.cancelable) e.preventDefault()
+      if (!still) place(canGo(dx < 0 ? -1 : 1) ? dx : dx * 0.2, 0)
+    }
+    const end = (e: TouchEvent) => {
+      release()
+      if (!live) return
+      live = false
+      const t = e.changedTouches[0]
+      const dir = locked || still ? swipeDone(t.clientX - x, t.clientY - y, Date.now() - at, el.clientWidth) : 0
+      if (!dir || !canGo(dir)) return place(0, shifted ? 200 : 0)
+      if (still) return onSwipe(dir)
+      // 先整頁滑出去，再換分頁（新的那一頁會從另一邊滑進來）
+      place(dir * el.clientWidth, 150)
+      leaving = window.setTimeout(() => { leaving = 0; onSwipe(dir) }, 150)
+    }
+    const stop = () => {
+      release()
+      live = false
+      if (shifted && !leaving) place(0, 200)
+    }
+    el.addEventListener('touchstart', start, { passive: true })
+    return () => {
+      release()
+      // 滑出去到一半就被拆掉（換頁的計時還沒到）：直接換過去，不要把頁面留在畫面外
+      if (leaving) { clearTimeout(leaving); leaving = 0; place(0, 0) }
+      else if (shifted) place(0, 0)
+      el.removeEventListener('touchstart', start)
+    }
+  }, [el, canGo, onSwipe])
 }
 
 /** 幾選一的按鈕列。 */

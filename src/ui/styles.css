@@ -49,7 +49,10 @@ body {
   line-height: 1.55;
   -webkit-tap-highlight-color: transparent;
 }
-#app { max-width: 560px; margin: 0 auto; }
+/* 整頁左右滑的時候會有一部分跑到畫面外：在這裡裁掉，不然手機會把版面撐寬、整個畫面縮小。
+   用 clip 不用 hidden：hidden 會讓頂端選單黏不住。 */
+#app { max-width: 560px; margin: 0 auto; overflow-x: clip; }
+html { overflow-x: clip; }
 .page {
   padding: 16px max(16px, env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
@@ -439,6 +442,17 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 .editslot { display: flex; justify-content: flex-end; height: 0; position: relative; z-index: 4; }
 .editslot:empty { display: none; }
 .editslot.on { position: sticky; z-index: 4; }
+/* 換分頁：新的一頁整頁從旁邊滑進來。動畫結束後不留位移（留著的話，頁面裡固定在螢幕上的東西會被關在裡面） */
+@keyframes from-right { from { transform: translateX(100%); } }
+@keyframes from-left { from { transform: translateX(-100%); } }
+.page.from-right { animation: from-right 0.22s ease-out; }
+.page.from-left { animation: from-left 0.22s ease-out; }
+/* 整頁在滑的時候，卡片不要同時各自浮上來 */
+.page.from-right .card, .page.from-right .dayhead, .page.from-right .stop, .page.from-right .farewell,
+.page.from-left .card, .page.from-left .dayhead, .page.from-left .stop, .page.from-left .farewell { animation-duration: 0.01s; }
+@media (prefers-reduced-motion: reduce) { .page.from-right, .page.from-left { animation: none; } }
+/* 可以長按進入編輯模式的頁面：關掉長按選字和系統選單，免得跟長按搶（編輯中恢復，照常可以選字） */
+[data-pressable] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .editbtn { flex: none; white-space: nowrap; margin-top: var(--drop, 0); }
 .editslot.row { height: auto; margin-bottom: 8px; }
 /* 清單標題列上的鎖：鎖著的清單不能勾，避免滑手機時誤觸 */
