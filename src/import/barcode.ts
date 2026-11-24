@@ -10,3 +10,9 @@ export async function readBarcodeTexts(image: Blob): Promise<string[]> {
   const found = await readBarcodes(image, { formats: ['PDF417', 'Aztec', 'QRCode', 'DataMatrix'], tryHarder: true, maxNumberOfSymbols: 4 })
   return found.map((r) => r.text).filter(Boolean)
 }
+
+/** 相機畫面的一格裡的 QR Code 內容（掃邀請用）；沒掃到是空字串。只找 QR、不多花時間硬找，才跟得上連續的畫面。 */
+export async function readQrText(frame: ImageData): Promise<string> {
+  const found = await readBarcodes(frame, { formats: ['QRCode'], tryHarder: false, maxNumberOfSymbols: 1 })
+  return found[0]?.text ?? ''
+}

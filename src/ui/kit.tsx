@@ -7,6 +7,7 @@ import { Icon } from './Icons'
 import type * as Y from 'yjs'
 import { parseInvite } from '../store/local'
 import { dragIntent, swipeDone } from '../swipe'
+import { ScanSheet } from './Scan'
 
 /** 文件有任何改動（本機或同步進來的）就重畫。 */
 export function useDocs(docs: Y.Doc[]): void {
@@ -365,10 +366,14 @@ export function CopyButton({ text, label, cls = 'primary' }: { text: string; lab
   )
 }
 
-/** 貼上邀請連結加入：從主畫面 App 加入行程的入口，也是連結點不開時的備用做法。 */
+/**
+ * 加入別人的行程：掃邀請的 QR Code，或貼上邀請連結。
+ * 主畫面的 App 只能從這裡加入（用手機內建的相機掃會開到 Safari，不是這個 App）；也是連結點不開時的備用做法。
+ */
 export function PasteInvite() {
   const [text, setText] = useState('')
   const [error, setError] = useState('')
+  const [scanning, setScanning] = useState(false)
   const join = (raw: string, notFound: string) => {
     const invite = parseInvite(raw)
     if (!invite) return setError(notFound)
@@ -381,8 +386,9 @@ export function PasteInvite() {
       e.preventDefault()
       join(text, '找不到邀請內容，請確認貼上的是完整連結。')
     }}>
+      <button type="button" class="primary block" onClick={() => setScanning(true)}><Icon id="camera" size={20} />掃描邀請 QR Code</button>
       {/* 讀剪貼簿一定要由使用者按按鈕觸發；iPhone 會再跳一次「貼上」讓人確認。 */}
-      <button type="button" class="primary block" onClick={async () => {
+      <button type="button" class="block" style="margin-top:10px" onClick={async () => {
         try {
           join(await navigator.clipboard.readText(), '剪貼簿裡沒有邀請連結。請先在邀請連結的頁面按「複製邀請」。')
         } catch {
@@ -394,6 +400,15 @@ export function PasteInvite() {
         <button disabled={!text.trim()}>加入</button>
       </div>
       {error && <p class="muted">{error}</p>}
+      {scanning && (
+        <ScanSheet title="掃描邀請 QR Code" wrong="這不是邀請的 QR Code。" onClose={() => setScanning(false)}
+          onText={(t) => {
+            if (!parseInvite(t)) return false
+            setScanning(false)
+            join(t, '')
+            return true
+          }} />
+      )}
     </form>
   )
 }
