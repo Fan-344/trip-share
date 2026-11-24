@@ -35,7 +35,7 @@ function HairFront({ look }: { look: Look }) {
 }
 
 /** 角色手上的東西和手的動作。 */
-function Hands({ look, stage }: { look: Look; stage: Stage }) {
+function Hands({ look, stage, pull = false }: { look: Look; stage: Stage; pull?: boolean }) {
   const arm = { fill: 'none', stroke: look.coat, 'stroke-width': 2.4, 'stroke-linecap': 'round' } as const
   switch (look.job) {
     case 'guide':
@@ -75,7 +75,8 @@ function Hands({ look, stage }: { look: Look; stage: Stage }) {
     case 'cheer':
       return (
         <g>
-          <path {...arm} d="M3 -16l4.500 -8M-3 -16l-4.500 -8" />
+          {/* 拖行李時後面那隻手拉著箱子，只舉前面那隻 */}
+          <path {...arm} d={pull ? 'M3 -16l4.500 -8' : 'M3 -16l4.500 -8M-3 -16l-4.500 -8'} />
           {/* 歡呼時頭上迸出三顆小星星 */}
           <g class="fx">
             <path class="a-pop" fill={GOLD} d="M-9 -30l1 2.400l2.400 1l-2.400 1l-1 2.400l-1 -2.400l-2.400 -1l2.400 -1z" />
@@ -134,6 +135,8 @@ function Lying({ look }: { look: Look }) {
  */
 export function FigureBody({ look, stage, packed, walk = false, luggage = true }: { look: Look; stage: Stage; packed: boolean; walk?: boolean; luggage?: boolean }) {
   const lazy = look.job === 'lazy'
+  // 正拖著行李走（出發前最後 24 小時的進度條）：後面那隻手往後拉著箱子，不甩
+  const pull = walk && luggage && stage === 'go' && !lazy
   const upper = (
     <g>
       {stage === 'trip' && !lazy && <rect x="-7.500" y="-18" width="4.500" height="9" rx="2.200" fill={look.bag} />}
@@ -141,21 +144,25 @@ export function FigureBody({ look, stage, packed, walk = false, luggage = true }
       <path fill={look.coat} d="M-3.500 -18h7l1.500 11h-10z" />
       <circle cx="0" cy="-21.500" r="3.300" fill={look.skin} />
       <HairFront look={look} />
-      <Hands look={look} stage={stage} />
+      <Hands look={look} stage={stage} pull={pull} />
     </g>
   )
   return (
     <g>
-      {luggage && <Luggage stage={stage} packed={packed} color={look.bag} />}
+      {/* 廢人躺著，頭在左邊：他的行李箱立在腳邊，不拖 */}
+      {luggage && <Luggage stage={stage} packed={packed} color={look.bag} drag={pull} x={lazy ? 16.500 : -12} />}
+      {/* 拉著箱子的手：畫在身體後面、不跟著身體搖（箱子不動，手才不會離開箱子），肩膀那端藏在衣服底下 */}
+      {pull && <g><path fill="none" stroke={look.coat} stroke-width="2.4" stroke-linecap="round" d="M-1.500 -16L-6.200 -13.200" /><circle cx="-6.600" cy="-13" r="1.300" fill={look.skin} /></g>}
       <g class={look.job === 'cheer' ? 'a-bounce' : lazy ? '' : 'a-breathe'}>
         {lazy ? (
           <g>
             <Lying look={look} />
           </g>
         ) : (
-          <g>
+          // who：走路的左右搖晃套在這一層（只有人，不含行李箱）
+          <g class="who">
             {/* 走路時前後甩的那隻手；氣氛擔當兩隻手都舉著，不再多畫一隻 */}
-            {walk && look.job !== 'cheer' && <path class="arm" fill="none" stroke={look.coat} stroke-width="2.2" stroke-linecap="round" d="M-2.500 -16v6.500" />}
+            {walk && !pull && look.job !== 'cheer' && <path class="arm" fill="none" stroke={look.coat} stroke-width="2.2" stroke-linecap="round" d="M-2.500 -16v6.500" />}
             <g fill={TRUNK}>
               <rect class={walk ? 'leg' : undefined} x="-3" y="-8" width="2.400" height="8" rx="1.200" />
               <rect class={walk ? 'leg alt' : undefined} x="0.600" y="-8" width="2.400" height="8" rx="1.200" />
@@ -190,11 +197,11 @@ const darker = (hex: string): string => {
 
 interface BagProps { c: string; packed: boolean }
 
-/** 立著的行李箱：拉桿、兩道溝紋、兩個輪子。底部正中在 (x, 0)。沒收好的話袖子夾在外面。 */
-function Upright({ x, w, h, c, packed }: BagProps & { x: number; w: number; h: number }) {
+/** 立著的行李箱：拉桿（grip 是拉桿露出多長）、兩道溝紋、兩個輪子。底部正中在 (x, 0)。沒收好的話袖子夾在外面。 */
+function Upright({ x, w, h, c, packed, grip = 5 }: BagProps & { x: number; w: number; h: number; grip?: number }) {
   return (
     <g transform={`translate(${x} 0)`}>
-      <path fill="none" stroke={TRUNK} stroke-width="1.2" stroke-linejoin="round" d={`M${-w * 0.22} ${-h - 1}v-5h${w * 0.44}v5`} />
+      <path fill="none" stroke={TRUNK} stroke-width="1.2" stroke-linejoin="round" d={`M${-w * 0.22} ${-h - 1}v${-grip}h${w * 0.44}v${grip}`} />
       {!packed && <path fill={PINK} d={`M${-w / 2 + 1} ${-h * 0.55}l-4 1.500l0.500 3l3.500 -1z`} />}
       <rect x={-w / 2} y={-h - 1.500} width={w} height={h} rx="3" fill={c} />
       <path fill="none" stroke={darker(c)} stroke-width="1" stroke-linecap="round" d={`M${-w * 0.2} ${-h + 2}v${h - 6}M${w * 0.2} ${-h + 2}v${h - 6}`} />
@@ -227,10 +234,15 @@ function Duffel({ x, w, h, c, packed }: BagProps & { x: number; w: number; h: nu
   )
 }
 
-/** 小人身邊的一個行李箱（選角色的預覽用）：畫在左後方。出發一週前和旅行中不畫。 */
-function Luggage({ stage, packed, color }: { stage: Stage; packed: boolean; color: string }) {
+/**
+ * 小人身邊的一個行李箱（選角色的預覽、出發前一天的進度條）：畫在左後方。出發一週前和旅行中不畫。
+ * drag 是正在拖著走：箱子退到身後一點，以靠小人那一側的輪子為支點往小人那邊斜（那個輪子一直貼著地面），
+ * 斜到箱頂剛好在手的高度；拉桿握在手裡，只露出一小截。
+ */
+function Luggage({ stage, packed, color, drag = false, x = -12 }: { stage: Stage; packed: boolean; color: string; drag?: boolean; x?: number }) {
   if (stage !== 'pack' && stage !== 'go') return null
-  return <Upright x={-12} w={10} h={12} c={color} packed={packed} />
+  if (drag) return <g class="lug" transform="rotate(38 -13 -1.3)"><Upright x={-16} w={10} h={12} c={color} packed={packed} grip={1.5} /></g>
+  return <g class="lug"><Upright x={x} w={10} h={12} c={color} packed={packed} /></g>
 }
 
 /**

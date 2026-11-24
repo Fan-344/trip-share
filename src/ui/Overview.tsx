@@ -14,7 +14,7 @@ import { Chevron } from './fold'
 import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
 import { lookOf, stageOf, titleOf, type Job, type Look, type Stage } from '../avatar'
-import { Figure, Pile } from './Figure'
+import { Figure } from './Figure'
 import { between, nextSpot, rng, seedOf } from '../random'
 import { Mascot } from './Mascot'
 import { ImportSheet, type ImportState } from './Import'
@@ -196,7 +196,7 @@ export function Overview({ trip, theme }: TabProps) {
       {editing && <button class="add" onClick={() => setSheet({ kind: 'stay' })}><Icon id="plus" size={18} />新增住宿</button>}
 
       <Farewell theme={theme} title={meta.title} />
-      <EditBar on={editing} onChange={setEditing} />
+      <EditBar on={editing} onChange={setEditing} row />
 
       {sheet?.kind === 'trip' && <TripSheet trip={trip} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'flight' && (
@@ -489,8 +489,8 @@ interface Habit {
 }
 
 /**
- * at 是現在的進度（行李的位置），i 是第幾個人（同角色的人步調再各差一點）。
- * 會走的角色都可以在整條線上走（不限在已經走過的那一段）；差別在速度、步調和停多久。廢人不走，躺在行李旁邊。
+ * at 是現在的進度（條紋的前端），i 是第幾個人（同角色的人步調再各差一點）。
+ * 會走的角色都可以在整條線上走（不限在已經走過的那一段）；差別在速度、步調和停多久。廢人不走，躺在條紋前端的後面一點。
  */
 function habitOf(job: Job, at: number, i: number): Habit {
   const jitter = (i % 3) * 0.04
@@ -554,14 +554,15 @@ function Roamer({ id, look, packed, stage, habit, size }: {
   return (
     <span class={`roamer ${walking ? '' : 'acting'}`} style={`left:${pos}%;transition:left ${walking ? secs : 0}s linear;--step:${habit.step}s`}>
       <span class="face" style={`transform:scaleX(${face})`}>
-        <Figure look={look} stage={stage === 'trip' ? 'trip' : 'plan'} packed={packed} luggage={false} walk={walking} size={size} cls={walking ? 'traveler' : ''} />
+        {/* 出發前最後 24 小時（go）：每個人拖著自己的行李箱走；其他時候不帶行李 */}
+        <Figure look={look} stage={stage === 'trip' || stage === 'go' ? stage : 'plan'} packed={packed} luggage={stage === 'go'} walk={walking} size={size} cls={walking ? 'traveler' : ''} />
       </span>
     </span>
   )
 }
 
 /**
- * 進度條：走過的那段是往前滑的斜條紋，前端是全團的行李；全團的小人在線上各走各的。p 是 0 到 1。
+ * 進度條：走過的那段是往前滑的斜條紋；全團的小人在線上各走各的，出發前最後 24 小時每個人拖著行李箱。p 是 0 到 1。
  */
 function Track({ p, who }: { p: number; who: Who }) {
   // 取整數百分比：進度每秒都在變一點點，小人的活動範圍不用跟著每秒重算
@@ -570,7 +571,6 @@ function Track({ p, who }: { p: number; who: Who }) {
   return (
     <div class="depart-track">
       <i style={`width:${at}%`} />
-      <span class="pile" style={`left:${at}%`}><Pile cast={who.cast} stage={who.stage} size={small ? 46 : 52} /></span>
       {who.cast.map((m, i) => (
         <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={who.stage} habit={habitOf(m.look.job, at, i)} size={small ? 50 : 58} />
       ))}

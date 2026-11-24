@@ -8,7 +8,7 @@ import { ago, daysBetween, fullDay, today } from '../time'
 import { Empty, Farewell } from './bits'
 import { Chevron, Fold } from './fold'
 import { Icon } from './Icons'
-import { EditBar, Field, Sheet, useNow, value } from './kit'
+import { Field, Sheet, useNow, value } from './kit'
 import { CURRENCIES, detectCurrency, formatPrice, parsePrice } from '../money'
 import type { PhotoStore } from '../store/photos'
 import { Lightbox, PhotoField, usePhoto } from './photo'
@@ -20,7 +20,6 @@ type SheetState = { id?: string; ask: boolean } | null
 export function Shop({ trip, theme, photos }: TabProps) {
   const me = trip.actor.pubkey
   const [sheet, setSheet] = useState<SheetState>(null)
-  const [editing, setEditing] = useState(false)
   const items = trip.shopItems()
   const range = daysBetween(trip.meta.startDate, trip.meta.endDate)
   const bought = items.filter((i) => i.bought).length
@@ -40,16 +39,16 @@ export function Shop({ trip, theme, photos }: TabProps) {
         </div>
         <div class="bar"><i style={`width:${items.length ? (bought / items.length) * 100 : 0}%`} /></div>
         {items.length > 0 && bought === items.length && <div class="stamp"><Icon id="star" size={18} />都買齊了！</div>}
-        <div class={editing ? 'two' : ''} style="margin-top:12px">
-          <button class="primary" style="width:100%" onClick={() => setSheet({ ask: true })}><Icon id="camera" size={20} />現場問大家</button>
-          {editing && <button onClick={() => setSheet({ ask: false })}><Icon id="plus" size={18} />事先要買的</button>}
+        <div class="two" style="margin-top:12px">
+          <button class="primary" onClick={() => setSheet({ ask: true })}><Icon id="camera" size={20} />現場問大家</button>
+          <button onClick={() => setSheet({ ask: false })}><Icon id="plus" size={18} />事先要買的</button>
         </div>
       </div>
 
       {items.length === 0 && <Empty icon="bag">還沒有要買的東西。</Empty>}
 
       {asking.length > 0 && <h2 class="plain"><Icon id="bell" size={24} />正在問大家</h2>}
-      {asking.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={editing ? () => setSheet({ id: i.id, ask: true }) : undefined} />)}
+      {asking.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
 
       {dates.map((date) => {
         const n = range.indexOf(date)
@@ -64,7 +63,7 @@ export function Shop({ trip, theme, photos }: TabProps) {
               </span>
             </div>
             {planned.filter((i) => i.date === date).map((i) => (
-              <PlanCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={editing ? () => setSheet({ id: i.id, ask: false }) : undefined} />
+              <PlanCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: false })} />
             ))}
           </div>
         )
@@ -72,12 +71,11 @@ export function Shop({ trip, theme, photos }: TabProps) {
 
       {asked.length > 0 && (
         <Fold title="問過、已經買了的" summary={`${asked.length} 樣`}>
-          {asked.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={editing ? () => setSheet({ id: i.id, ask: true }) : undefined} />)}
+          {asked.map((i) => <AskCard key={i.id} trip={trip} photos={photos} item={i} me={me} onEdit={() => setSheet({ id: i.id, ask: true })} />)}
         </Fold>
       )}
 
       <Farewell theme={theme} title={trip.meta.title} />
-      <EditBar on={editing} onChange={setEditing} />
       {sheet && <ShopSheet trip={trip} photos={photos} id={sheet.id} ask={sheet.ask} days={range} onClose={() => setSheet(null)} />}
     </div>
   )

@@ -103,16 +103,32 @@ export function Field({ label, children }: { label: string; children: ComponentC
 }
 
 /**
- * 每一頁最下方的「編輯」開關。平常畫面只給人看和勾，新增、修改、刪除的按鈕都收起來，
- * 按了「編輯」才出現；編輯中「完成」會黏在畫面底部，捲到哪都按得到。切到別的分頁會自動回到平常的樣子。
+ * 選單下方、靠右的「編輯」開關。平常畫面只給人看和勾，新增、修改、刪除的按鈕都收起來，
+ * 按了「編輯」才出現；改完按「完成」。切到別的分頁會自動回到平常的樣子。
+ *
+ * 各分頁自己管編輯狀態，按鈕卻要放在每一頁的最上面（行程頁的 #editslot），所以這裡把按鈕送過去；
+ * 那一格是同一次畫面才出現的，要等畫好才找得到。
+ * 那一格自己不佔高度：按鈕往下移 drop（像素），疊在各頁第一列的右邊，跟那一頁的小標同高。
+ * 第一列沒有空位的頁面（總覽最上面是主圖、行程最上面是日期那排）給 row，按鈕就自己佔一行。
+ * 編輯中「完成」會黏在選單底下，捲到哪都按得到；選單有多高是量出來的（瀏海、字體大小都會影響）。
  */
-export function EditBar({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
-  return (
-    <div class={`editbar ${on ? 'on' : ''}`}>
-      <button class={on ? 'primary' : 'small'} aria-pressed={on} onClick={() => onChange(!on)}>
-        <Icon id={on ? 'check' : 'pencil'} size={16} />{on ? '完成' : '編輯'}
-      </button>
-    </div>
+export function EditBar({ on, onChange, drop = 0, row = false }: { on: boolean; onChange: (on: boolean) => void; drop?: number; row?: boolean }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => setSlot(document.getElementById('editslot')), [])
+  useEffect(() => {
+    if (!slot) return
+    slot.classList.toggle('on', on)
+    slot.style.setProperty('--drop', `${drop}px`)
+    slot.classList.toggle('row', row)
+    slot.style.top = on ? `${(document.querySelector<HTMLElement>('.topbar')?.offsetHeight ?? 0) + 6 - drop}px` : ''
+    return () => { slot.classList.remove('on', 'row'); slot.style.top = '' }
+  }, [slot, on, drop, row])
+  if (!slot) return null
+  return createPortal(
+    <button class={`small editbtn ${on ? 'primary' : ''}`} aria-pressed={on} onClick={() => onChange(!on)}>
+      <Icon id={on ? 'check' : 'pencil'} size={16} />{on ? '完成' : '編輯'}
+    </button>,
+    slot,
   )
 }
 

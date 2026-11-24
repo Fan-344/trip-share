@@ -183,6 +183,8 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
         </nav>
       </div>
       <div class="page">
+        {/* 各分頁的「編輯」開關放這裡：選單下方、靠右（kit.tsx 的 EditBar 送過來）；沒有編輯功能的分頁就是空的 */}
+        <div id="editslot" class="editslot" />
         {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'shop' ? <Shop {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}
       </div>
     </div>

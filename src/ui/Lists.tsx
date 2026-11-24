@@ -68,7 +68,7 @@ export function Lists({ trip, theme }: TabProps) {
       {editing && <button class="add" onClick={() => setNoteSheet({})}><Icon id="plus" size={18} />新增重點說明</button>}
 
       <Farewell theme={theme} title={trip.meta.title} />
-      <EditBar on={editing} onChange={setEditing} />
+      <EditBar on={editing} onChange={setEditing} drop={26} />
       {creating && <CreateList trip={trip} onClose={() => setCreating(false)} />}
       {noteSheet && <NoteSheet trip={trip} id={noteSheet.id} onClose={() => setNoteSheet(null)} />}
     </div>

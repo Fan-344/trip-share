@@ -432,9 +432,12 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 .photo.wait { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 120px; color: var(--muted); font-size: 0.85rem; border-style: dashed; }
 
 /* 每頁右上角的「編輯」開關；編輯中整列變色，提醒現在點東西會進入修改 */
-.editbar { display: flex; justify-content: center; margin: 14px 0 4px; }
-.editbar.on { position: sticky; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 5; }
-.editbar.on button { min-width: 140px; }
+/* 選單下方、靠右的編輯開關；編輯中黏在選單底下（top 由 EditBar 量出來） */
+.editslot { display: flex; justify-content: flex-end; height: 0; position: relative; z-index: 4; }
+.editslot:empty { display: none; }
+.editslot.on { position: sticky; z-index: 4; }
+.editbtn { flex: none; white-space: nowrap; margin-top: var(--drop, 0); }
+.editslot.row { height: auto; margin-bottom: 8px; }
 /* 清單標題列上的鎖：鎖著的清單不能勾，避免滑手機時誤觸 */
 .lockbtn { border: 0; background: transparent; padding: 4px; min-height: 0; display: flex; box-shadow: none; }
 .lockbtn.locked { opacity: 0.55; }
@@ -602,7 +605,6 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .dots button.on { box-shadow: 0 0 0 2.5px var(--ink); }
 
 /* ---- 進度條上的行李堆和來回走的小人 ---- */
-.depart-track .pile { position: absolute; bottom: 17px; transform: translateX(-50%); display: flex; }
 .depart-track .roamer { position: absolute; bottom: 17px; transform: translateX(-50%); display: flex; }
 .depart-track .roamer .face { display: flex; }
 
@@ -625,15 +627,17 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 
 /* ---- 進度條上走路更活潑：腿擺得大、身體左右搖、手前後甩 ---- */
 @keyframes legstep { 0%, 100% { transform: rotate(30deg); } 50% { transform: rotate(-30deg); } }
-@keyframes waddle { from { transform: rotate(-5deg) translateY(0); } to { transform: rotate(5deg) translateY(-2.5px); } }
+@keyframes waddle { from { transform: rotate(-5deg) translateY(0); } to { transform: rotate(5deg) translateY(-1.8px); } }
 @keyframes armswing { from { transform: rotate(38deg); } to { transform: rotate(-38deg); } }
-.traveler { animation: waddle 0.24s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+/* 搖晃只套在人身上（.who），以腳底為支點；身邊的行李箱不跟著晃，輪子留在地面 */
+.traveler { animation: none; }
+.traveler .who { animation: waddle 0.24s ease-in-out infinite alternate; transform-origin: 0 0; }
 .traveler .leg { animation-duration: 0.48s; }
 .traveler .leg.alt { animation-delay: -0.24s; }
 .traveler .arm { animation: armswing 0.24s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 0; }
 
 /* 每個角色的步調不同：--step 是走一步要幾秒（由 Overview 的 stepOf 給），腿、身體搖晃、甩手都跟著它 */
-.roamer .traveler { animation-duration: calc(var(--step, 0.5s) / 2); }
+.roamer .traveler .who { animation-duration: calc(var(--step, 0.5s) / 2); }
 .roamer .traveler .leg { animation-duration: var(--step, 0.5s); }
 .roamer .traveler .leg.alt { animation-delay: calc(var(--step, 0.5s) / -2); }
 .roamer .traveler .arm { animation-duration: calc(var(--step, 0.5s) / 2); }

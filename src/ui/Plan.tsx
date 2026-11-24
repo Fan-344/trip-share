@@ -129,7 +129,7 @@ export function Plan({ trip, theme }: TabProps) {
       </div>
       {editing && <button class="add" onClick={() => setSheet({ kind: 'item' })}><Icon id="plus" size={18} />新增項目</button>}
       <Farewell theme={theme} title={meta.title} />
-      <EditBar on={editing} onChange={setEditing} />
+      <EditBar on={editing} onChange={setEditing} row />
 
       {sheet?.kind === 'item' && <ItemSheet trip={trip} id={sheet.id} day={day} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'day' && (

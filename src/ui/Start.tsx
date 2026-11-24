@@ -8,6 +8,7 @@ import { Art } from './Art'
 import { BAGS, defaultLook } from '../avatar'
 import { Pile } from './Figure'
 import { BackupCard, Recover } from './Backup'
+import { MoveCard, MoveIn, MoveOut } from './Move'
 import { Fold } from './fold'
 import { Icon } from './Icons'
 import { Mascot } from './Mascot'
@@ -70,7 +71,7 @@ function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   if (import.meta.env.DEV && hash === '#/themes') return <ThemeGallery />
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
-  if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><Recover reg={reg} /></div></div>
+  if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><MovedHere reg={reg} /><Recover reg={reg} /></div></div>
   if (wantsJoin) {
     const invite = parseInvite(hash)
     if (invite) return <Join reg={reg} invite={invite} />
@@ -104,7 +105,7 @@ const HINT_KEY = 'installHintDismissed'
  * iPhone／iPad 用 Safari 開啟時，在首頁建議加到主畫面。只是建議，可以關掉、不擋任何功能。
  * 主畫面 App 的資料和 Safari 是分開的，所以一併說明加了之後要怎麼把行程帶過去。
  */
-function InstallHint() {
+function InstallHint({ reg }: { reg: Registry }) {
   const [open, setOpen] = useState(false)
   const [hidden, setHidden] = useState(() => {
     try {
@@ -133,14 +134,30 @@ function InstallHint() {
       </p>
       {open ? (
         <ol class="steps">
+          <li>先按這個：<MoveOut reg={reg} /></li>
           <li>點 Safari 的「分享」。</li>
           <li>選「加入主畫面」。</li>
-          <li>從主畫面打開，重新取暱稱。</li>
-          <li>到行程「更多」複製邀請連結，在主畫面的 App 按「貼上邀請」。</li>
+          <li>從主畫面打開，按「貼上搬家碼」。不要重新取暱稱，不然會變成另一個人。</li>
         </ol>
       ) : (
         <button class="small" onClick={() => setOpen(true)}>怎麼加</button>
       )}
+    </div>
+  )
+}
+
+/**
+ * 第一次打開（還沒有身分）時：已經在別的地方用過的人，貼上搬家碼就不用重新取暱稱、重新加入。
+ * 主畫面的 App 第一次打開就是這個情況。
+ */
+function MovedHere({ reg }: { reg: Registry }) {
+  return (
+    <div class="card flat" style="margin-top:24px">
+      <b>之前在 Safari 用過？</b>
+      <p class="muted">
+        不要重新取暱稱。回 Safari 的首頁，在「搬家」按「複製搬家碼」，再回來貼上，就還是原本的你。
+      </p>
+      <MoveIn reg={reg} />
     </div>
   )
 }
@@ -189,7 +206,7 @@ function Home({ reg }: { reg: Registry }) {
         {/* 點自己的名字可以改顯示名稱 */}
         <button class="small" aria-label="更改顯示名稱" onClick={() => setRenaming(true)}>{reg.me()!.nickname}<Icon id="pencil" size={14} /></button>
       </div>
-      <InstallHint />
+      <InstallHint reg={reg} />
       {trips.length === 0 && <p class="empty">還沒有行程。</p>}
       {trips.map((t) => (
         <a class="card tap tripcard" key={t.id} href={`#/t/${t.id}`}>
@@ -213,6 +230,8 @@ function Home({ reg }: { reg: Registry }) {
       <Fold key={String(trips.length === 0)} title="加入別人的行程" open={trips.length === 0}>
       <PasteInvite />
       </Fold>
+
+      <MoveCard reg={reg} />
 
       <BackupCard reg={reg} />
 
