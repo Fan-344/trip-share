@@ -95,6 +95,24 @@ describe('同步', () => {
     expect(b.sync.status().pending).toBe(false)
   })
 
+  it('有一台中繼站連不上：其他台送完就算同步完，不會一直顯示同步中', async () => {
+    const key = await newKey()
+    const good = new FakeServer()
+    const bad = new FakeServer()
+    const a = await phone('A', key, [good, bad])
+    a.relays[1].setOnline(false)
+    a.trip.init({ id: 't1', title: '清邁', startDate: '2027-03-05', endDate: '2027-03-09' }, '爸爸')
+    a.trip.items.create(item('晚餐'))
+    await settle(a)
+    expect(a.sync.status()).toMatchObject({ connected: 1, total: 2, pending: false })
+    // 連不上的那台其實還欠著，連上之後會補送過去
+    expect(a.sync.relayStatus()[1].behind.length).toBeGreaterThan(0)
+    a.relays[1].setOnline(true)
+    await settle(a)
+    expect(a.sync.relayStatus()[1].behind).toEqual([])
+    expect(bad.events.size).toBeGreaterThan(0)
+  })
+
   it('中繼站只看得到密文；金鑰不對的人什麼都拿不到', async () => {
     const key = await newKey()
     const server = new FakeServer()

@@ -16,13 +16,13 @@ import { PhotoStore } from './photos'
 
 /**
  * 內建的公共中繼站。2026-11-22 在台灣用 scripts/relay-probe.mjs 實測：
- * 五台都能寫入並讀回 40 KB 的事件；泰國的連線品質尚未實測。
+ * 這四台都能寫入並讀回 40 KB 的事件，同一個網路同時開六條連線也都連得上；泰國的連線品質尚未實測。
+ * 原本還有 offchain.pub：它同一個網路只准一條連線，同一個 Wi-Fi 下第二支手機起就一直連不上，所以拿掉了。
  */
 export const DEFAULT_RELAYS = [
   'wss://nos.lol',
   'wss://relay.primal.net',
   'wss://nostr.mom',
-  'wss://offchain.pub',
   'wss://relay.nostr.net',
 ]
 

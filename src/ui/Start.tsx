@@ -1,6 +1,6 @@
 // 進入行程之前的畫面：加到主畫面的引導、暱稱、加入、首頁。
 import { useEffect, useState } from 'preact/hooks'
-import { currentPlatform, needsInstall, registerServiceWorker } from '../pwa'
+import { canInstall, currentPlatform, needsInstall, registerServiceWorker } from '../pwa'
 import { Registry, acceptInvite, createTrip, parseInvite, renameEverywhere, type Invite } from '../store/local'
 import { THEMES } from '../themes'
 import { fullDay } from '../time'
@@ -8,7 +8,7 @@ import { Art } from './Art'
 import { BAGS, defaultLook } from '../avatar'
 import { Pile } from './Figure'
 import { BackupCard, Recover } from './Backup'
-import { MoveCard, MoveIn, MoveOut } from './Move'
+import { InstallGuide, MoveCard, MoveIn } from './Move'
 import { Fold } from './fold'
 import { Icon } from './Icons'
 import { Mascot } from './Mascot'
@@ -90,7 +90,7 @@ function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   if (import.meta.env.DEV && hash === '#/themes') return <ThemeGallery />
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
-  if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><MovedHere reg={reg} /><Recover reg={reg} /></div></div>
+  if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><FirstRunHelp reg={reg} /><Recover reg={reg} /></div></div>
   if (wantsJoin) {
     const invite = parseInvite(hash)
     if (invite) return <Join reg={reg} invite={invite} />
@@ -121,8 +121,8 @@ const seeds: [string, () => Promise<{ seed: (reg: Registry) => Promise<string> }
 const HINT_KEY = 'installHintDismissed'
 
 /**
- * iPhone／iPad 用 Safari 開啟時，在首頁建議加到主畫面。只是建議，可以關掉、不擋任何功能。
- * 主畫面 App 的資料和 Safari 是分開的，所以一併說明加了之後要怎麼把行程帶過去。
+ * 手機上用瀏覽器開啟時，在首頁建議加到主畫面。只是建議，可以關掉、不擋任何功能；
+ * 關掉之後，同一份指引在下面的「搬家」裡還找得到。
  */
 function InstallHint({ reg }: { reg: Registry }) {
   const [open, setOpen] = useState(false)
@@ -133,7 +133,8 @@ function InstallHint({ reg }: { reg: Registry }) {
       return false
     }
   })
-  if (hidden || !needsInstall(currentPlatform())) return null
+  const p = currentPlatform()
+  if (hidden || !canInstall(p)) return null
   const dismiss = () => {
     try {
       localStorage.setItem(HINT_KEY, '1')
@@ -149,34 +150,42 @@ function InstallHint({ reg }: { reg: Registry }) {
         <button class="small ghost" aria-label="不再顯示" onClick={dismiss}><Icon id="close" size={16} /></button>
       </div>
       <p class="muted">
-        Safari 會清掉 7 天沒開的資料；加到主畫面才會一直留著。
+        {needsInstall(p) ? '瀏覽器 7 天沒開會把資料清掉；加到主畫面才會一直留著。' : '加到主畫面比較好找，沒網路也開得起來。'}
       </p>
-      {open ? (
-        <ol class="steps">
-          <li>先按這個：<MoveOut reg={reg} /></li>
-          <li>點 Safari 的「分享」。</li>
-          <li>選「加入主畫面」。</li>
-          <li>從主畫面打開，按「從剪貼簿貼上」。不要重新取暱稱，不然會變成另一個人。</li>
-        </ol>
-      ) : (
-        <button class="small" onClick={() => setOpen(true)}>怎麼加</button>
-      )}
+      {open ? <InstallGuide reg={reg} withMove /> : <button class="small" onClick={() => setOpen(true)}>怎麼加</button>}
     </div>
   )
 }
 
 /**
- * 第一次打開（還沒有身分）時：已經在別的地方用過的人，貼上搬家碼就不用重新取暱稱、重新加入。
- * 主畫面的 App 第一次打開就是這個情況。
+ * 第一次打開（還沒有身分）時的兩張說明：
+ * - iPhone 上用瀏覽器開的：建議先加到主畫面再開始。現在還沒有資料，先加就不用之後再搬家。
+ * - 已經在別的地方用過的人：貼上搬家碼就不用重新取暱稱、重新加入。主畫面的 App 第一次打開就是這個情況。
  */
-function MovedHere({ reg }: { reg: Registry }) {
+function FirstRunHelp({ reg }: { reg: Registry }) {
+  const p = currentPlatform()
   return (
-    <div class="card flat" style="margin-top:24px">
-      <b>之前在 Safari 用過？</b>
-      <p class="muted">
-        不要重新取暱稱。回 Safari 的首頁，在「搬家」按「複製搬家碼」，再回來貼上，就還是原本的你。
-      </p>
-      <MoveIn reg={reg} />
+    <div>
+      {needsInstall(p) && (
+        <div class="card flat" style="margin-top:24px;background:var(--mizu-l)">
+          <b>建議先加到主畫面再開始</b>
+          <p class="muted">瀏覽器 7 天沒開會把資料清掉。現在先加到主畫面，之後就不用搬家。</p>
+          <InstallGuide reg={reg} withMove={false} />
+        </div>
+      )}
+      <div class="card flat" style="margin-top:24px">
+        <b>{p.standalone ? '之前在瀏覽器用過？' : '之前在別的地方用過？'}</b>
+        {p.standalone ? (
+          <ol class="steps">
+            <li>先不要取暱稱。回到原本用的瀏覽器（Safari 或 Chrome），打開 All Aboard 的首頁。</li>
+            <li>打開「搬家」，按「複製搬家碼」。</li>
+            <li>回到這裡，按下面的按鈕，就還是原本的你。</li>
+          </ol>
+        ) : (
+          <p class="muted">先不要取暱稱。在原本的地方打開「搬家」、按「複製搬家碼」，再回來貼上，就還是原本的你。</p>
+        )}
+        <MoveIn reg={reg} />
+      </div>
     </div>
   )
 }

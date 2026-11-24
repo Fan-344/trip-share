@@ -142,7 +142,13 @@ export class TripSync {
 
   status(): SyncStatus {
     let pending = this.channels.some((c) => c.buffer.length > 0)
-    for (const st of this.states.values()) if (st.dirty.size || st.sending.size) pending = true
+    // 只看連得上的中繼站還有沒有東西要送：連不上的那幾台一定「還沒送完」，
+    // 把它們也算進來的話，只要有一台連不上，畫面就會永遠顯示同步中。
+    // 連得上的都送完了，內容就已經在別人拿得到的地方；那幾台等連上了會自己補送。
+    // 一台都連不上時照舊全部算（那時畫面顯示的是離線中）。
+    const all = [...this.states]
+    const live = all.filter(([relay]) => relay.connected())
+    for (const [, st] of live.length > 0 ? live : all) if (st.dirty.size || st.sending.size) pending = true
     return {
       connected: this.o.relays.filter((r) => r.connected()).length,
       total: this.o.relays.length,

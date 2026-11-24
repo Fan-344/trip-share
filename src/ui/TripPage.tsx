@@ -32,6 +32,15 @@ export interface TabProps {
 const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['bags', '行李', 'luggage'], ['shop', '購物', 'bag'], ['more', '更多', 'more']]
 const TAB_KEYS = TABS.map(([key]) => key)
 
+/**
+ * 換分頁。用「取代目前這一頁」的方式，不在瀏覽紀錄裡多留一筆：
+ * 這樣不管在行程裡換過幾個分頁，手機的「上一頁」（從螢幕左邊緣往內滑）都是直接退出行程、回到我的行程，
+ * 不會一頁一頁退回之前看過的分頁。
+ */
+function goTab(tripId: string, key: string): void {
+  location.replace(`#/t/${tripId}/${key}`)
+}
+
 export function TripPage({ reg, tripId, tab }: { reg: Registry; tripId: string; tab: string }) {
   const [opened, setOpened] = useState<OpenTrip | null>(null)
   // 行程金鑰換了（有人被移出，或用新的邀請重新加入）就整個重開：新金鑰對應中繼站上新的位置。
@@ -99,7 +108,7 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
   const [pageEl, setPageEl] = useState<HTMLElement | null>(null)
   const onSwipe = useCallback((dir: -1 | 1) => {
     const to = swipeTarget(TAB_KEYS, tab, dir)
-    if (to && meta.id) location.hash = `#/t/${meta.id}/${to}`
+    if (to && meta.id) goTab(meta.id, to)
   }, [tab, meta.id])
   const canGo = useCallback((dir: -1 | 1) => swipeTarget(TAB_KEYS, tab, dir) !== null, [tab])
   useSwipe(pageEl, canGo, onSwipe)
@@ -202,7 +211,7 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
         </div>
         <nav class="tabs">
           {TABS.map(([key, label, icon]) => (
-            <a key={key} class={tab === key ? 'on' : ''} href={`#/t/${meta.id}/${key}`}><Icon id={icon} size={20} />{label}</a>
+            <a key={key} class={tab === key ? 'on' : ''} href={`#/t/${meta.id}/${key}`} onClick={(e) => { e.preventDefault(); goTab(meta.id, key) }}><Icon id={icon} size={20} />{label}</a>
           ))}
         </nav>
       </div>

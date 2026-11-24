@@ -206,6 +206,12 @@ export function useLongPress(el: HTMLElement | null, enabled: boolean, fire: () 
 }
 
 /**
+ * 離螢幕左右邊緣多近算「從邊緣開始滑」（像素）。這一條留給手機自己的手勢：
+ * 從左邊緣往內滑是「上一頁」，在行程裡就是退出行程、回到我的行程。所以從這一條開始的滑動，我們不拿來切換分頁。
+ */
+const EDGE = 24
+
+/**
  * 在 el 裡左右滑：整個 el 跟著手指移動，放開時滑得夠遠（或夠快）就滑出去並呼叫 onSwipe，不夠就彈回原位。
  * dir 是 -1（手指往左）或 1（往右）；canGo 說那個方向有沒有地方可以去，沒有的話拖起來會很重、放開就彈回。
  * 從自己會左右捲的東西（日期那排、成員那排）或輸入框開始滑的不算；兩根手指的也不算；
@@ -250,7 +256,10 @@ export function useSwipe(el: HTMLElement | null, canGo: (dir: -1 | 1) => boolean
       release()
       // 上一次沒收乾淨（例如第二根手指放上來）：先回到原位
       if (shifted && !leaving) place(0, 200)
-      live = !leaving && e.touches.length === 1 && !scrollsSideways(e.target as Element)
+      const x0 = e.touches[0]?.clientX ?? 0
+      // 從螢幕邊緣開始的滑動留給手機的「上一頁」手勢（退出行程），不拿來切換分頁
+      const fromEdge = x0 < EDGE || x0 > innerWidth - EDGE
+      live = !leaving && !fromEdge && e.touches.length === 1 && !scrollsSideways(e.target as Element)
       locked = false
       if (!live) return
       x = e.touches[0].clientX
