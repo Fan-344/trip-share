@@ -156,10 +156,9 @@ button:disabled { opacity: 0.45; cursor: default; }
 .stop .title { font-size: 1.05rem; font-weight: 600; margin: 2px 0; overflow-wrap: anywhere; }
 .stop .note { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.92rem; }
 .card.reminder { background: var(--yellow-l); }
-/* 必去：比種類的淺色深一階的珊瑚色，底下那階陰影也換成珊瑚色。 */
-.card.must { background: color-mix(in srgb, var(--coral) 55%, #fff); box-shadow: 0 4px 0 var(--coral); }
 .card.tint .chip { background: rgba(255, 255, 255, 0.72); }
-.card.must .chip.coral { background: #fff; font-weight: 700; }
+/* 必去：跟清單「都準備好了！」同款的歪貼紙，顏色深一點，在有底色的卡片上才跳得出來。 */
+.stamp.must { margin: 0 2px; padding: 1px 11px 1px 7px; gap: 4px; background: var(--coral); font-size: 0.86rem; font-weight: 700; box-shadow: 0 2px 0 color-mix(in srgb, var(--ink) 28%, transparent); white-space: nowrap; }
 
 /* 清單 */
 .bar { height: 10px; border: 2px solid var(--edge); border-radius: 999px; overflow: hidden; background: #fff; margin: 8px 0 4px; }

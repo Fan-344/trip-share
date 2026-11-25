@@ -77,8 +77,8 @@ export function Plan({ trip, theme }: TabProps) {
               const cat = catOf(i.cat)
               // 卡片平常只顯示時間、標題和一行說明，點一下才展開細節；提醒一開始就展開，免得漏看。
               const open = expanded[i.id] ?? i.kind === 'reminder'
-              // 卡片底色：有種類的照種類、必去的用深一階的珊瑚色、提醒維持黃色；上了色的卡片裡小標籤改成白底才看得到。
-              const tint = !!cat || i.kind !== 'normal'
+              // 卡片底色：有種類的照種類、提醒是黃色；必去另外貼一張跟清單「都準備好了！」同款的貼紙。上了色的卡片裡小標籤改成白底才看得到。
+              const tint = !!cat || i.kind === 'reminder'
               const hasMore = !!(i.note || i.place || i.transport)
               const map = mapLink(i, placeName(i.tz, flights))
               // 點地圖連結是開地圖，不要順便把卡片展開或收起
@@ -86,13 +86,13 @@ export function Plan({ trip, theme }: TabProps) {
               return (
                 <div class={`stop ${i.kind} ${cat ? 'cat' : ''}`} key={i.id}>
                   {cat && <span class="catdot" style={`background:${cat.color}`}><Icon id={cat.icon} size={22} /></span>}
-                  <div class={`card tap ${i.kind === 'normal' ? '' : i.kind} ${tint ? 'tint' : ''}`} style={cat && i.kind === 'normal' ? `background:${cat.color}` : undefined} role="button" aria-expanded={open}
+                  <div class={`card tap ${i.kind === 'reminder' ? 'reminder' : ''} ${tint ? 'tint' : ''}`} style={cat && i.kind !== 'reminder' ? `background:${cat.color}` : undefined} role="button" aria-expanded={open}
                     onClick={() => setExpanded({ ...expanded, [i.id]: !open })}>
                     <div class="row">
                       {i.time && i.approx && <span class="approx">約</span>}
                       {i.time ? <span class="time">{i.time}</span> : <span class="chip">整天</span>}
                       {cat && <span class="chip">{cat.name}</span>}
-                      {i.kind === 'must' && <span class="chip coral">必去</span>}
+                      {i.kind === 'must' && <span class="stamp must"><Icon id="star" size={15} />必去</span>}
                       {i.kind === 'reminder' && <span class="chip yellow">提醒</span>}
                       <span class="grow" />
                       <Chevron open={open} />
