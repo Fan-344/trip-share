@@ -74,8 +74,8 @@ export function Overview({ trip, theme }: TabProps) {
       <div class="card hero">
         <div class="heroart">
           <Art theme={theme} />
-          {/* 倒數結束後（旅行中、或已經沒有要等的航班）：整組小人從進度條搬到主圖下緣，照樣各走各的 */}
-          {ended && (
+          {/* 倒數結束後（旅行中、或已經沒有要等的航班）：整組小人從進度條搬到主圖下緣，照樣各走各的；正在飛的時候人都在機艙裡，主圖上不站人 */}
+          {ended && !flying && (
             <div class="herocrew">
               {cast.map((m, i) => (
                 <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={stage} habit={habitOf(m.look.job, 50, i)} size={cast.length > 3 ? 56 : 64} />
@@ -85,7 +85,7 @@ export function Overview({ trip, theme }: TabProps) {
         </div>
         {/* 倒數：主圖正下方。旅行中只寫第幾天，沒有進度條 */}
         {flying ? (
-          <Flying f={flying} now={now} place={placeName(flying.arr.tz, flights)} cast={everyone} />
+          <Flying f={flying} now={now} place={placeName(flying.arr.tz, flights)} cast={everyone} back={flights.length > 1 && flights.indexOf(flying) >= flights.length / 2} />
         ) : onTrip ? (
           <div class="depart">
             <div class="depart-main"><div class="depart-days"><span>旅行第</span><b>{dayIndex + 1}</b><span>天</span></div></div>
@@ -458,8 +458,9 @@ const CABIN_PITCH = 38
 /**
  * 飛行中：取代倒數和進度條。上面倒數到抵達，下面是從走道看過去的機艙側面：
  * 靠窗那排座位朝右，全團的人坐在中間幾排，其他座位空著；前面是走道。
+ * back 是回程（後半的航班）：整個畫面左右相反。
  */
-function Flying({ f, now, place, cast }: { f: Flight; now: number; place: string; cast: Who['cast'] }) {
+function Flying({ f, now, place, cast, back }: { f: Flight; now: number; place: string; cast: Who['cast']; back: boolean }) {
   const c = countdown(toInstant(f.arr) - now)
   const cloud = 'M0 14a8 8 0 0 1 8-8a12 12 0 0 1 22-2a9 9 0 0 1 12 10z'
   const rows = Array.from({ length: CABIN_SEATS }, (_, i) => 12 + i * CABIN_PITCH)
@@ -511,6 +512,8 @@ function Flying({ f, now, place, cast }: { f: Flight; now: number; place: string
           {/* 坐著的人只留腰以上，腿另外畫成坐姿 */}
           <clipPath id="cabsit"><rect x="-30" y="-60" width="60" height="52.600" /></clipPath>
         </defs>
+        {/* 回程整個機艙左右相反（座位朝左、雲往另一邊飄）；人再翻回來，才不會連臉和手上的東西都反了 */}
+        <g transform={back ? 'translate(320 0) scale(-1 1)' : undefined}>
         {/* 行李櫃 */}
         <rect x="0" y="0" width="320" height="7" fill="#fff" opacity="0.5" />
         {/* 窗戶：外面的天空和往後飄的雲 */}
@@ -538,9 +541,9 @@ function Flying({ f, now, place, cast }: { f: Flight; now: number; place: string
               <rect x={x + 12} y="87" width="3" height="5" fill="var(--accent)" />
               <rect x={x + 3} y="80" width="24" height="8" rx="4" fill="var(--accent)" />
               {m && m.id !== walk?.id && (
-                <g transform={`translate(${x + 14} 90.500) scale(1.5)`}>
+                <g transform={`translate(${x + 14} 90.500) scale(${back ? -1.5 : 1.5} 1.5)`}>
                   <g class="cab-bob" style={`animation-delay:${-0.37 * i}s`}>
-                    <path fill="none" stroke="#8a5a4a" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" d="M-0.500 -6.500H6V-0.800" />
+                    <path fill="none" stroke="#8a5a4a" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" transform={back ? 'scale(-1 1)' : undefined} d="M-0.500 -6.500H6V-0.800" />
                     <g clip-path="url(#cabsit)">
                       {/* 廢人在飛機上是坐著睡：頭歪一邊，冒出 z */}
                       <g transform={lazy ? 'rotate(-9 0 -10)' : undefined}>
@@ -557,13 +560,14 @@ function Flying({ f, now, place, cast }: { f: Flight; now: number; place: string
         {/* 起身的那個人：在走道上走 */}
         {walk && walker && (
           <g class="cab-walker" style={`transform:translateX(${walk.x.toFixed(1)}px);transition-duration:${walk.ms}ms`}>
-            <g transform="translate(0 103) scale(1.5)">
+            <g transform={`translate(0 103) scale(${back ? -1.5 : 1.5} 1.5)`}>
               <g class={walk.still ? undefined : 'traveler'}>
                 <FigureBody look={walker.look} stage="plan" packed={false} luggage={false} walk={!walk.still} />
               </g>
             </g>
           </g>
         )}
+        </g>
       </svg>
     </div>
   )
