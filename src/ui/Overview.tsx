@@ -546,7 +546,7 @@ function Flying({ f, now, place, cast, back }: { f: Flight; now: number; place: 
                     <path fill="none" stroke="#8a5a4a" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" transform={back ? 'scale(-1 1)' : undefined} d="M-0.500 -6.500H6V-0.800" />
                     <g clip-path="url(#cabsit)">
                       {/* 廢人在飛機上是坐著睡：頭歪一邊，冒出 z */}
-                      <g transform={lazy ? 'rotate(-9 0 -10)' : undefined}>
+                      <g class={lazy ? 'cab-sleep' : undefined} transform={lazy ? 'rotate(-9 0 -10)' : undefined}>
                         <FigureBody look={lazy ? { ...m.look, job: '' } : m.look} stage="plan" packed={false} luggage={false} />
                       </g>
                     </g>

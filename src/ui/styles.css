@@ -814,3 +814,5 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 /* 起身在走道上走的人：位置用 transform 移，走多久由程式給 */
 .cab-walker { transition: transform 0s linear; }
 .cabin .traveler { display: inline; }
+/* 坐著睡的廢人借用旅伴的身體來畫：旅伴「想事情」的三個點不要，只留 z */
+.cab-sleep .fx { display: none; }
