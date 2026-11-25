@@ -798,3 +798,19 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .scanbox video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .scanframe { position: absolute; inset: 16%; border: 3px solid #fff; border-radius: 18px; box-shadow: 0 0 0 100vmax rgba(40, 28, 22, 0.35); pointer-events: none; }
 .scanwait { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
+
+/* ---- 飛行中：取代倒數的進度條。機艙裡全團坐成一排，窗外的雲往後飄 ---- */
+.fly-label { display: flex; flex-direction: column; line-height: 1.2; font-size: 0.82rem; color: var(--muted); }
+.fly-label b { font-size: 2rem; line-height: 1.1; font-weight: 700; color: var(--pop); letter-spacing: -0.01em; }
+.cabin { display: block; width: 100%; height: auto; margin-top: 10px; border-radius: 18px; background: var(--accent-l); }
+@keyframes cabinby { to { transform: translateX(-380px); } }
+.cab-clouds { animation: cabinby 14s linear infinite; }
+/* 坐著的人跟著機身輕輕晃 */
+@keyframes cabinbob { from { transform: translateY(0); } to { transform: translateY(-0.5px); } }
+.cab-bob { animation: cabinbob 1.6s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .cab-clouds, .cab-bob { animation: none; } }
+/* 氣氛擔當在座位上不跳，只舉著手 */
+.cabin .a-bounce { animation: none; }
+/* 起身在走道上走的人：位置用 transform 移，走多久由程式給 */
+.cab-walker { transition: transform 0s linear; }
+.cabin .traveler { display: inline; }

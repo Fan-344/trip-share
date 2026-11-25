@@ -15,7 +15,7 @@ import type { TicketFlight } from '../ticket'
 import { Icon } from './Icons'
 import { lookOf, stageOf, titleOf, type Job, type Look, type Stage } from '../avatar'
 import { amount, bagText } from '../baggage'
-import { Figure } from './Figure'
+import { Figure, FigureBody } from './Figure'
 import { between, nextSpot, rng, seedOf } from '../random'
 import { Mascot } from './Mascot'
 import { ImportSheet, type ImportState } from './Import'
@@ -51,17 +51,23 @@ export function Overview({ trip, theme }: TabProps) {
   const [editing, setEditing] = useState(false)
   const t = today()
   const dayIndex = days.indexOf(t)
+  // 出發那天、第一班飛機還沒起飛：還不算旅行中，繼續倒數到起飛。
+  const waitingFirst = dayIndex === 0 && !!flights[0] && flights[0].dep.local.slice(0, 10) === t && toInstant(flights[0].dep) > now
+  const onTrip = dayIndex >= 0 && !waitingFirst
+  // 現在正在飛的那一班（起飛了、還沒降落）：這段時間改顯示飛行中的動畫，倒數到抵達。
+  const flying = flights.find((f) => toInstant(f.dep) <= now && now < toInstant(f.arr))
 
   // 小人：現在是哪個階段（查攻略、收行李、出發、旅行中），以及每個成員的行李收好了沒。
   const startMs = next ? toInstant(next.dep) : meta.startDate ? new Date(`${meta.startDate}T00:00`).getTime() : now
-  const stage = stageOf(startMs - now, dayIndex >= 0 || (!!meta.endDate && t > meta.endDate))
+  const stage = stageOf(startMs - now, onTrip || (!!meta.endDate && t > meta.endDate))
   const me = trip.actor.pubkey
-  // 自己排第一個，進度條上最多站五個人。
-  const cast = [...trip.members.all()].sort((a, b) => Number(b.id === me) - Number(a.id === me))
-    .slice(0, 5).map((m) => ({ id: m.id, look: lookOf(m), packed: trip.packedOf(m.id) }))
+  // 自己排第一個，進度條上最多站五個人；機艙裡坐得下的都坐。
+  const everyone = [...trip.members.all()].sort((a, b) => Number(b.id === me) - Number(a.id === me))
+    .map((m) => ({ id: m.id, look: lookOf(m), packed: trip.packedOf(m.id) }))
+  const cast = everyone.slice(0, 5)
   const who: Who = { cast, stage }
   // 倒數結束了沒：已經在旅行中，或沒有要等的航班、出發日也過了。結束後小人搬到主圖下緣。
-  const ended = dayIndex >= 0 || (!next && !(meta.startDate > t))
+  const ended = onTrip || (!next && !(meta.startDate > t))
 
   return (
     <div>
@@ -78,7 +84,9 @@ export function Overview({ trip, theme }: TabProps) {
           )}
         </div>
         {/* 倒數：主圖正下方。旅行中只寫第幾天，沒有進度條 */}
-        {dayIndex >= 0 ? (
+        {flying ? (
+          <Flying f={flying} now={now} place={placeName(flying.arr.tz, flights)} cast={everyone} />
+        ) : onTrip ? (
           <div class="depart">
             <div class="depart-main"><div class="depart-days"><span>旅行第</span><b>{dayIndex + 1}</b><span>天</span></div></div>
           </div>
@@ -443,6 +451,124 @@ function Countdown({ ms, who }: { ms: number; who: Who }) {
 
 
 /** 進度條上的小人：這趟的成員（自己排第一個）和現在的階段。 */
+/** 機艙裡畫幾排座位、一排多寬；人比座位少時，多的座位空著。 */
+const CABIN_SEATS = 8
+const CABIN_PITCH = 38
+
+/**
+ * 飛行中：取代倒數和進度條。上面倒數到抵達，下面是從走道看過去的機艙側面：
+ * 靠窗那排座位朝右，全團的人坐在中間幾排，其他座位空著；前面是走道。
+ */
+function Flying({ f, now, place, cast }: { f: Flight; now: number; place: string; cast: Who['cast'] }) {
+  const c = countdown(toInstant(f.arr) - now)
+  const cloud = 'M0 14a8 8 0 0 1 8-8a12 12 0 0 1 22-2a9 9 0 0 1 12 10z'
+  const rows = Array.from({ length: CABIN_SEATS }, (_, i) => 12 + i * CABIN_PITCH)
+  const people = cast.slice(0, CABIN_SEATS)
+  // 全團坐在一起，排在中間
+  const first = Math.floor((CABIN_SEATS - people.length) / 2)
+  // 偶爾有一個人起身，沿走道走到機艙的一頭，停一下再走回來坐下（睡著的廢人不起來）。
+  // x 是他現在要去的位置；ms 是走過去要多久；still 是到了、站著不動。
+  const [walk, setWalk] = useState<{ id: string; x: number; ms: number; still: boolean } | null>(null)
+  const ids = people.map((m) => m.id).join(',')
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    const timers: number[] = []
+    const later = (ms: number, fn: () => void) => { timers.push(window.setTimeout(fn, ms)) }
+    const go = () => {
+      const able = people.filter((m) => m.look.job !== 'lazy')
+      const m = able[Math.floor(Math.random() * able.length)]
+      if (!m) return
+      const home = rows[first + people.indexOf(m)] + 14
+      const to = Math.random() < 0.5 ? 10 + Math.random() * 16 : 294 + Math.random() * 16
+      const ms = Math.round(Math.abs(to - home) * 38)
+      const pause = 1600 + Math.random() * 1800
+      setWalk({ id: m.id, x: home, ms: 0, still: true })
+      later(80, () => setWalk({ id: m.id, x: to, ms, still: false }))
+      later(80 + ms, () => setWalk({ id: m.id, x: to, ms, still: true }))
+      later(80 + ms + pause, () => setWalk({ id: m.id, x: home, ms, still: false }))
+      later(80 + ms * 2 + pause + 120, () => { setWalk(null); later(7000 + Math.random() * 9000, go) })
+    }
+    later(3500 + Math.random() * 4000, go)
+    return () => { timers.forEach((t) => clearTimeout(t)); setWalk(null) }
+  }, [ids])
+  const walker = walk ? people.find((m) => m.id === walk.id) : undefined
+  // 雲排兩輪，第二輪接在第一輪後面，往後飄一輪的距離剛好接回原位
+  const clouds = [[10, 16, 0.45], [120, 22, 0.35], [215, 15, 0.4], [300, 23, 0.45]]
+  const win = (x: number, extra: Record<string, string>) => <rect key={x} x={x + 9} y="14" width="15" height="20" rx="7" {...extra} />
+  return (
+    <div class="depart">
+      <div class="depart-main">
+        <div class="fly-label"><span>飛行中</span><b>{place || f.to}</b><span>還有多久抵達</span></div>
+        <div class="depart-clock">
+          <div><b>{two(c.d * 24 + c.h)}</b><span>時</span></div><i>:</i>
+          <div><b>{two(c.m)}</b><span>分</span></div><i>:</i>
+          <div><b key={c.s} class="tick">{two(c.s)}</b><span>秒</span></div>
+        </div>
+      </div>
+      <svg class="cabin" viewBox="0 0 320 106" aria-hidden="true">
+        <defs>
+          <clipPath id="cabwin">{rows.map((x) => win(x, {}))}</clipPath>
+          {/* 坐著的人只留腰以上，腿另外畫成坐姿 */}
+          <clipPath id="cabsit"><rect x="-30" y="-60" width="60" height="52.600" /></clipPath>
+        </defs>
+        {/* 行李櫃 */}
+        <rect x="0" y="0" width="320" height="7" fill="#fff" opacity="0.5" />
+        {/* 窗戶：外面的天空和往後飄的雲 */}
+        {rows.map((x) => win(x, { fill: '#dcebef' }))}
+        <g clip-path="url(#cabwin)">
+          <g class="cab-clouds" fill="#fff">
+            {[0, 380].map((off) => clouds.map(([x, y, s]) => (
+              <path key={`${off}-${x}`} transform={`translate(${off + x} ${y}) scale(${s})`} d={cloud} />
+            )))}
+          </g>
+        </g>
+        {rows.map((x) => win(x, { fill: 'none', stroke: '#fff', 'stroke-width': '2.4' }))}
+        {/* 走道 */}
+        <rect x="0" y="92" width="320" height="28" fill="#fff" opacity="0.55" />
+        {/* 靠窗那排座位（朝右）：椅背、頭枕、椅墊、椅腳；有人的座位上坐著人 */}
+        {rows.map((x, i) => {
+          const m = people[i - first]
+          const lazy = m?.look.job === 'lazy'
+          return (
+            <g key={x}>
+              <g transform={`rotate(-7 ${x + 4} 88)`}>
+                <rect x={x} y="46" width="9" height="42" rx="4.500" fill="var(--accent)" />
+                <rect x={x + 5} y="48" width="5" height="11" rx="2.500" fill="#fff" opacity="0.8" />
+              </g>
+              <rect x={x + 12} y="87" width="3" height="5" fill="var(--accent)" />
+              <rect x={x + 3} y="80" width="24" height="8" rx="4" fill="var(--accent)" />
+              {m && m.id !== walk?.id && (
+                <g transform={`translate(${x + 14} 90.500) scale(1.5)`}>
+                  <g class="cab-bob" style={`animation-delay:${-0.37 * i}s`}>
+                    <path fill="none" stroke="#8a5a4a" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" d="M-0.500 -6.500H6V-0.800" />
+                    <g clip-path="url(#cabsit)">
+                      {/* 廢人在飛機上是坐著睡：頭歪一邊，冒出 z */}
+                      <g transform={lazy ? 'rotate(-9 0 -10)' : undefined}>
+                        <FigureBody look={lazy ? { ...m.look, job: '' } : m.look} stage="plan" packed={false} luggage={false} />
+                      </g>
+                    </g>
+                    {lazy && <path class="a-blink" fill="none" stroke="var(--muted)" stroke-width="0.900" stroke-linecap="round" stroke-linejoin="round" d="M3 -27h2.600l-2.600 2.600h2.600M7.500 -31.500h2l-2 2h2" />}
+                  </g>
+                </g>
+              )}
+            </g>
+          )
+        })}
+        {/* 起身的那個人：在走道上走 */}
+        {walk && walker && (
+          <g class="cab-walker" style={`transform:translateX(${walk.x.toFixed(1)}px);transition-duration:${walk.ms}ms`}>
+            <g transform="translate(0 103) scale(1.5)">
+              <g class={walk.still ? undefined : 'traveler'}>
+                <FigureBody look={walker.look} stage="plan" packed={false} luggage={false} walk={!walk.still} />
+              </g>
+            </g>
+          </g>
+        )}
+      </svg>
+    </div>
+  )
+}
+
 interface Who { cast: { id: string; look: Look; packed: boolean }[]; stage: Stage }
 
 
