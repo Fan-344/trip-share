@@ -819,3 +819,78 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .cabin .traveler { display: inline; }
 /* 坐著睡的廢人借用旅伴的身體來畫：旅伴「想事情」的三個點不要，只留 z */
 .cab-sleep .fx { display: none; }
+
+/* 總覽最下面通往「成員與設定」的那一列 */
+.morelink { display: flex; align-items: center; gap: 12px; margin-top: 28px; text-decoration: none; color: inherit; }
+.morelink .grow { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; }
+.morelink small { font-size: 0.82rem; }
+.morelink .go { display: flex; transform: rotate(-90deg); }
+
+/* ---- 分帳 ---- */
+.split-person { display: flex; flex-direction: column; align-items: center; width: 58px; flex: none; line-height: 1.2; }
+.split-person small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split-rates { margin-top: 14px; }
+.split-rate { margin: 6px 0; }
+.split-rate input { width: 96px; flex: none; text-align: center; }
+.split-entry { padding: 10px 14px; margin-bottom: 10px; }
+.split-entry .grow { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.split-entry .title { font-weight: 600; overflow-wrap: anywhere; }
+.split-entry > .row > b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.split-entry.settle { background: var(--green-l); }
+.split-entry.settle .grow { display: block; }
+.split-parts { margin-top: 8px; padding-top: 8px; border-top: 2px dashed var(--edge); font-size: 0.92rem; }
+.split-parts .row { margin: 2px 0; }
+.split-who { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+.split-who button { flex-direction: column; gap: 0; padding: 6px 2px 4px; border-radius: 14px; opacity: 0.45; line-height: 1.2; }
+.split-who button.on { opacity: 1; background: var(--accent-l); border-color: var(--accent); }
+.split-who small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split-proxy { padding: 10px 14px; margin-bottom: 10px; background: var(--yellow-l); }
+.split-proxy .grow { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.split-proxy .title { font-weight: 600; overflow-wrap: anywhere; }
+.split-proxy b small { font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.split-proxy > .row > b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* 分帳裡的三頁：跟行程的日期那排同款，三格等寬，不用左右捲 */
+.split-views { overflow: visible; margin-bottom: 8px; }
+.split-views .day { flex: 1; min-width: 0; padding: 8px 4px; }
+.split-views .day small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* 代買的三種狀態：還沒處理是黃的、登錄了是綠的、不用分是灰的 */
+.split-proxy.done { background: var(--green-l); }
+.split-proxy.skip { background: var(--edge); box-shadow: none; }
+.split-proxy.skip .title, .split-proxy.skip > .row .muted, .split-proxy.skip > .row > b { color: var(--muted); }
+.split-acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.split-acts button { background: #fff; }
+.split-acts button.on { background: var(--accent); border-color: var(--accent); font-weight: 700; }
+/* 分帳結果：我要給誰、跟誰收（一人一列），以及最下面的全部明細 */
+.split-due { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 10px; }
+.split-due b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.split-due b small { font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.split-due.give b { color: var(--pop); }
+.split-line { margin: 4px 0; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.split-table { font-size: 0.9rem; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.split-table > div { display: grid; grid-template-columns: minmax(0, 1.2fr) 1fr 1fr 1.2fr; gap: 6px; padding: 3px 0; border-bottom: 2px dashed var(--edge); }
+.split-table > div > span { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split-table > div > span:first-child { text-align: left; }
+.split-table .owe { color: var(--pop); }
+.split-entry b small { font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.split-rates > b { display: block; margin-bottom: 4px; }
+.split-rates .split-rate b { font-variant-numeric: tabular-nums; }
+/* 開關：文字在左、會左右滑的鈕在右 */
+.switch { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 0; border: 0; border-top: 2px dashed var(--edge); border-radius: 0; background: none; box-shadow: none; text-align: left; font-weight: 500; }
+.switch:active { transform: none; }
+.switch i { flex: none; position: relative; width: 46px; height: 28px; border-radius: 999px; background: var(--shade); transition: background-color 0.2s ease; }
+.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform 0.2s ease; }
+.switch.on i { background: var(--accent); }
+.switch.on i::after { transform: translateX(18px); }
+.split-raterow { margin: 4px 0 8px; }
+.switch .grow { display: flex; flex-direction: column; line-height: 1.3; }
+.switch small { font-size: 0.8rem; font-weight: 400; }
+.split-opts button.on { background: var(--accent); border-color: var(--accent); }
+.split-raterow .split-rate { margin: 0; }
+/* 記帳清單裡，代買那一筆展開時的照片：縮圖大小，點了看大圖 */
+.split-thumb { margin-bottom: 8px; }
+.split-thumb .photo { width: 96px; height: 96px; object-fit: cover; border-radius: 12px; margin: 0; }
+.split-thumb .photo.wait { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.7rem; text-align: center; }
+.split-who-line span { display: inline-block; white-space: pre; }
+/* 品項和「誰代墊」同一行；品項太長就換行，代墊那段自己不拆開 */
+.split-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.split-head small { white-space: nowrap; }

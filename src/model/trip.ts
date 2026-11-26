@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import { Table, newId } from './table'
 import type { Rekey } from './rekey'
 import type {
-  Actor, CheckState, Comment, DayInfo, Flight, HistoryEntry, Item, List, ListItem, ListKind,
+  Actor, CheckState, Comment, DayInfo, Expense, Flight, HistoryEntry, Item, List, ListItem, ListKind,
   Member, Meta, Note, Photo, Pnr, Role, ShopItem, ShopItemView, Stay, TripMeta,
 } from './types'
 
@@ -48,6 +48,13 @@ export class Trip {
   readonly listItems: Table<ListItem>
   readonly notes: Table<Note>
   readonly shop: Table<ShopItem>
+  readonly expenses: Table<Expense>
+  /** 分帳用的匯率：外幣 → 1 單位等於多少台幣。每趟自己填。 */
+  private readonly rateMap: Y.Map<number>
+  /** 匯率是哪一天抓的（day）、是不是改成自己填（manual）。 */
+  private readonly rateInfoMap: Y.Map<unknown>
+  /** 幣別設定：home 是結帳用的、local 是當地用的（兩種預設幣別），extra 是另外加進選單的幣別。 */
+  private readonly currencyMap: Y.Map<unknown>
   readonly comments: Table<Comment>
   readonly photos: Table<Photo>
   readonly privLists: Table<List>
@@ -70,6 +77,10 @@ export class Trip {
     this.listItems = new Table(main, 'listItems', actor, this.history, ['checks'])
     this.notes = new Table(main, 'notes', actor, this.history)
     this.shop = new Table(main, 'shop', actor, this.history, ['wants'])
+    this.expenses = new Table(main, 'expenses', actor, this.history)
+    this.rateMap = main.getMap('rates')
+    this.rateInfoMap = main.getMap('rateInfo')
+    this.currencyMap = main.getMap('currency')
     this.comments = new Table(comments, 'comments', actor)
     this.photos = new Table(comments, 'photos', actor)
     this.privLists = new Table(priv, 'lists', actor)
@@ -128,6 +139,71 @@ export class Trip {
         }])
       }
     })
+  }
+
+  // ---- 分帳的匯率 ----
+
+  rates(): Record<string, number> {
+    return this.rateMap.toJSON() as Record<string, number>
+  }
+
+  /** 匯率的狀態：day 是自動抓的那一天（沒抓過是空字串），manual 是改成自己填、不再自動抓。 */
+  rateInfo(): { day: string; manual: boolean } {
+    return { day: String(this.rateInfoMap.get('day') ?? ''), manual: this.rateInfoMap.get('manual') === true }
+  }
+
+  /** 自動抓到的匯率：一次寫進去，記下是哪一天抓的。 */
+  setFetchedRates(rates: Record<string, number>, day: string): void {
+    this.docs.main.transact(() => {
+      for (const [cur, n] of Object.entries(rates)) if (n > 0) this.rateMap.set(cur, n)
+      this.rateInfoMap.set('day', day)
+    })
+  }
+
+  /**
+   * 幣別設定（成員與設定頁），整份行程共用。兩種預設幣別：
+   * home 是結帳用的（空字串代表沒指定，就是台幣）；local 是當地用的（空字串代表沒指定，照目的地判斷）。
+   * extra 是這兩種以外，另外加進選單的幣別。
+   */
+  currencySetup(): { home: string; local: string; extra: string[] } {
+    const extra = this.currencyMap.get('extra')
+    return {
+      home: String(this.currencyMap.get('home') ?? ''), local: String(this.currencyMap.get('local') ?? ''),
+      extra: Array.isArray(extra) ? extra.map(String) : [],
+    }
+  }
+
+  /** 改結帳幣別。匯率是「1 外幣等於多少結帳幣別」，換了結帳幣別舊的匯率就不能用了，一起清掉重抓。 */
+  setCurrencyHome(cur: string): void {
+    if (cur === this.currencySetup().home) return
+    this.docs.main.transact(() => {
+      this.currencyMap.set('home', cur)
+      for (const key of [...this.rateMap.keys()]) this.rateMap.delete(key)
+      this.rateInfoMap.set('day', '')
+      this.rateInfoMap.set('manual', false)
+    })
+  }
+
+  setCurrencyLocal(cur: string): void {
+    this.currencyMap.set('local', cur)
+  }
+
+  setCurrencyExtra(list: string[]): void {
+    this.currencyMap.set('extra', [...new Set(list)])
+  }
+
+  /** 開或關「自己填匯率」。關掉時把抓取日期清掉，下次打開分帳就會重抓。 */
+  setRateManual(manual: boolean): void {
+    this.docs.main.transact(() => {
+      this.rateInfoMap.set('manual', manual)
+      if (!manual) this.rateInfoMap.set('day', '')
+    })
+  }
+
+  /** 填匯率；0 或不是數字就是清掉。 */
+  setRate(cur: string, rate: number): void {
+    if (rate > 0) this.rateMap.set(cur, rate)
+    else this.rateMap.delete(cur)
   }
 
   // ---- 每天的標題與圖示（以日期當 ID）----
@@ -430,7 +506,7 @@ export class Trip {
   private mainTables(): Record<string, Table<any>> {
     return {
       members: this.members, flights: this.flights, stays: this.stays, days: this.days,
-      items: this.items, lists: this.lists, listItems: this.listItems, notes: this.notes, shop: this.shop,
+      items: this.items, lists: this.lists, listItems: this.listItems, notes: this.notes, shop: this.shop, expenses: this.expenses,
     }
   }
 }

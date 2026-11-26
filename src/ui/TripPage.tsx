@@ -17,6 +17,7 @@ import { More } from './More'
 import { Overview } from './Overview'
 import { Plan } from './Plan'
 import { Shop } from './Shop'
+import { Split } from './Split'
 import { LuggagePage } from './Luggage'
 
 export interface TabProps {
@@ -29,8 +30,10 @@ export interface TabProps {
   photos: PhotoStore
 }
 
-const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['bags', '行李', 'luggage'], ['shop', '購物', 'bag'], ['more', '更多', 'more']]
-const TAB_KEYS = TABS.map(([key]) => key)
+const TABS: [string, string, string][] = [['home', '總覽', 'house'], ['plan', '行程', 'calendar'], ['lists', '準備', 'checklist'], ['bags', '行李', 'luggage'], ['shop', '購物', 'bag'], ['split', '分帳', 'coin']]
+/** 「成員與設定」不在上面的選單裡，入口在總覽最下面；排在最後，換頁動畫才知道它是從右邊進來。 */
+const SWIPE_KEYS = TABS.map(([key]) => key)
+const TAB_KEYS = [...SWIPE_KEYS, 'more']
 
 /** 修改紀錄留最近幾筆。 */
 export const HISTORY_KEEP = 15
@@ -110,10 +113,10 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
   // 左右滑切換分頁：整頁跟著手指走，手指往左看下一個分頁，往右看上一個；到頭就拖不太動
   const [pageEl, setPageEl] = useState<HTMLElement | null>(null)
   const onSwipe = useCallback((dir: -1 | 1) => {
-    const to = swipeTarget(TAB_KEYS, tab, dir)
+    const to = swipeTarget(SWIPE_KEYS, tab, dir)
     if (to && meta.id) goTab(meta.id, to)
   }, [tab, meta.id])
-  const canGo = useCallback((dir: -1 | 1) => swipeTarget(TAB_KEYS, tab, dir) !== null, [tab])
+  const canGo = useCallback((dir: -1 | 1) => swipeTarget(SWIPE_KEYS, tab, dir) !== null, [tab])
   useSwipe(pageEl, canGo, onSwipe)
 
   // 換分頁時新的那一頁從哪邊滑進來：往後面的分頁就從右邊進來，往前面的從左邊。第一次打開不滑。
@@ -279,7 +282,7 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
       <div class={`page ${shown.tab === tab ? shown.from : ''}`} key={tab} ref={setPageEl}>
         {/* 各分頁的「編輯」開關放這裡：選單下方、靠右（kit.tsx 的 EditBar 送過來）；沒有編輯功能的分頁就是空的 */}
         <div id="editslot" class="editslot" />
-        {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'bags' ? <LuggagePage {...props} /> : tab === 'shop' ? <Shop {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}
+        {tab === 'plan' ? <Plan {...props} /> : tab === 'lists' ? <Lists {...props} /> : tab === 'bags' ? <LuggagePage {...props} /> : tab === 'shop' ? <Shop {...props} /> : tab === 'split' ? <Split {...props} /> : tab === 'more' ? <More {...props} /> : <Overview {...props} />}
       </div>
     </div>
   )

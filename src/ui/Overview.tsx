@@ -206,6 +206,13 @@ export function Overview({ trip, theme }: TabProps) {
       {stays.length === 0 && <Empty icon="house">還沒有住宿。</Empty>}
       {editing && <button class="add" onClick={() => setSheet({ kind: 'stay' })}><Icon id="plus" size={18} />新增住宿</button>}
 
+      {/* 成員與設定（邀請、修改紀錄、同步、備份）：不佔上面選單的位置，入口放在這裡 */}
+      <a class="card tap morelink" href={`#/t/${meta.id}/more`} onClick={(e) => { e.preventDefault(); location.replace(`#/t/${meta.id}/more`) }}>
+        <Icon id="people" size={26} />
+        <span class="grow"><b>成員與設定</b><small class="muted">邀請、修改紀錄、同步、備份</small></span>
+        <span class="go"><Chevron open={false} /></span>
+      </a>
+
       <Farewell theme={theme} title={meta.title} />
       <EditBar on={editing} onChange={setEditing} row />
 

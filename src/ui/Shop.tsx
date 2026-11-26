@@ -9,7 +9,7 @@ import { Empty, Farewell } from './bits'
 import { Fold } from './fold'
 import { Icon } from './Icons'
 import { Field, Sheet, useNow, value } from './kit'
-import { CURRENCIES, detectCurrency, formatPrice, parsePrice } from '../money'
+import { currencyChoices, detectCurrency, formatPrice, parsePrice, startCurrency } from '../money'
 import type { PhotoStore } from '../store/photos'
 import { Lightbox, PhotoField, usePhoto } from './photo'
 import { Stepper } from './Stepper'
@@ -82,7 +82,7 @@ export function Shop({ trip, theme, photos }: TabProps) {
 }
 
 /** 卡片上的照片：點一下看大圖。照片是看到才抓的，還沒抓到時先顯示一個框。 */
-function Photo({ trip, photos, id, name }: { trip: Trip; photos: PhotoStore; id: string; name: string }) {
+export function Photo({ trip, photos, id, name }: { trip: Trip; photos: PhotoStore; id: string; name: string }) {
   const { state, url } = usePhoto(photos, id, trip.photoRecord(id)?.id)
   const [big, setBig] = useState(false)
   if (state === "none") return null
@@ -298,18 +298,23 @@ function ShopSheet({ trip, photos, id, ask, days, onClose }: { trip: Trip; photo
   // 價錢分成金額與幣別。幣別預設是目的地的貨幣；改過之後，這份行程下次就用你改的那個。
   const curKey = `cur:${trip.meta.id}`
   const guess = detectCurrency(trip.flights.all(), trip.items.all().map((i) => i.tz), trip.meta.theme ?? '')
+  const setup = trip.currencySetup()
+  // 當地用的幣別：設定裡有指定就用指定的，沒有才照目的地判斷
+  const local = setup.local || guess.currency
+  const choices = currencyChoices(local, parsePrice(old?.price, local).currency, setup.extra, setup.home || '台幣')
   const [remembered] = useState(() => {
     try {
       const v = localStorage.getItem(curKey)
-      return v && CURRENCIES.includes(v) ? v : null
+      return v && choices.includes(v) ? v : null
     } catch {
       return null
     }
   })
-  const [price, setPrice] = useState(() => parsePrice(old?.price, remembered ?? guess.currency))
+  const [price, setPrice] = useState(() => parsePrice(old?.price, startCurrency(choices, local, '', remembered)))
   // 說明這個幣別是怎麼來的，免得看到預設值不知道為什麼
   const curHint =
     old?.price ? '' :
+    setup.local && price.currency === setup.local ? '照設定裡的幣別' :
     remembered && price.currency === remembered ? `沿用你上次在這份行程選的${remembered}` :
     price.currency !== guess.currency ? '' :
     guess.why === 'flight' ? `依目的地自動帶入（${guess.detail}）` :
@@ -321,7 +326,7 @@ function ShopSheet({ trip, photos, id, ask, days, onClose }: { trip: Trip; photo
       <div class="row">
         <input class="grow" inputMode="decimal" value={price.amount} onInput={(e) => setPrice({ ...price, amount: value(e) })} placeholder="350" />
         <select style="flex:none;width:auto" aria-label="幣別" value={price.currency} onChange={(e) => setPrice({ ...price, currency: value(e) })}>
-          {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          {choices.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
       {curHint && <span class="muted" style="margin:4px 0 0">幣別：{curHint}</span>}

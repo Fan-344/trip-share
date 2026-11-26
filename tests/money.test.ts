@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Flight } from '../src/model/types'
-import { defaultCurrency, detectCurrency, formatPrice, parsePrice } from '../src/money'
+import { currencyChoices, defaultCurrency, detectCurrency, formatPrice, parsePrice, startCurrency } from '../src/money'
 
 const flight = (to: string, tz: string, date: string): Flight => ({
   code: 'XX1', from: 'TPE', to, cabin: '', aircraft: '',
@@ -52,5 +52,36 @@ describe('依目的地偵測幣別', () => {
 
   it('航班優先於其他線索', () => {
     expect(detectCurrency([flight('CNX', 'Asia/Bangkok', '2027-03-05')], ['Asia/Tokyo'], 'japan').currency).toBe('泰銖')
+  })
+})
+
+describe('幣別選單', () => {
+  it('平常只有兩種：台幣和目的地的貨幣；目的地是台灣就只有台幣', () => {
+    expect(currencyChoices('泰銖')).toEqual(['台幣', '泰銖'])
+    expect(currencyChoices('台幣')).toEqual(['台幣'])
+  })
+
+  it('舊資料存著別種幣別時也列出來，免得一打開就被換掉；看不懂的不列', () => {
+    expect(currencyChoices('泰銖', '美元')).toEqual(['台幣', '泰銖', '美元'])
+    expect(currencyChoices('泰銖', '泰銖')).toEqual(['台幣', '泰銖'])
+    expect(currencyChoices('泰銖', '不存在')).toEqual(['台幣', '泰銖'])
+  })
+
+  it('設定裡另外加的幣別排在後面，不重複', () => {
+    expect(currencyChoices('泰銖', '', ['日圓', '美元'])).toEqual(['台幣', '泰銖', '日圓', '美元'])
+    expect(currencyChoices('泰銖', '美元', ['泰銖', '美元'])).toEqual(['台幣', '泰銖', '美元'])
+  })
+
+  it('預設用哪種：設定指定的優先，再來是這支手機上次選的，最後是目的地的；不在選單裡的不算', () => {
+    const choices = ['台幣', '泰銖', '美元']
+    expect(startCurrency(choices, '泰銖', '美元', '台幣')).toBe('美元')
+    expect(startCurrency(choices, '泰銖', '', '台幣')).toBe('台幣')
+    expect(startCurrency(choices, '泰銖', '', null)).toBe('泰銖')
+    expect(startCurrency(choices, '泰銖', '日圓', '韓元')).toBe('泰銖')
+  })
+
+  it('結帳用的幣別排第一個，可以不是台幣', () => {
+    expect(currencyChoices('日圓', '', [], '美元')).toEqual(['美元', '日圓'])
+    expect(currencyChoices('日圓', '', ['台幣'], '美元')).toEqual(['美元', '日圓', '台幣'])
   })
 })

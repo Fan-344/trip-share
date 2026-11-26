@@ -170,8 +170,34 @@ export interface ShopItem {
    * 每個人都要回覆（要幾個，或不用），畫面會列出誰還沒回。
    */
   ask?: boolean
+  /** 這項代買不用分帳（分帳頁的「代買待登錄」不再列它）。 */
+  noSplit?: boolean
   /** 價錢，隨手寫（例如「350 泰銖」）。 */
   price?: string
+}
+
+/**
+ * 分帳的一筆。付錢的人先付，分擔者平分（有填份數的照份數）。計算在 src/split.ts。
+ * 還款也記成一筆（settle）：付錢的人把錢給了分擔者。
+ */
+export interface Expense {
+  /** 品項，例如「晚餐」；還款是空白。 */
+  title: string
+  amount: number
+  /** 幣別，src/money.ts 的 CURRENCIES 其中一個。 */
+  cur: string
+  /** 哪一天花的。 */
+  date: string
+  /** 先付錢的人（成員代號）。通常就是記這筆的人。 */
+  payer: string
+  /** 分擔的人（成員代號）。 */
+  sharers: string[]
+  /** 不平分時每個人幾份（成員代號 → 份數）；平分就沒有這個欄位或是 null。 */
+  shares?: Record<string, number> | null
+  /** 從購物清單的代買登錄來的：那個購物項目的 ID（src/proxy.ts）。 */
+  shopId?: string
+  /** 這筆是還款，不是花費。 */
+  settle?: boolean
 }
 
 export type ShopItemView = ShopItem & Meta & {

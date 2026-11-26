@@ -1,4 +1,4 @@
-// 更多：邀請、成員、修改紀錄、同步狀況。
+// 成員與設定（入口在總覽最下面）：邀請、成員、修改紀錄、同步狀況。
 import { useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import type { HistoryEntry } from '../model/types'
@@ -7,13 +7,16 @@ import { InviteSection, MembersSection } from './Members'
 import { themeName } from '../themes'
 import { ago } from '../time'
 import { Fold } from './fold'
-import { useNow } from './kit'
+import { Icon } from './Icons'
+import { useNow, value } from './kit'
 import { BUILD } from './Start'
+import { RATE_SOURCE } from '../rates'
+import { CURRENCIES, currencyChoices, detectCurrency } from '../money'
 import { confirmBox } from './dialog'
 import { HISTORY_KEEP, leaveTrip, type TabProps } from './TripPage'
 
 const COLL: Record<string, string> = {
-  trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', days: '每日標題', lists: '清單', listItems: '清單項目', notes: '重點說明', shop: '購物',
+  trip: '行程', members: '成員', flights: '航班', stays: '住宿', items: '行程項目', days: '每日標題', lists: '清單', listItems: '清單項目', notes: '重點說明', shop: '購物', expenses: '分帳',
 }
 const FIELD: Record<string, string> = {
   title: '名稱', startDate: '出發日', endDate: '回程日', theme: '佈景主題', desc: '簡介', nickname: '暱稱', role: '角色',
@@ -24,6 +27,8 @@ const FIELD: Record<string, string> = {
   name: '名稱', checkIn: '入住', checkOut: '退房', mapUrl: '地圖連結', confirmed: '確認狀態',
   date: '日期', time: '時間', tz: '時區', note: '說明', place: '地點', transport: '交通', kind: '類型',
   checked: '勾選', owners: '擁有者',
+  amount: '金額', cur: '幣別', payer: '付錢的人', sharers: '分擔的人', shares: '份數',
+  noSplit: '不用分帳', shopId: '來自購物', settle: '還款',
 }
 const OP = { create: '新增了', update: '修改了', delete: '刪除了', restore: '還原了' }
 const VALUE: Record<string, string> = { normal: '一般', must: '必去', reminder: '提醒', top: '置頂', bottom: '置底', full: '行李滿了', help: '救救我', admin: '管理員', member: '成員' }
@@ -41,6 +46,7 @@ function recordName(trip: Trip, e: HistoryEntry): string {
     case 'listItems': return trip.listItems.get(e.recId)?.name ?? ''
     case 'notes': return trip.notes.get(e.recId)?.title ?? ''
     case 'shop': return trip.shop.get(e.recId)?.name ?? ''
+    case 'expenses': return trip.expenses.get(e.recId)?.title ?? ''
     default: return ''
   }
 }
@@ -75,6 +81,7 @@ export function More({ trip, reg, sync }: TabProps) {
 
   return (
     <div>
+      <h2 class="plain"><Icon id="people" size={24} />成員與設定</h2>
       {/* 各區塊都可以收合。只有自己一個人時邀請預設展開，其他時候預設只開成員。 */}
       <InviteSection trip={trip} reg={reg} sync={sync} />
       <MembersSection trip={trip} reg={reg} sync={sync} />
@@ -128,6 +135,8 @@ export function More({ trip, reg, sync }: TabProps) {
       </div>
       </Fold>
 
+      <CurrencyFold trip={trip} canEdit={iAmAdmin} />
+
       <Fold title="備份這趟行程">
         <div class="card flat">
           <p class="muted" style="margin-top:0">
@@ -166,7 +175,7 @@ export function More({ trip, reg, sync }: TabProps) {
       )}
       </Fold>
 
-      <p class="muted center" style="margin-top:28px">版本 {BUILD}</p>
+      <p class="muted center" style="margin-top:28px">版本 {BUILD}<br />分帳的匯率來源：{RATE_SOURCE}</p>
     </div>
   )
 }
@@ -201,5 +210,73 @@ function LeaveCard({ trip, reg, sync }: Pick<TabProps, 'trip' | 'reg' | 'sync'>)
       }}>{busy ? '正在退出…' : '退出這份行程'}</button>
       {stuck && <p class="muted">你是唯一的管理員。請先把另一位成員設為管理員，再退出。</p>}
     </div>
+  )
+}
+
+/**
+ * 幣別設定（整份行程共用，只有管理員可以改）。
+ * 兩種預設幣別：結帳用的（最後誰給誰用這個算，沒指定是台幣）、當地用的（記帳預設帶這個，沒指定就照目的地判斷）。
+ * 另外可以加第三種以上的幣別。分帳和購物的幣別選單都照這裡。
+ */
+function CurrencyFold({ trip, canEdit }: { trip: Trip; canEdit: boolean }) {
+  const dest = detectCurrency(trip.flights.all(), trip.items.all().map((i) => i.tz), trip.meta.theme ?? '').currency
+  const setup = trip.currencySetup()
+  const home = setup.home || '台幣'
+  const local = setup.local || dest
+  const choices = currencyChoices(local, '', setup.extra, home)
+  const extra = setup.extra.filter((c) => c !== home && c !== local)
+  const rest = CURRENCIES.filter((c) => !choices.includes(c))
+  // 改結帳幣別會把匯率清掉重抓，已經記的還款也會變成「用舊幣別記的一筆」，所以先問一下
+  const changeHome = async (el: HTMLSelectElement) => {
+    const cur = el.value
+    if (cur === home) return
+    if (trip.expenses.all().length > 0 && !(await confirmBox({ title: `預設貨幣改成${cur}？`, body: `匯率會重抓，誰給誰的金額會改用${cur}算。`, ok: '改' }))) {
+      el.value = home // 取消：選單退回原本的
+      return
+    }
+    trip.setCurrencyHome(cur)
+  }
+  return (
+    <Fold title="貨幣" summary={choices.join('、')}>
+      {!canEdit && <p class="muted" style="margin-top:0">只有管理員可以改。</p>}
+      <div class="two">
+        <label class="field">
+          <span>預設貨幣</span>
+          <select value={home} disabled={!canEdit} onChange={(e) => void changeHome(e.target as HTMLSelectElement)}>
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <label class="field">
+          <span>旅遊貨幣</span>
+          <select value={setup.local} disabled={!canEdit} onChange={(e) => trip.setCurrencyLocal(value(e))}>
+            <option value="">自動（{dest}）</option>
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+      </div>
+      {(extra.length > 0 || canEdit) && (
+        <div class="field">
+          <span>其他貨幣</span>
+          <div class="row wrap">
+            {extra.length === 0 && <span class="muted">沒有</span>}
+            {extra.map((c) => canEdit ? (
+              <button type="button" class="small" key={c} aria-label={`拿掉${c}`}
+                onClick={() => trip.setCurrencyExtra(setup.extra.filter((x) => x !== c))}>
+                {c}<Icon id="close" size={14} />
+              </button>
+            ) : <span class="chip" key={c}>{c}</span>)}
+          </div>
+        </div>
+      )}
+      {canEdit && rest.length > 0 && (
+        <label class="field">
+          <span>新增貨幣</span>
+          <select value="" onChange={(e) => { if (value(e)) trip.setCurrencyExtra([...setup.extra, value(e)]) }}>
+            <option value="">選一種加進去</option>
+            {rest.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+      )}
+    </Fold>
   )
 }

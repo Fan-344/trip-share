@@ -67,3 +67,21 @@ export function parsePrice(price: string | undefined, fallback: string): { amoun
   if (cur) return { amount: p.slice(0, -cur.length).trim(), currency: cur }
   return { amount: p, currency: fallback }
 }
+
+/**
+ * 選單裡給選的幣別：結帳用的（home，預設台幣）、當地用的（dest），加上設定裡另外加的（extra）。
+ * current 是這筆資料已經存著的幣別；如果不在裡面（舊資料），也列出來，免得一打開就被換掉。
+ */
+export function currencyChoices(dest: string, current = '', extra: string[] = [], home = '台幣'): string[] {
+  return [...new Set([home, dest, ...extra, current].filter((c) => CURRENCIES.includes(c)))]
+}
+
+/**
+ * 新記一筆時預設用哪種幣別：設定裡指定的優先；沒指定就用這支手機上次在這份行程選的；再沒有就用目的地的貨幣。
+ * 指定的、記住的如果已經不在選單裡，就當作沒有。
+ */
+export function startCurrency(choices: string[], dest: string, def: string, remembered: string | null): string {
+  if (def && choices.includes(def)) return def
+  if (remembered && choices.includes(remembered)) return remembered
+  return dest
+}
