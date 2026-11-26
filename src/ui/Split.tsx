@@ -23,6 +23,9 @@ type Row = Expense & Meta
 type Who = Member & Meta
 type View = 'proxy' | 'log' | 'result'
 
+/** 清單上最多列出幾個人名；再多就只寫幾個人（列出來會佔三四行），人名在展開或修改時看。 */
+const MAX_NAMES = 5
+
 export function Split({ trip, theme, photos }: TabProps) {
   const me = trip.actor.pubkey
   const [sheet, setSheet] = useState<{ id?: string; draft?: ProxyDraft } | null>(null)
@@ -134,7 +137,12 @@ export function Split({ trip, theme, photos }: TabProps) {
                   <div class="row">
                     <span class="grow">
                       <b class="title">{d.title}</b>
-                      <small class="muted">{trip.nicknameOf(e ? e.payer : d.payer)} 買的・{who.map((id) => `${trip.nicknameOf(id)}${each ? ` ×${each[id] ?? 0}` : ''}`).join('、')}{each ? '' : '（平分）'}</small>
+                      <small class="muted split-who-line">
+                        <span>{trip.nicknameOf(e ? e.payer : d.payer)} 買的・</span>
+                        {who.length > MAX_NAMES
+                          ? <span>{who.length} 人{each ? `共 ${who.reduce((sum, id) => sum + (each[id] ?? 0), 0)} 個` : '平分'}</span>
+                          : who.map((id, i) => <span key={id}>{trip.nicknameOf(id)}{each ? ` ×${each[id] ?? 0}` : ''}{i < who.length - 1 ? '、' : each ? '' : '（平分）'}</span>)}
+                      </small>
                     </span>
                     {amount > 0
                       ? <b>{money(amount)}<small>{cur}</small></b>
@@ -355,8 +363,10 @@ function Entry({ trip, photos, e, me, open, onToggle, onEdit }: { trip: Trip; ph
           <span class="split-head"><b class="title">{e.title || '花費'}</b><small class="muted">{trip.nicknameOf(e.payer)} 代墊</small></span>
           {/* 每一段（人名 ×N、N 人平分）自己不斷行，換行只會斷在段跟段之間 */}
           <small class="muted split-who-line">
-            {ids.map((id, i) => <span key={id}>{trip.nicknameOf(id)}{e.shares ? ` ×${e.shares[id] ?? 0}` : ''}{i < ids.length - 1 ? '、' : e.shares ? '' : ' '}</span>)}
-            {!e.shares && <span>{ids.length} 人平分</span>}
+            {ids.length > MAX_NAMES
+              ? <span>{ids.length} 人{e.shares ? '・自訂比例' : '平分'}</span>
+              : ids.map((id, i) => <span key={id}>{trip.nicknameOf(id)}{e.shares ? ` ×${e.shares[id] ?? 0}` : ''}{i < ids.length - 1 ? '、' : e.shares ? '' : ' '}</span>)}
+            {!e.shares && ids.length <= MAX_NAMES && <span>{ids.length} 人平分</span>}
           </small>
         </span>
         <b>{money(e.amount)}<small>{e.cur}</small></b>
@@ -473,7 +483,7 @@ function ExpenseSheet({ trip, members, id, draft, days, onClose }: { trip: Trip;
         </div>
 
         {uneven && picked.map((p) => (
-          <div class="row" style="margin:8px 0" key={p}>
+          <div class="row" style="margin:2px 0" key={p}>
             <span class="grow">{trip.nicknameOf(p)}<small class="muted">　{money(parts[p] ?? 0)}</small></span>
             <Stepper label={`${trip.nicknameOf(p)}幾份`} value={shares[p] ?? 1} onChange={(v) => setShares({ ...shares, [p]: v })} />
           </div>

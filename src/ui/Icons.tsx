@@ -288,6 +288,14 @@ const ICONS: Record<string, JSX.Element> = {
       <g fill={SEA}><circle cx="10.500" cy="26" r="1.800" /><circle cx="16.500" cy="28" r="1.800" /><circle cx="22.500" cy="26" r="1.800" /></g>
     </g>
   ),
+  // 雨夾雪：雲下面雨滴和雪粒交錯
+  sleet: (
+    <g>
+      <path fill="#b9c6d2" d="M9 20a6 6 0 0 1 0.500 -12a8 8 0 0 1 15 2a5 5 0 0 1 -1 10z" />
+      <path {...line(SEA, 2.600)} d="M11 24l-1.500 4M23 24l-1.500 4" />
+      <circle cx="16.500" cy="27" r="1.800" fill={SEA} />
+    </g>
+  ),
   fog: <path {...line('#b9c6d2', 3.400)} d="M5 11h22M8 17h19M5 23h17" />,
   sun: (
     <g>

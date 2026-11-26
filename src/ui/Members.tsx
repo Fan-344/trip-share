@@ -1,6 +1,6 @@
 // 人員管理（規格書第 7 節）：邀請、成員名單、管理員、移出成員、不用手機的成員。
 import { useState } from 'preact/hooks'
-import type { Trip } from '../model/trip'
+import { MAX_MEMBERS, type Trip } from '../model/trip'
 import type { Member, Meta } from '../model/types'
 import { INVITE_DAYS, ROTATE_KEY_ON_REMOVE, inviteLink, kickMember, type Registry } from '../store/local'
 import type { TripSync } from '../sync/engine'
@@ -24,6 +24,14 @@ export function InviteSection({ trip, reg }: Props) {
   if (!ref) return null
   const link = inviteLink(ref, made)
   const until = new Date(made + INVITE_DAYS * 86_400_000)
+  // 人數到上限就不再給邀請（給了對方也加不進來）
+  if (trip.isFull()) {
+    return (
+      <Fold title="邀請家人" summary="人數已滿">
+        <p class="muted" style="margin-top:0">一份行程最多 {MAX_MEMBERS} 個人。要再邀請，先把不去的人移出。</p>
+      </Fold>
+    )
+  }
   return (
     <Fold title="邀請家人" summary="QR Code" open={trip.phoneMembers().length <= 1}>
       <div class="card center">
@@ -66,7 +74,9 @@ export function MembersSection({ trip, reg, sync }: Props) {
         {admins < 2 && phones > 1 && iAmAdmin && (
           <p class="muted">建議至少兩位管理員。</p>
         )}
-        <button class="add" onClick={() => setSheet('add')}><Icon id="plus" size={18} />新增不用手機的成員</button>
+        {trip.isFull()
+          ? <p class="muted">人數已滿（最多 {MAX_MEMBERS} 人）。</p>
+          : <button class="add" onClick={() => setSheet('add')}><Icon id="plus" size={18} />新增不用手機的成員</button>}
       </div>
       {sheet === 'add' && <AddManaged trip={trip} onClose={() => setSheet(null)} />}
       {picked && (

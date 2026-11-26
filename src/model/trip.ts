@@ -8,6 +8,9 @@ import type {
 
 export const SCHEMA = 1
 
+/** 一份行程最多幾個人（有手機的和不用手機的都算）。畫面上的小人、角色列、分帳的排版都以這個人數為上限設計。 */
+export const MAX_MEMBERS = 12
+
 /**
  * 一份行程的四個 Yjs 文件。哪些資料能離開手機，由「放在哪個文件」決定，而不是靠程式記得過濾：
  * - main、comments：交給同步層，全體成員共享。
@@ -220,14 +223,22 @@ export class Trip {
   /**
    * 把自己加進成員。已經是成員就不動；之前退出或被移出、現在用新的邀請回來的，恢復成一般成員。
    * （被移出的人手上是舊金鑰，畫面會先擋下來，不會走到這裡。）
+   * 人數已經滿了就不加，回傳 false；畫面會告訴他滿了。
    */
-  join(nickname: string, role: Role = 'member'): void {
+  join(nickname: string, role: Role = 'member'): boolean {
     const mine = this.members.get(this.actor.pubkey)
-    if (mine && !mine.deleted) return
+    if (mine && !mine.deleted) return true
+    if (this.isFull()) return false
     if (mine) {
       this.members.restore(this.actor.pubkey)
       this.members.update(this.actor.pubkey, { nickname, role: 'member', joinedAt: Date.now() })
     } else this.members.create({ nickname, role, joinedAt: Date.now() }, this.actor.pubkey)
+    return true
+  }
+
+  /** 人數是不是已經到上限（不能再加人、不能再新增不用手機的成員）。 */
+  isFull(): boolean {
+    return this.members.all().length >= MAX_MEMBERS
   }
 
   nicknameOf(pubkey: string): string {
@@ -268,6 +279,7 @@ export class Trip {
 
   /** 不用手機的成員（小孩、長輩）：沒有金鑰、不會自己登入，由其他人代管他的清單。 */
   addManaged(nickname: string): string {
+    if (this.isFull()) return ''
     return this.members.create({ nickname, role: 'member', joinedAt: Date.now(), managed: true })
   }
 

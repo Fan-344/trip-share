@@ -709,8 +709,7 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .hero .depart { margin: 0; padding: 14px 16px 8px; background: transparent; border-radius: 0; box-shadow: none; }
 .hero .body { padding: 8px 12px 12px; border-top: 1px solid var(--edge); }
 .hero .depart-clock div { background: var(--accent-l); }
-.crew { flex-wrap: nowrap; justify-content: safe center; gap: 2px; overflow-x: auto; scrollbar-width: none; }
-.crew::-webkit-scrollbar { display: none; }
+.crew { flex-wrap: wrap; justify-content: center; gap: 6px 2px; max-width: calc(var(--cols, 5) * 60px); margin-left: auto; margin-right: auto; }
 .crewman { width: 58px; flex: none; }
 .crewman b { font-size: 0.78rem; font-weight: 400; color: var(--muted); }
 
@@ -894,3 +893,11 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 /* 品項和「誰代墊」同一行；品項太長就換行，代墊那段自己不拆開 */
 .split-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
 .split-head small { white-space: nowrap; }
+/* 天氣：超過五天就左右滑，每格固定寬；預報還沒到的那幾天是虛線框的佔位 */
+.wx-days.scroll { overflow-x: auto; scrollbar-width: none; margin-left: -4px; margin-right: -4px; padding: 0 4px; }
+.wx-days.scroll::-webkit-scrollbar { display: none; }
+.wx-days.scroll > div { flex: 0 0 56px; }
+.wx-days > div.none { border: 2px dashed var(--edge); justify-content: center; gap: 4px; }
+.wx-days > div.none i { width: 22px; height: 22px; border-radius: 50%; border: 2px dashed var(--shade); }
+.wx-days > div.none span { font-size: 0.72rem; }
+.wx-wait { margin: 10px 0 0; }

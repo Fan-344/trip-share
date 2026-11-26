@@ -1,5 +1,5 @@
 // 每日行程：上方選日期，接著是當天的標頭（圖示與標題），下方是時間軸。
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import type { Trip } from '../model/trip'
 import type { Item, ItemCat, ItemKind, ItemPin } from '../model/types'
 import { byDayOrder } from '../order'
@@ -28,6 +28,15 @@ export function Plan({ trip, theme }: TabProps) {
   const [sheet, setSheet] = useState<{ kind: 'item'; id?: string } | { kind: 'day' } | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [editing, setEditing] = useState(false)
+  // 天數多的時候日期那排要左右捲：把選到的那天捲到中間，不然今天是第八天時畫面上只看得到 Day 1 到 5。
+  // 只動這一排自己的左右位置（不用 scrollIntoView，那個會連整頁上下一起捲）。
+  const strip = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const box = strip.current
+    const on = box?.querySelector<HTMLElement>('.day.on')
+    if (!box || !on) return
+    box.scrollLeft = on.offsetLeft - box.offsetLeft - (box.clientWidth - on.clientWidth) / 2
+  }, [day, days.length])
 
   // 置頂的提醒最前、置底的最後；其餘沒填時間的排前面（整天的事），再照時間。
   const list = items.filter((i) => i.date === day).sort(byDayOrder)
@@ -38,7 +47,7 @@ export function Plan({ trip, theme }: TabProps) {
 
   return (
     <div>
-      <div class="days">
+      <div class="days" ref={strip}>
         {days.map((d) => {
           const { md, wd } = dayLabel(d)
           const i = range.indexOf(d)

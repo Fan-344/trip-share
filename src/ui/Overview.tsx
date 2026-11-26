@@ -1,6 +1,6 @@
 // 總覽：行程日期與倒數、航班、住宿。
 import { useEffect, useState } from 'preact/hooks'
-import { WX_NAME, cachedWeather, hasWeather, loadWeather, pickDays, type Weather, type WxKind } from '../weather'
+import { WX_NAME, cachedWeather, forecastOpens, hasWeather, isWet, loadWeather, pickDays, roundChance, type Weather, type WxKind } from '../weather'
 import type { Trip } from '../model/trip'
 import type { Flight, Meta, Stay } from '../model/types'
 import {
@@ -61,10 +61,10 @@ export function Overview({ trip, theme }: TabProps) {
   const startMs = next ? toInstant(next.dep) : meta.startDate ? new Date(`${meta.startDate}T00:00`).getTime() : now
   const stage = stageOf(startMs - now, onTrip || (!!meta.endDate && t > meta.endDate))
   const me = trip.actor.pubkey
-  // 自己排第一個，進度條上最多站五個人；機艙裡坐得下的都坐。
+  // 自己排第一個。進度條上全團都站上去，人越多小人越小（crewSize）；機艙裡坐得下的都坐。
   const everyone = [...trip.members.all()].sort((a, b) => Number(b.id === me) - Number(a.id === me))
     .map((m) => ({ id: m.id, look: lookOf(m), packed: trip.packedOf(m.id) }))
-  const cast = everyone.slice(0, 5)
+  const cast = everyone
   const who: Who = { cast, stage }
   // 倒數結束了沒：已經在旅行中，或沒有要等的航班、出發日也過了。結束後小人搬到主圖下緣。
   const ended = onTrip || (!next && !(meta.startDate > t))
@@ -78,7 +78,7 @@ export function Overview({ trip, theme }: TabProps) {
           {ended && !flying && (
             <div class="herocrew">
               {cast.map((m, i) => (
-                <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={stage} habit={habitOf(m.look.job, 50, i)} size={cast.length > 3 ? 56 : 64} />
+                <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={stage} habit={habitOf(m.look.job, 50, i, lazyBefore(cast, i))} size={crewSize(cast.length) + 6} />
               ))}
             </div>
           )}
@@ -96,8 +96,8 @@ export function Overview({ trip, theme }: TabProps) {
           <Countdown who={who} ms={new Date(`${meta.startDate}T00:00`).getTime() - now} />
         ) : null}
         <div class="body">
-        {/* 角色列表：全團每個人的小人、名字和稱號，排成一列；人多就左右滑 */}
-        <div class="crew">
+        {/* 角色列表：全團每個人的小人、名字和稱號，全部列出來；一列排不下就換行 */}
+        <div class="crew" style={`--cols:${crewCols(trip.members.all().length)}`}>
           {trip.members.all().map((m) => {
             const look = lookOf(m)
             return (
@@ -459,7 +459,9 @@ function Countdown({ ms, who }: { ms: number; who: Who }) {
 
 /** 進度條上的小人：這趟的成員（自己排第一個）和現在的階段。 */
 /** 機艙裡畫幾排座位、一排多寬；人比座位少時，多的座位空著。 */
+/** 機艙平常畫幾排座位；人比這個多就加排（最多到一份行程的人數上限），機艙變長、整個畫面等比例縮小。 */
 const CABIN_SEATS = 8
+const CABIN_MAX = 12
 const CABIN_PITCH = 38
 
 /**
@@ -470,10 +472,13 @@ const CABIN_PITCH = 38
 function Flying({ f, now, place, cast, back }: { f: Flight; now: number; place: string; cast: Who['cast']; back: boolean }) {
   const c = countdown(toInstant(f.arr) - now)
   const cloud = 'M0 14a8 8 0 0 1 8-8a12 12 0 0 1 22-2a9 9 0 0 1 12 10z'
-  const rows = Array.from({ length: CABIN_SEATS }, (_, i) => 12 + i * CABIN_PITCH)
-  const people = cast.slice(0, CABIN_SEATS)
+  const seats = Math.max(CABIN_SEATS, Math.min(cast.length, CABIN_MAX))
+  // 機艙多長（SVG 單位）：八排是 320，每多一排加一個排距
+  const W = 16 + seats * CABIN_PITCH
+  const rows = Array.from({ length: seats }, (_, i) => 12 + i * CABIN_PITCH)
+  const people = cast.slice(0, seats)
   // 全團坐在一起，排在中間
-  const first = Math.floor((CABIN_SEATS - people.length) / 2)
+  const first = Math.floor((seats - people.length) / 2)
   // 偶爾有一個人起身，沿走道走到機艙的一頭，停一下再走回來坐下（睡著的廢人不起來）。
   // x 是他現在要去的位置；ms 是走過去要多久；still 是到了、站著不動。
   const [walk, setWalk] = useState<{ id: string; x: number; ms: number; still: boolean } | null>(null)
@@ -487,7 +492,7 @@ function Flying({ f, now, place, cast, back }: { f: Flight; now: number; place: 
       const m = able[Math.floor(Math.random() * able.length)]
       if (!m) return
       const home = rows[first + people.indexOf(m)] + 14
-      const to = Math.random() < 0.5 ? 10 + Math.random() * 16 : 294 + Math.random() * 16
+      const to = Math.random() < 0.5 ? 10 + Math.random() * 16 : W - 26 + Math.random() * 16
       const ms = Math.round(Math.abs(to - home) * 38)
       const pause = 1600 + Math.random() * 1800
       setWalk({ id: m.id, x: home, ms: 0, still: true })
@@ -513,28 +518,28 @@ function Flying({ f, now, place, cast, back }: { f: Flight; now: number; place: 
           <div><b key={c.s} class="tick">{two(c.s)}</b><span>秒</span></div>
         </div>
       </div>
-      <svg class="cabin" viewBox="0 0 320 106" aria-hidden="true">
+      <svg class="cabin" viewBox={`0 0 ${W} 106`} aria-hidden="true">
         <defs>
           <clipPath id="cabwin">{rows.map((x) => win(x, {}))}</clipPath>
           {/* 坐著的人只留腰以上，腿另外畫成坐姿 */}
           <clipPath id="cabsit"><rect x="-30" y="-60" width="60" height="52.600" /></clipPath>
         </defs>
         {/* 回程整個機艙左右相反（座位朝左、雲往另一邊飄）；人再翻回來，才不會連臉和手上的東西都反了 */}
-        <g transform={back ? 'translate(320 0) scale(-1 1)' : undefined}>
+        <g transform={back ? `translate(${W} 0) scale(-1 1)` : undefined}>
         {/* 行李櫃 */}
-        <rect x="0" y="0" width="320" height="7" fill="#fff" opacity="0.5" />
+        <rect x="0" y="0" width={W} height="7" fill="#fff" opacity="0.5" />
         {/* 窗戶：外面的天空和往後飄的雲 */}
         {rows.map((x) => win(x, { fill: '#dcebef' }))}
         <g clip-path="url(#cabwin)">
           <g class="cab-clouds" fill="#fff">
-            {[0, 380].map((off) => clouds.map(([x, y, s]) => (
+            {[0, 380, 760].map((off) => clouds.map(([x, y, s]) => (
               <path key={`${off}-${x}`} transform={`translate(${off + x} ${y}) scale(${s})`} d={cloud} />
             )))}
           </g>
         </g>
         {rows.map((x) => win(x, { fill: 'none', stroke: '#fff', 'stroke-width': '2.4' }))}
         {/* 走道 */}
-        <rect x="0" y="92" width="320" height="28" fill="#fff" opacity="0.55" />
+        <rect x="0" y="92" width={W} height="28" fill="#fff" opacity="0.55" />
         {/* 靠窗那排座位（朝右）：椅背、頭枕、椅墊、椅腳；有人的座位上坐著人 */}
         {rows.map((x, i) => {
           const m = people[i - first]
@@ -583,10 +588,11 @@ function Flying({ f, now, place, cast, back }: { f: Flight; now: number; place: 
 interface Who { cast: { id: string; look: Look; packed: boolean }[]; stage: Stage }
 
 
-const WX_ICON: Record<WxKind, string> = { clear: 'sun', partly: 'partly', cloudy: 'cloud', fog: 'fog', rain: 'rain', snow: 'snow', storm: 'storm' }
+const WX_ICON: Record<WxKind, string> = { clear: 'sun', partly: 'partly', cloudy: 'cloud', fog: 'fog', rain: 'rain', snow: 'snow', mix: 'sleet', storm: 'storm' }
 
 /**
- * 當地天氣：現在的氣溫，和行程那幾天的預報（還太早、預報不到的話先列接下來五天）。
+ * 當地天氣：現在的氣溫，和行程每一天的預報（一天一格，多了左右滑；預報還沒到的那幾天是佔位的格子）。
+ * 還太早、整趟都還沒有預報時，不列格子，改寫哪一天起會有。
  * 先顯示上次查到的，同時去查新的；完全查不到就不顯示這張卡片。
  */
 function WeatherCard({ airport, start, end }: { airport: string; start: string; end: string }) {
@@ -599,6 +605,7 @@ function WeatherCard({ airport, start, end }: { airport: string; start: string; 
   if (!wx) return null
   const days = pickDays(wx, start, end)
   const inTrip = (date: string) => date >= start && date <= end
+  const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
   return (
     <div class="card weather">
       <div class="row">
@@ -608,16 +615,28 @@ function WeatherCard({ airport, start, end }: { airport: string; start: string; 
           <div class="muted">{airportName(airport) || airport}現在・{ago(wx.at)}更新</div>
         </div>
       </div>
-      <div class="wx-days">
-        {days.map((d) => (
-          <div key={d.date} class={inTrip(d.date) ? 'on' : ''}>
-            <small>{Number(d.date.slice(5, 7))}/{Number(d.date.slice(8, 10))}</small>
-            <Icon id={WX_ICON[d.kind]} size={26} />
-            <b>{d.hi}°</b><span class="muted">{d.lo}°</span>
-            <small class="wx-rain">雨 {d.rain}%</small>
-          </div>
-        ))}
-      </div>
+      {days.length === 0 ? (
+        <p class="muted wx-wait">{md(forecastOpens(wx, start))} 起會有行程那幾天的預報。</p>
+      ) : (
+        <div class={`wx-days ${days.length > 5 ? 'scroll' : ''}`}>
+          {days.map((d) => d.none ? (
+            <div key={d.date} class="none">
+              <small>{md(d.date)}</small>
+              <i aria-hidden="true" />
+              <span class="muted">還沒有</span>
+            </div>
+          ) : (
+            <div key={d.date} class={inTrip(d.date) ? 'on' : ''}>
+              <small>{md(d.date)}</small>
+              <Icon id={WX_ICON[d.kind]} size={26} />
+              <b>{d.hi}°</b><span class="muted">{d.lo}°</span>
+              {/* 降水機率只在會下的日子顯示（雨、雪、雨夾雪、雷雨），取到 5%，只寫數字——是雨是雪看上面的圖示。
+                  不下的日子留一行空白，每一格才會一樣高。 */}
+              <small class="wx-rain">{isWet(d.kind) ? `${roundChance(d.rain)}%` : '\u00a0'}</small>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -639,14 +658,35 @@ interface Habit {
  * at 是現在的進度（條紋的前端），i 是第幾個人（同角色的人步調再各差一點）。
  * 會走的角色都可以在整條線上走（不限在已經走過的那一段）；差別在速度、步調和停多久。廢人不走，躺在條紋前端的後面一點。
  */
-function habitOf(job: Job, at: number, i: number): Habit {
+/**
+ * 角色列一列排幾個：一列最多五個，要換行時每列人數盡量平均
+ * （6 人排 3、3；7 人 4、3；11 人 4、4、3；12 人 4、4、4，而不是 5、5、2）。
+ */
+export function crewCols(n: number): number {
+  const rows = Math.max(1, Math.ceil(n / 5))
+  return Math.max(1, Math.ceil(n / rows))
+}
+
+/** 這個人前面還有幾個廢人（排位置用）。 */
+const lazyBefore = (cast: { look: Look }[], i: number): number => cast.slice(0, i).filter((m) => m.look.job === 'lazy').length
+
+/** 進度條上的小人多大：三個人以內最大，人越多越小，全團才站得下、不會擠成一團。 */
+function crewSize(n: number): number {
+  return n <= 3 ? 58 : n <= 5 ? 50 : n <= 8 ? 42 : n <= 12 ? 34 : 28
+}
+
+function habitOf(job: Job, at: number, i: number, nth = 0): Habit {
   const jitter = (i % 3) * 0.04
   switch (job) {
     case 'guide': return { range: ALL, speed: 8, pause: [1.5, 3.5], step: 0.46 + jitter }
     case 'shopper': return { range: ALL, speed: 3.5, pause: [1, 2.5], step: 0.68 + jitter }
     case 'photo': return { range: ALL, speed: 2.4, pause: [2, 4.5], step: 0.82 + jitter }
     case 'cheer': return { range: ALL, speed: 15, pause: [0.8, 2], step: 0.3 + jitter }
-    case 'lazy': return { range: [Math.max(at - 10, 4), Math.max(at - 10, 4)], speed: 0, pause: [1, 1], step: 1 }
+    case 'lazy': {
+      // 廢人不走，躺在進度的後面一點。nth 是他前面還有幾個廢人：不只一個時照順序往右錯開，才不會疊在一起
+      const spot = Math.min(Math.max(at - 10, 4) + nth * 9, 92)
+      return { range: [spot, spot], speed: 0, pause: [1, 1], step: 1 }
+    }
     default: return { range: ALL, speed: 5.5, pause: [1.5, 4], step: 0.56 + jitter }
   }
 }
@@ -714,12 +754,11 @@ function Roamer({ id, look, packed, stage, habit, size }: {
 function Track({ p, who }: { p: number; who: Who }) {
   // 取整數百分比：進度每秒都在變一點點，小人的活動範圍不用跟著每秒重算
   const at = Math.round(Math.max(0.14, Math.min(0.9, p)) * 100)
-  const small = who.cast.length > 3
   return (
     <div class="depart-track">
       <i style={`width:${at}%`} />
       {who.cast.map((m, i) => (
-        <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={who.stage} habit={habitOf(m.look.job, at, i)} size={small ? 50 : 58} />
+        <Roamer key={m.id} id={m.id} look={m.look} packed={m.packed} stage={who.stage} habit={habitOf(m.look.job, at, i, lazyBefore(who.cast, i))} size={crewSize(who.cast.length)} />
       ))}
     </div>
   )

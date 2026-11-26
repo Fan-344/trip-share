@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
-import { Trip, newTripDocs } from '../src/model/trip'
+import { MAX_MEMBERS, Trip, newTripDocs } from '../src/model/trip'
 import type { Item } from '../src/model/types'
 
 // 兩支手機：各自有完整副本，只有 main 與 comments 會互傳。
@@ -387,5 +387,27 @@ describe('移出成員（不換金鑰）', () => {
     const kid = a.addManaged('大女兒')
     expect(a.members.get(kid)).toMatchObject({ nickname: '大女兒', managed: true })
     expect(a.phoneMembers().sort()).toEqual(['pubA', 'pubB'])
+  })
+
+  it('一份行程最多 12 個人：滿了就不能再加不用手機的成員，新的人也加不進來；有人被移出才空出名額', () => {
+    const { a } = twoPhones()
+    const kids: string[] = []
+    while (a.members.all().length < MAX_MEMBERS) kids.push(a.addManaged(`成員${kids.length}`))
+    expect(a.members.all()).toHaveLength(12)
+    expect(a.isFull()).toBe(true)
+    expect(a.addManaged('多的')).toBe('')
+    expect(a.members.all()).toHaveLength(12)
+    // 第十三個人拿到邀請：加不進來
+    const c = new Trip(newTripDocs(), { pubkey: 'pubC', device: 'devC' })
+    sync(a, c)
+    expect(c.join('阿姨')).toBe(false)
+    expect(c.members.get('pubC')).toBeUndefined()
+    // 移出一個人，名額空出來
+    a.members.remove(kids[0])
+    sync(a, c)
+    expect(c.join('阿姨')).toBe(true)
+    expect(c.members.all()).toHaveLength(12)
+    // 已經在裡面的人，滿了也照樣算加入成功
+    expect(a.join('爸爸')).toBe(true)
   })
 })

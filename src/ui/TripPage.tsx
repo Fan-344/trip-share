@@ -1,7 +1,7 @@
 // 一份行程的外框：頂端的名稱、同步狀態與分頁。
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import { followChain, type ChainResult } from '../model/rekey'
-import type { Trip } from '../model/trip'
+import { MAX_MEMBERS, type Trip } from '../model/trip'
 import { canZip, hex } from '../sync/crypto'
 import { openTrip, removeTrip, type OpenTrip, type Registry } from '../store/local'
 import type { PhotoStore } from '../store/photos'
@@ -234,6 +234,23 @@ function TripView({ reg, trip, sync, photos, tab }: Omit<TabProps, 'theme'> & { 
           </div>
           <button onClick={async () => {
             if (await confirmBox({ title: `從這支手機移除「${meta.title}」？`, body: '私人清單和訂位代號會一起清掉，無法復原。', ok: '移除', danger: true })) leaveTrip(reg, meta.id)
+          }}>從這支手機移除</button>
+        </div>
+      </div>
+    )
+  }
+
+  // 用邀請進來、但人數已經滿了：沒被加進成員，告訴他滿了。等有人被移出、名額空出來，重新打開就會自動加入。
+  const mine = trip.members.get(trip.actor.pubkey)
+  if (current && (!mine || mine.deleted) && trip.isFull()) {
+    return (
+      <div>
+        <div class="topbar"><div class="row"><a href="#" aria-label="回我的行程" style="display:flex"><Icon id="back" size={22} /></a><b class="grow">{meta.title}</b></div></div>
+        <div class="card">
+          <h1>這份行程人數已滿</h1>
+          <p>一份行程最多 {MAX_MEMBERS} 個人，所以還沒把你加進去。請管理員先把不去的人移出，再重新打開這份行程就會自動加入。</p>
+          <button onClick={async () => {
+            if (await confirmBox({ title: `從這支手機移除「${meta.title}」？`, ok: '移除', danger: true })) leaveTrip(reg, meta.id)
           }}>從這支手機移除</button>
         </div>
       </div>
