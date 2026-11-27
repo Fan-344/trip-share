@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Flight } from '../src/model/types'
-import { ago, countdown, dayLabel, daysBetween, defaultTz, mapLink, mapSearchOn, nightsBetween, placeName, safeUrl, toInstant } from '../src/time'
+import { ago, countdown, dayLabel, daysBetween, defaultTz, mapLink, mapSearchOn, nightsBetween, placeName, phaseAt, safeUrl, toInstant } from '../src/time'
 
 const out: Flight = {
   code: 'JX1751', from: 'TPE', to: 'CNX', cabin: '', aircraft: '',
@@ -106,5 +106,19 @@ describe('用地點找地圖的勾選', () => {
     expect(mapLink({ place: '尼曼路', cat: 'rest', mapSearch: true })).not.toBeNull()
     // 貼了連結的不受勾選影響
     expect(mapLink({ place: '', cat: 'rest', mapSearch: false, mapUrl: 'https://maps.app.goo.gl/x' })!.exact).toBe(true)
+  })
+})
+
+describe('主圖的日夜', () => {
+  const at = (iso: string) => Date.parse(iso)
+  it('照目的地的當地時間：晚上 7 點到清晨 5 點夜晚、傍晚和清晨是黃昏、其餘白天', () => {
+    // 台灣下午 5 點半＝曼谷下午 4 點半：白天；同一刻的東京是傍晚 6 點半：黃昏
+    expect(phaseAt(at('2027-03-05T17:30:00+08:00'), 'Asia/Bangkok')).toBe('day')
+    expect(phaseAt(at('2027-03-05T17:30:00+08:00'), 'Asia/Tokyo')).toBe('dusk')
+    expect(phaseAt(at('2027-03-05T21:00:00+08:00'), 'Asia/Bangkok')).toBe('night')
+    expect(phaseAt(at('2027-03-05T04:30:00+08:00'), 'Asia/Taipei')).toBe('night')
+    expect(phaseAt(at('2027-03-05T05:30:00+08:00'), 'Asia/Taipei')).toBe('dusk')
+    expect(phaseAt(at('2027-03-05T06:00:00+08:00'), 'Asia/Taipei')).toBe('day')
+    expect(phaseAt(at('2027-03-05T19:00:00+08:00'), 'Asia/Taipei')).toBe('night')
   })
 })

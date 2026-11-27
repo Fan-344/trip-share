@@ -347,6 +347,19 @@ button, .btn, .tabs a, .card.tap { transition: transform 0.08s ease, background-
 @keyframes flag { from { transform: skewY(-7deg) scaleX(0.94); } to { transform: skewY(7deg) scaleX(1); } }
 .a-flag { animation: flag 1.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0 50%; }
 .a-float.slow { animation-duration: 5.5s; }
+/* 主圖的天氣：雨斜斜落下、雪左右飄著落下、雷雨偶爾閃一下 */
+@keyframes rain { from { transform: translate(73px, -270px); } to { transform: translate(0, 0); } }
+.art-rain { animation: rain 1.5s linear infinite; }
+@keyframes snow {
+  0% { transform: translate(0, -270px); } 25% { transform: translate(8px, -202px); } 50% { transform: translate(0, -135px); }
+  75% { transform: translate(8px, -67px); } 100% { transform: translate(0, 0); }
+}
+.art-snow { animation: snow 9s linear infinite; }
+@keyframes artflash { 0%, 86%, 90%, 94%, 100% { opacity: 0; } 88%, 92% { opacity: 0.45; } }
+@keyframes artbolt { 0%, 85%, 91%, 95%, 100% { opacity: 0; } 87%, 89%, 93% { opacity: 1; } }
+.art-flash { animation: artflash 7s linear infinite; }
+.art-bolt { animation: artbolt 7s linear infinite; }
+.art-flash.late, .art-bolt.late { animation-duration: 11s; animation-delay: -4s; }
 .a-drive.fast { animation-duration: 2.4s; }
 
 /* 選檔案的輸入框：字級一樣固定 16px，避免 iPhone 點進去放大。 */

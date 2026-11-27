@@ -1,8 +1,10 @@
 // 各主題在總覽頂端的主圖。畫法：漸層天空、有光暈的太陽、一層層變淡的遠山、
 // 正面看的建築（亮面加一塊暗面，沒有框線）、橘色樹冠的樹，前景是有倒影和波光的水面。
 // class 以 a- 開頭的是動態效果（定義在 styles.css），使用者關閉動態效果時會全部停下。
-import type { ComponentChildren } from 'preact'
+import { createContext, toChildArray, type ComponentChildren } from 'preact'
+import { useContext, useLayoutEffect, useRef } from 'preact/hooks'
 import type { ThemeId } from '../themes'
+import type { WxKind } from '../weather'
 
 const W = 400
 const H = 260
@@ -19,6 +21,74 @@ export const C = {
   lilac: '#cdb7d6', plum: '#a98bb0',
   trunk: '#8a5a4a', glow: '#fbe3a6',
 }
+
+/**
+ * 主圖現在是白天、黃昏還是夜晚（照目的地的當地時間，見 src/time.ts 的 phaseAt）。
+ * 每張主圖共用：黃昏在整張圖上蓋一層暖色；夜晚天空變暗、在太陽的位置畫彎月和星星（在所有景物後面），景物整組調暗；
+ * 會亮的燈（C.glow 和樓房亮著的窗）另外複製一份畫在暗色層上面，所以燈不會跟著變暗。
+ * 其他顏色的東西要在夜裡亮，就加 data-glow：值是入夜後要換成的顏色，"keep" 是照原本的顏色（例如打燈的建築）。
+ */
+export type Phase = 'day' | 'dusk' | 'night'
+const PhaseCtx = createContext<Phase>('day')
+
+/** 會亮的燈的顏色：用這兩種顏色畫的東西，入夜後畫在暗色層上面。 */
+const LIGHTS = [C.glow, '#fde9b0']
+
+/** 夜晚的星星：位置固定，散在天空上半部。 */
+const STARS: [number, number, number][] = [
+  [24, 20, 0], [62, 36, -0.8], [104, 14, -1.6], [138, 44, -0.4], [176, 22, -2], [214, 50, -1.1],
+  [250, 16, -0.3], [288, 40, -1.8], [322, 24, -0.9], [360, 46, -1.4], [384, 14, -0.6], [86, 64, -2.2], [196, 74, -0.7], [340, 80, -1.9],
+]
+
+/**
+ * 把會亮的燈複製到最上層。原本的燈留在原地（會被暗色層蓋暗），複製的那份照它在畫面上的實際位置放上去：
+ * - 在水面倒影裡的不複製（倒影本來就淡）。
+ * - 燈如果在一個會動的群組裡（例如往上飄的天燈），整個群組一起複製，並對齊動畫的進度，才會跟原本的一起動。
+ */
+function liftLights(svg: SVGSVGElement, layer: SVGGElement): void {
+  layer.replaceChildren()
+  const base = svg.getScreenCTM()
+  if (!base) return
+  const toSvg = base.inverse()
+  const done = new Set<Element>()
+  const NS = 'http://www.w3.org/2000/svg'
+  for (const el of svg.querySelectorAll([...LIGHTS.map((c) => `[fill="${c}"]`), '[data-glow]'].join(','))) {
+    if (layer.contains(el) || el.closest('[clip-path], .night-sky')) continue
+    // 往上找會動的群組（class 以 a- 開頭）或整組打燈的群組（data-glow="keep"）；有的話整組複製
+    const moving = el.parentElement?.closest('[class^="a-"], [class*=" a-"]')
+    // 整組打燈只亮幾成（data-lit）時，裡面自己有指定亮燈顏色的（例如窗）另外全亮複製一份
+    const own = el.getAttribute('data-glow')
+    const group = el.closest('g[data-glow="keep"]')
+    const lit = own && own !== 'keep' && group?.hasAttribute('data-lit') ? null : group
+    const target = moving && svg.contains(moving) ? moving : lit ?? el
+    if (done.has(target)) continue
+    done.add(target)
+    const parent = target.parentElement as unknown as SVGGraphicsElement | null
+    const ctm = parent?.getScreenCTM?.()
+    if (!ctm) continue
+    const m = toSvg.multiply(ctm)
+    const g = document.createElementNS(NS, 'g')
+    g.setAttribute('transform', `matrix(${m.a} ${m.b} ${m.c} ${m.d} ${m.e} ${m.f})`)
+    const copy = target.cloneNode(true) as SVGElement
+    // 整組打燈的可以用 data-lit 指定亮幾成（0–1），沒寫就是全亮
+    const lit2 = copy.getAttribute('data-lit')
+    if (lit2) copy.setAttribute('opacity', lit2)
+    for (const part of [copy, ...copy.querySelectorAll('[data-glow]')]) {
+      const glow = part.getAttribute('data-glow')
+      if (glow && glow !== 'keep') {
+        part.setAttribute('fill', glow)
+        part.removeAttribute('opacity')
+      }
+    }
+    g.appendChild(copy)
+    layer.appendChild(g)
+    // 讓複製的那份動畫跟原本的同步
+    const src = (target as unknown as Element).getAnimations?.({ subtree: true }) ?? []
+    const dst = copy.getAnimations?.({ subtree: true }) ?? []
+    dst.forEach((a, i) => { if (src[i]) a.currentTime = src[i].currentTime })
+  }
+}
+
 
 /** 使用者是否要求減少動態效果。SVG 自帶的路徑動畫不受 CSS 那條規則管，所以要另外判斷。 */
 const reducedMotion = (): boolean =>
@@ -70,10 +140,23 @@ function At({ x, y, s = 1, children }: { x: number; y: number; s?: number; child
   return <g transform={`translate(${x} ${y}) scale(${s})`}>{children}</g>
 }
 
-/** 整張圖的外框與漸層天空。id 是這張圖的漸層名稱前綴，同一頁有兩張圖時不會互相打架。 */
+/** 整張圖的外框與漸層天空。id 是這張圖的漸層名稱前綴，同一頁有兩張圖時不會互相打架。黃昏、夜晚在最上面蓋一層色。 */
 function Scene({ id, sky, children }: { id: string; sky: string[]; children: ComponentChildren }) {
+  const phase = useContext(PhaseCtx)
+  const wx = useContext(WxCtx)
+  const gloom = GLOOM[wx]
+  const svg = useRef<SVGSVGElement>(null)
+  const lights = useRef<SVGGElement>(null)
+  useLayoutEffect(() => {
+    if (!svg.current || !lights.current) return
+    if (phase === 'day') lights.current.replaceChildren()
+    else liftLights(svg.current, lights.current)
+  }, [phase, id, wx])
+  // 月亮出現在這張圖太陽的位置（太陽是 children 裡的 Sun）；被建築擋住就擋住
+  const sun = toChildArray(children).find((c) => typeof c === 'object' && c.type === Sun)
+  const moon = sun && typeof sun === 'object' ? (sun.props as unknown as { x: number; y: number; r: number }) : null
   return (
-    <svg class="art" viewBox={`0 0 ${W} ${H}`} role="img" aria-hidden="true" preserveAspectRatio="xMidYMax slice">
+    <svg ref={svg} class={`art ${phase}`} viewBox={`0 0 ${W} ${H}`} role="img" aria-hidden="true" preserveAspectRatio="xMidYMax slice">
       <defs>
         <linearGradient id={`${id}s`} x1="0" y1="0" x2="0" y2="1">
           {sky.map((c, i) => <stop key={i} offset={i / (sky.length - 1)} stop-color={c} />)}
@@ -81,14 +164,210 @@ function Scene({ id, sky, children }: { id: string; sky: string[]; children: Com
         <radialGradient id={`${id}g`}>
           <stop offset="0" stop-color="#fff" stop-opacity="0.8" /><stop offset="1" stop-color="#fff" stop-opacity="0" />
         </radialGradient>
+        {/* 黃昏：上面偏粉紫、下面偏橘；夜晚：上面深藍、下面靛藍 */}
+        <linearGradient id={`${id}d`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#c77fa0" stop-opacity="0.45" /><stop offset="1" stop-color="#f0a070" stop-opacity="0.3" />
+        </linearGradient>
+        <linearGradient id={`${id}n`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2a3168" stop-opacity="0.82" /><stop offset="0.6" stop-color="#3d4780" stop-opacity="0.66" /><stop offset="1" stop-color="#4a5690" stop-opacity="0.56" />
+        </linearGradient>
       </defs>
       <rect x="-4" y="-4" width={W + 8} height={H + 8} fill={`url(#${id}s)`} />
-      {children}
+      {/* 陰天以後：天空蓋一層灰、飄著大片的雲（夜晚會跟天空一起變暗） */}
+      {gloom && <rect x="-4" y="-4" width={W + 8} height={H + 8} fill={gloom[0]} opacity={gloom[1] + 0.15} />}
+      {wx !== 'clear' && <WxClouds kind={wx} />}
+      {phase === 'night' ? (
+        <>
+          {/* 夜晚：天空先變暗，星星和月亮畫在天空上、所有東西後面；景物整組調暗 */}
+          <rect x="-4" y="-4" width={W + 8} height={H + 8} fill={`url(#${id}n)`} style="mix-blend-mode:multiply" />
+          {!gloom && (
+            <g class="night-sky">
+              {STARS.map(([x, y, d]) => <Twinkle key={`${x}`} x={x} y={y} delay={d} />)}
+              {moon && <Moon id={id} {...moon} />}
+            </g>
+          )}
+          {wx === 'storm' && <Bolts />}
+          <filter id={`${id}f`} color-interpolation-filters="sRGB">
+            <feColorMatrix values="0.52 0 0 0 0  0 0.54 0 0 0  0 0 0.68 0 0  0 0 0 1 0" />
+          </filter>
+          <g filter={`url(#${id}f)`}>{children}</g>
+        </>
+      ) : (
+        <>
+          {wx === 'storm' && <Bolts />}
+          {children}
+          {phase === 'dusk' && (
+            <rect x="-4" y="-4" width={W + 8} height={H + 8} fill={`url(#${id}d)`} style="mix-blend-mode:multiply" />
+          )}
+          {/* 陰天以後景物也暗一點（夜晚本來就暗，不再加） */}
+          {gloom && <rect x="-4" y="-4" width={W + 8} height={H + 8} fill={gloom[0]} opacity={gloom[1] * 0.6} style="mix-blend-mode:multiply" />}
+        </>
+      )}
+      {wx === 'fog' && <Fog id={id} night={phase === 'night'} />}
+      <g ref={lights} class="lights" />
+      {/* 雨雪畫在最上面，不放進夜晚調暗的那一層，動起來才不會讓整張圖一直重畫 */}
+      {(wx === 'rain' || wx === 'storm' || wx === 'mix') && <Rain n={wx === 'storm' ? 54 : wx === 'mix' ? 22 : 38} heavy={wx === 'storm'} />}
+      {(wx === 'snow' || wx === 'mix') && <Snow n={wx === 'mix' ? 18 : 34} />}
+      {wx === 'storm' && <rect class="art-flash" x="-4" y="-4" width={W + 8} height={H + 8} fill="#fff" opacity="0" />}
+      {wx === 'storm' && <rect class="art-flash late" x="-4" y="-4" width={W + 8} height={H + 8} fill="#fff" opacity="0" />}
     </svg>
   )
 }
 
+/* ---------- 天氣 ---------- */
+
+/**
+ * 主圖的天氣（跟天氣預報用同一組分類，見 src/weather.ts）。晴天和晴時多雲看得到太陽或月亮；
+ * 其餘是陰天：天空和景物蓋一層灰（顏色、濃淡）、太陽月亮星星都不畫，再依天氣加雨、雪、霧、閃電。
+ */
+const WxCtx = createContext<WxKind>('clear')
+const GLOOM: Partial<Record<WxKind, [string, number]>> = {
+  cloudy: ['#b7bdcd', 0.4], fog: ['#c9ccd6', 0.45], rain: ['#9aa2b8', 0.5],
+  snow: ['#c6cbd8', 0.4], mix: ['#a3aabd', 0.5], storm: ['#79819b', 0.6],
+}
+
+/** 天上的雲：晴時多雲是兩朵白雲；陰天以後是一整排灰白的大雲，下雨更灰。 */
+function WxClouds({ kind }: { kind: WxKind }) {
+  const puff = 'M0 14a8 8 0 0 1 8-8a12 12 0 0 1 22-2a9 9 0 0 1 12 10z'
+  if (kind === 'partly') {
+    return (
+      <g fill="#fff" opacity="0.88">
+        {([[-6, 30, 1.7], [86, 8, 2.2], [160, 46, 1.3], [236, 14, 1.9], [330, 40, 1.5], [44, 70, 1.1], [290, 78, 1]] as const).map(([x, y, s], i) => (
+          <At key={i} x={x} y={y} s={s}><path class="a-drift" style={`animation-delay:${-i * 1.9}s`} d={puff} /></At>
+        ))}
+      </g>
+    )
+  }
+  const [back, front] = CEILING[kind] ?? CEILING.cloudy!
+  return (
+    <g>
+      <path class="a-drift" style="animation-delay:-3s" fill={back} d={ceiling(56, [34, 26, 40, 30, 36, 28, 38])} />
+      <path class="a-drift" fill={front} d={ceiling(38, [28, 36, 24, 32, 30, 38, 26])} />
+    </g>
+  )
+}
+
+/** 陰天的雲層顏色：[後面那層, 前面那層]。下雨更灰、雷雨最暗、下雪偏白。 */
+const CEILING: Partial<Record<WxKind, [string, string]>> = {
+  cloudy: ['#d3d6df', '#e9ebf0'], fog: ['#d9dbe2', '#eceef2'],
+  rain: ['#aab0bf', '#c5c9d4'], mix: ['#b2b7c5', '#cdd1db'],
+  storm: ['#8b91a4', '#a9afbf'], snow: ['#dfe2e9', '#f3f4f7'],
+}
+
+/** 蓋住天空頂端的一整片雲：上緣在畫面外，下緣是一個個往下鼓的圓弧。base 是下緣的高度，bumps 是每個圓弧的寬度的一半。 */
+function ceiling(base: number, bumps: number[]): string {
+  let d = `M-40 -4H440V${base}`
+  let x = 440
+  for (let i = 0; x > -40; i++) {
+    const r = bumps[i % bumps.length]
+    x -= r * 2
+    d += `A${r} ${r * 0.8} 0 0 1 ${x} ${base}`
+  }
+  return `${d}V-4z`
+}
+
+/** 0 到 1 之間、看起來亂但每次都一樣的數（第 i 顆的第 k 個屬性），雨雪才不會排成規律的格子。 */
+function rnd(i: number, k: number): number {
+  const s = Math.sin(i * 127.1 + k * 311.7) * 43758.5453
+  return s - Math.floor(s)
+}
+
+/** 一顆水滴：上面尖、下面圓。原點在圓的中心，高約 8。 */
+const DROP = 'M0 -5.500Q2.400 -1.600 2.400 0.600A2.400 2.400 0 0 1 -2.400 0.600Q-2.400 -1.600 0 -5.500z'
+
+/**
+ * 雨：一顆顆水滴，順著落下的方向微微斜，用動畫從上往下落（減少動態效果時停在原位）。
+ * 每一滴的位置、大小、深淺、落下的速度和起點都不一樣。
+ * 動畫放在外層、位置和斜度放在內層，兩個 transform 才不會互相蓋掉。
+ */
+function Rain({ n, heavy }: { n: number; heavy: boolean }) {
+  const base = heavy ? 1.1 : 1.5
+  return (
+    <g fill="#eef5fb">
+      {Array.from({ length: n }, (_, i) => {
+        const dur = base * (0.75 + rnd(i, 4) * 0.5)
+        const s = 0.85 + rnd(i, 3) * 0.6
+        return (
+          <g key={i} class="art-rain" style={`animation-duration:${dur.toFixed(2)}s;animation-delay:${(-rnd(i, 5) * dur).toFixed(2)}s`}>
+            <path d={DROP} opacity={(0.5 + rnd(i, 6) * 0.4).toFixed(2)}
+              transform={`translate(${(rnd(i, 1) * 430 - 10).toFixed(1)} ${(rnd(i, 2) * 270).toFixed(1)}) rotate(15) scale(${s.toFixed(2)})`} />
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+/** 雷雨的閃電：天上兩道矮胖、圓角的閃電，跟整張圖的閃光同時亮（錯開時間）。 */
+function Bolts() {
+  const bolt = 'M9 0h15l-6 14h10L7 42l5 -19H2z'
+  return (
+    <g fill="#fff3b8" stroke="#fff3b8" stroke-width="2.500" stroke-linejoin="round">
+      <At x={286} y={34} s={1.3}><path class="art-bolt" opacity="0" d={bolt} /></At>
+      <At x={84} y={44} s={1}><path class="art-bolt late" opacity="0" d={bolt} /></At>
+    </g>
+  )
+}
+
+/** 雪：大小不一的白點，慢慢左右飄著落下；位置、速度、起點都打散。 */
+function Snow({ n }: { n: number }) {
+  return (
+    <g fill="#fff">
+      {Array.from({ length: n }, (_, i) => {
+        const dur = 7 + rnd(i, 4) * 5
+        return (
+          <circle key={i} class="art-snow" style={`animation-duration:${dur.toFixed(1)}s;animation-delay:${(-rnd(i, 5) * dur).toFixed(1)}s`}
+            cx={rnd(i, 1) * 420 - 10} cy={rnd(i, 2) * 270} r={1.2 + rnd(i, 3) * 1.4} opacity={(0.7 + rnd(i, 6) * 0.3).toFixed(2)} />
+        )
+      })}
+    </g>
+  )
+}
+
+/**
+ * 霧：整片從上往下越來越濃的白紗，地平線一帶最濃，遠處的東西就淡掉；
+ * 再加兩條兩端淡掉的細霧帶慢慢飄。
+ */
+function Fog({ id, night }: { id: string; night: boolean }) {
+  const c = night ? '#b9bfd6' : '#f4f4f8'
+  return (
+    <g opacity={night ? 0.6 : 1}>
+      <linearGradient id={`${id}fv`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color={c} stop-opacity="0.1" />
+        <stop offset="0.55" stop-color={c} stop-opacity="0.55" />
+        <stop offset="0.75" stop-color={c} stop-opacity="0.6" />
+        <stop offset="1" stop-color={c} stop-opacity="0.3" />
+      </linearGradient>
+      <linearGradient id={`${id}fb`}>
+        <stop offset="0" stop-color={c} stop-opacity="0" /><stop offset="0.5" stop-color={c} stop-opacity="0.7" /><stop offset="1" stop-color={c} stop-opacity="0" />
+      </linearGradient>
+      <rect x="-4" y="-4" width={W + 8} height={H + 8} fill={`url(#${id}fv)`} />
+      <rect class="a-drift" x="-60" y="176" width="300" height="8" rx="4" fill={`url(#${id}fb)`} />
+      <rect class="a-drift" style="animation-delay:-4s" x="170" y="204" width="280" height="7" rx="3.5" fill={`url(#${id}fb)`} />
+    </g>
+  )
+}
+
+/** 彎月：一個圓被右上方另一個圓切掉一塊。夜晚由 Scene 畫在太陽的位置，在所有景物後面。 */
+function Moon({ id, x, y, r }: { id: string; x: number; y: number; r: number }) {
+  const m = r * 0.7
+  return (
+    <g class="a-float slow">
+      <circle cx={x} cy={y} r={m * 2.6} fill={`url(#${id}g)`} opacity="0.35" />
+      <mask id={`${id}m`}>
+        <circle cx={x} cy={y} r={m} fill="#fff" />
+        <circle cx={x + m * 0.55} cy={y - m * 0.3} r={m * 0.9} fill="#000" />
+      </mask>
+      <circle cx={x} cy={y} r={m} fill={C.glow} mask={`url(#${id}m)`} />
+    </g>
+  )
+}
+
+/** 太陽；夜晚不畫（換成 Scene 畫的月亮）。 */
 function Sun({ id, x, y, r, fill = '#fff3d0' }: { id: string; x: number; y: number; r: number; fill?: string }) {
+  const phase = useContext(PhaseCtx)
+  const wx = useContext(WxCtx)
+  if (phase === 'night' || GLOOM[wx]) return null
   return (
     <g class="a-float slow">
       <circle cx={x} cy={y} r={r * 2.6} fill={`url(#${id}g)`} />
@@ -386,7 +665,7 @@ export function Wat() {
       {[-30, 26].map((x) => (
         <g key={x}>
           <path fill={C.gold} d={`M${x - 5} -19v-11q0 -5 5 -7q5 2 5 7v11z`} />
-          <path fill={C.coralD} d={`M${x - 3.5} -20v-10a3.500 3.500 0 0 1 7 0v10z`} />
+          <path fill={C.coralD} data-glow={C.glow} d={`M${x - 3.5} -20v-10a3.500 3.500 0 0 1 7 0v10z`} />
           <path fill="none" stroke={C.gold} stroke-width="0.7" d={`M${x} -33v13M${x - 3.5} -26h7`} />
         </g>
       ))}
@@ -501,8 +780,8 @@ function Pagoda() {
             <rect x={-w * 0.55} y={top} width={w * 1.1} height="14" fill={C.cream} />
             <rect x={w * 0.1} y={top} width={w * 0.45} height="14" fill={C.creamD} />
             <rect x={-w * 0.55} y={top} width={w * 1.1} height="2.5" fill={C.coralD} opacity="0.4" />
-            <rect x="-2" y={top + 5} width="4" height="9" fill={C.coralD} />
-            <rect x={-w * 0.4} y={top + 5} width="3" height="4" fill={C.coralD} /><rect x={w * 0.4 - 3} y={top + 5} width="3" height="4" fill={C.coralD} />
+            <rect x="-2" y={top + 5} width="4" height="9" fill={C.coralD} data-glow={C.glow} />
+            <rect x={-w * 0.4} y={top + 5} width="3" height="4" fill={C.coralD} data-glow={C.glow} /><rect x={w * 0.4 - 3} y={top + 5} width="3" height="4" fill={C.coralD} data-glow={C.glow} />
             <path fill="none" stroke={C.coral} stroke-width="0.9" d={`M${-w * 0.75} ${top + 11}h${w * 1.5}M${-w * 0.75} ${top + 11}v3M${w * 0.75} ${top + 11}v3M${-w * 0.38} ${top + 11}v3M${w * 0.38} ${top + 11}v3`} />
             <path fill={C.coral} d={`M${-w - 4} ${top}q4 -1 7 -6h${2 * w - 6}q3 5 7 6z`} />
             <path fill={C.coralD} d={`M0 ${top}v-6h${w - 3}q3 5 7 6z`} />
@@ -658,6 +937,8 @@ function Island() {
       </g>
       <At x={270} y={198} s={1.45}><Bungalow /></At>
       <At x={348} y={196} s={1.1}><Bungalow /></At>
+      {/* 棧道上的小燈 */}
+      {[312, 360, 400].map((x) => <Lamp key={x} x={x} y={176} h={9} />)}
       {/* 前景的沙灘 */}
       <path fill="#fbe7c0" d="M-4 264V222Q70 200 150 222Q220 242 300 250Q350 254 404 246V264z" />
       <path fill="#fff" opacity="0.6" d="M-4 226Q70 202 150 224Q220 244 300 252Q350 256 404 248v-3Q350 252 300 248Q220 240 150 220Q70 198 -4 222z" />
@@ -690,7 +971,9 @@ function Building({ x, w, h, fill, shade, base = 198, lit = true }: { x: number;
         const r = Math.floor(i / cols)
         const c = i % cols
         const on = (r * 3 + c * 5 + x) % 4 !== 0
-        return <rect key={i} x={x + pad + c * 8} y={base - h + 7 + r * 11} width="4" height="6" rx="1" fill={on ? '#fde9b0' : '#fff'} opacity={on ? 1 : 0.35} />
+        // 白天沒亮的窗，晚上也有一半會亮
+        const late = !on && (r + c) % 2 === 0
+        return <rect key={i} x={x + pad + c * 8} y={base - h + 7 + r * 11} width="4" height="6" rx="1" fill={on ? '#fde9b0' : '#fff'} opacity={on ? 1 : 0.35} data-glow={late ? '#fde9b0' : undefined} />
       })}
     </g>
   )
@@ -878,7 +1161,7 @@ export function Palace() {
       <rect x="-40" y="-84" width="80" height="20" fill={DAN} /><rect x="4" y="-84" width="36" height="20" fill={DAN_D} />
       {[-34, -20, -6, 8, 22].map((x) => (
         <g key={x}>
-          <rect x={x} y="-80" width="10" height="12" fill={C.cream} />
+          <rect x={x} y="-80" width="10" height="12" fill={C.cream} data-glow={C.glow} />
           <path fill="none" stroke={DAN} stroke-width="0.7" d={`M${x + 5} -80v12M${x} -74h10`} />
         </g>
       ))}
@@ -998,7 +1281,7 @@ export function Shophouse({ w, h, fill = OCHRE, shade = OCHRE_D }: { w: number; 
       <path fill={TILE} d={`M-4 ${-h}l5 -12h${w - 2}l5 12z`} />
       <path fill={TILE_D} d={`M${w / 2} ${-h}v-12h${w / 2 - 1}l5 12z`} />
       <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.3" d={`M-1 ${-h - 4}h${w + 2}M1 ${-h - 8}h${w - 2}`} />
-      <rect x={w * 0.16} y={-h + 8} width={w * 0.24} height="16" rx="1" fill={TEAL} />
+      <rect x={w * 0.16} y={-h + 8} width={w * 0.24} height="16" rx="1" fill={TEAL} data-glow={C.glow} />
       <rect x={w * 0.6} y={-h + 8} width={w * 0.24} height="16" rx="1" fill={TEAL} />
       <path fill="none" stroke="#fff" stroke-width="0.6" opacity="0.4" d={`M${w * 0.16} ${-h + 13}h${w * 0.24}M${w * 0.16} ${-h + 18}h${w * 0.24}M${w * 0.6} ${-h + 13}h${w * 0.24}M${w * 0.6} ${-h + 18}h${w * 0.24}`} />
       <rect x="-2" y={-h + 26} width={w + 4} height="2.5" fill={C.cream} />
@@ -1069,6 +1352,8 @@ export function BaySands() {
       <path fill={GLASS} d={`M${x - 14} 0L${x - 9} -86h18L${x + 14} 0z`} />
       <path fill={GLASS_D} d={`M${x} 0v-86h9L${x + 14} 0z`} />
       <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.35" d={[12, 24, 36, 48, 60, 72].map((y) => `M${x - 12} ${-y}h24`).join('')} />
+      {/* 晚上亮燈的房間：白天跟玻璃同色看不出來 */}
+      {[18, 30, 42, 54, 66].map((y, i) => <rect key={y} x={x - 8 + (i % 2) * 8} y={-y - 4} width="6" height="3" fill={GLASS} data-glow={C.glow} />)}
     </g>
   )
   return (
@@ -1088,8 +1373,9 @@ function Supertree({ h }: { h: number }) {
     <g>
       <path fill={C.plum} d={`M-3 0L-2 ${-h + 14}q-10 -4 -18 -14h40q-8 10 -18 14L3 0z`} />
       <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.4" d={`M0 ${-h + 13}L-11 ${-h + 2}M0 ${-h + 13}L11 ${-h + 2}M0 ${-h + 13}v-11`} />
-      <ellipse cx="0" cy={-h} rx="22" ry="5" fill="#e3a2bd" />
-      <ellipse cx="0" cy={-h - 1.5} rx="15" ry="3" fill={C.pinkL} />
+      {/* 樹冠晚上亮燈 */}
+      <ellipse cx="0" cy={-h} rx="22" ry="5" fill="#e3a2bd" data-glow="keep" />
+      <ellipse cx="0" cy={-h - 1.5} rx="15" ry="3" fill={C.pinkL} data-glow="keep" />
     </g>
   )
 }
@@ -1130,10 +1416,11 @@ const IRON_D = '#7a6257'
 /** 鐵塔：三層平台、交叉的鐵架。原點在地面正中。 */
 export function Eiffel() {
   return (
-    <g>
-      <rect x="-0.700" y="-164" width="1.400" height="14" fill={IRON} />
-      <path fill={IRON} d="M-36 0q22 -38 30 -78L-3 -150h6L6 -78q8 40 30 78h-14q-6 -20 -22 -20t-22 20z" />
-      <path fill={IRON_D} d="M0 -150h3L6 -78q8 40 30 78h-14q-6 -20 -22 -20z" />
+    // 晚上整座打金黃色的燈
+    <g data-glow="keep">
+      <rect x="-0.700" y="-164" width="1.400" height="14" fill={IRON} data-glow="#d99a5c" />
+      <path fill={IRON} data-glow="#d99a5c" d="M-36 0q22 -38 30 -78L-3 -150h6L6 -78q8 40 30 78h-14q-6 -20 -22 -20t-22 20z" />
+      <path fill={IRON_D} data-glow="#c0844e" d="M0 -150h3L6 -78q8 40 30 78h-14q-6 -20 -22 -20z" />
       <path fill="none" stroke="#fff" stroke-width="0.7" opacity="0.35" d="M-20 -40l14 -34M20 -40l-14 -34M-28 -14l12 -30M28 -14l-12 -30M-5 -86l3 -34M5 -86l-3 -34M-14 -60h28M-9 -100h18" />
       <rect x="-24" y="-48" width="48" height="5" rx="1" fill={C.cream} />
       <rect x="-11" y="-82" width="22" height="4" rx="1" fill={C.cream} />
@@ -1154,7 +1441,8 @@ function Mansion({ w, h }: { w: number; h: number }) {
       <path fill="#8fa0b5" d={`M-2 ${-h}l4 -14h${w - 4}l4 14z`} />
       <path fill="#7c8da3" d={`M${w / 2} ${-h}v-14h${w / 2 - 2}l4 14z`} />
       {xs.map((x) => <rect key={x} x={x} y={-h - 10} width="5" height="7" rx="1" fill={C.cream} />)}
-      {[0, 1, 2].map((r) => xs.map((x) => <rect key={`${r}-${x}`} x={x} y={-h + 6 + r * 13} width="5" height="8" rx="1" fill="#b7c3d3" />))}
+      {/* 窗晚上亮一半（錯開排） */}
+      {[0, 1, 2].map((r) => xs.map((x, i) => <rect key={`${r}-${x}`} x={x} y={-h + 6 + r * 13} width="5" height="8" rx="1" fill="#b7c3d3" data-glow={(r + i + cols) % 2 === 0 ? C.glow : undefined} />))}
       <path fill="none" stroke={C.trunk} stroke-width="0.7" opacity="0.6" d={[0, 1, 2].map((r) => `M3 ${-h + 15 + r * 13}h${w - 6}`).join('')} />
       <rect x="0" y="-12" width={w} height="12" fill="#e9d2bd" />
       <path fill={C.coral} d={`M3 -12h${w - 6}l2 5h${-(w - 2)}z`} />
@@ -1213,12 +1501,12 @@ function Sail({ x0, x1, tip }: { x0: number; x1: number; tip: [number, number] }
   const mullions = [0.2, 0.35, 0.5, 0.65, 0.8].map((k) => `M${at(k)} 0V${archY(k)}`).join('')
   const rays = [0.3, 0.45, 0.6, 0.75, 0.9].map((k) => `M${tx} ${ty}L${at(k)} ${archY(k)}`).join('')
   return (
-    <g>
-      {/* 帆底下的玻璃 */}
-      <path fill="#7a6f7d" d={`M${edge} 0Q${mid} ${arch} ${back} 0z`} />
+    <g data-glow="keep">
+      {/* 帆晚上有淡淡的打燈：整組（連同線條）畫在暗色層上面，帆面換成較暗的實色；帆底下的玻璃亮暖黃的燈 */}
+      <path fill="#7a6f7d" data-glow={C.glow} d={`M${edge} 0Q${mid} ${arch} ${back} 0z`} />
       <path fill="none" stroke="#c9a678" stroke-width="0.600" d={mullions} />
-      <path fill="#fffaf2" d={`M${edge} 0L${tx} ${ty}Q${ctrl} ${back} 0Q${mid} ${arch} ${edge} 0z`} />
-      <path fill="#ece4d9" d={`M${tx} ${ty}L${edge} 0L${at(0.38)} ${archY(0.38)}z`} />
+      <path fill="#fffaf2" data-glow="#cfc9da" d={`M${edge} 0L${tx} ${ty}Q${ctrl} ${back} 0Q${mid} ${arch} ${edge} 0z`} />
+      <path fill="#ece4d9" data-glow="#b3adc2" d={`M${tx} ${ty}L${edge} 0L${at(0.38)} ${archY(0.38)}z`} />
       <path fill="none" stroke="#e4dacd" stroke-width="0.500" d={rays} />
       <path fill="none" stroke="#fff" stroke-width="1.200" stroke-linecap="round" d={`M${tx} ${ty}Q${ctrl} ${back} 0`} />
       <path fill="none" stroke="#ddd2c3" stroke-width="0.700" d={`M${tx} ${ty}L${edge} 0`} />
@@ -1249,7 +1537,7 @@ export function OperaHouse() {
       <rect x="60" y="-24" width="88" height="24" fill="#c99579" />
       <path fill="none" stroke="#c48c6e" stroke-width="0.700" d="M-148 -16h296M-148 -8h296" />
       <path fill="none" stroke="#c48c6e" stroke-width="0.500" opacity="0.7" d={[-60, -20, 20, 100, 130].map((x) => `M${x} -24v24`).join('')} />
-      <g fill="#7a6f78">{[-122, -98, -74, -50, -26, -2, 22, 72, 94, 116].map((x) => <rect key={x} x={x} y="-21" width="14" height="5" rx="1" />)}</g>
+      {[-122, -98, -74, -50, -26, -2, 22, 72, 94, 116].map((x) => <rect key={x} x={x} y="-21" width="14" height="5" rx="1" fill="#7a6f78" data-glow={C.glow} />)}
       {/* 左邊的大階梯和上面的遊客 */}
       <path fill="#e7c2a5" d="M-148 0V-24h22l-26 24z" />
       <path fill="none" stroke="#d2a888" stroke-width="0.600" d="M-148 -20h18M-148 -16h14M-148 -12h10M-148 -8h6M-148 -4h2" />
@@ -1285,6 +1573,8 @@ function HarbourBridge() {
       <path fill="none" stroke="#8f9cb0" stroke-width="1.600" d="M10 0Q90 -122 170 0" />
       <path fill="none" stroke="#8f9cb0" stroke-width="0.800" opacity="0.7" d={braces} />
       <path fill="none" stroke="#8f9cb0" stroke-width="0.900" opacity="0.8" d={hangers} />
+      {/* 拱上一串燈，白天跟鋼架同色 */}
+      {[16, 34, 52, 70, 90, 110, 128, 146, 164].map((x) => <circle key={x} cx={x} cy={archY(x) * 0.97} r="1.300" fill="#8f9cb0" data-glow={C.glow} />)}
       <rect x="-24" y="-26" width="228" height="4" fill="#8f9cb0" />
       <rect x="-24" y="-22" width="228" height="1.400" fill="#7b889c" />
       {[-18, 184].map((x) => (
@@ -1305,7 +1595,7 @@ function SydneyTower() {
     <g>
       <rect x="-1.600" y="-84" width="3.200" height="84" fill="#c6b5d6" />
       <path fill="none" stroke="#b6a3c9" stroke-width="0.700" d="M-1.600 -84L-6 -66M1.600 -84L6 -66M-6 -66h12" />
-      <path fill={C.gold} d="M-8 -92h16l-2 8h-12z" />
+      <path fill={C.gold} data-glow={C.glow} d="M-8 -92h16l-2 8h-12z" />
       <rect x="-8.500" y="-95" width="17" height="3" rx="1" fill={C.goldD} />
       <rect x="-0.600" y="-112" width="1.200" height="17" fill="#b6a3c9" />
     </g>
@@ -1509,6 +1799,9 @@ function NewZealand() {
       <g fill="#fff">{[[60, 180], [70, 182], [82, 179], [96, 183]].map(([x, y]) => <ellipse key={x} cx={x} cy={y} rx="2.400" ry="1.600" />)}</g>
       <Pine x={196} y={190} s={0.7} /><Pine x={210} y={191} s={0.5} />
       <At x={240} y={190} s={1.5}><Chapel /></At>
+      {/* 教堂旁的路燈；遠處山坡上幾戶人家的燈，白天跟草地同色 */}
+      <Lamp x={272} y={191} h={13} /><Lamp x={212} y={191} h={11} />
+      {[[120, 177], [134, 175], [352, 176], [368, 178]].map(([x, y]) => <rect key={x} x={x} y={y} width="2.400" height="2" fill="#a7d3a4" data-glow={C.glow} />)}
       <Poplar x={300} y={192} h={36} /><Poplar x={314} y={193} h={28} fill="#f2a24e" light={C.orangeL} /><Poplar x={328} y={192} h={38} />
       <Poplar x={30} y={192} h={30} /><Poplar x={44} y={193} h={24} fill="#f2a24e" light={C.orangeL} />
       <rect x="-4" y="190" width={W + 8} height="8" fill="#9fcb98" />
@@ -1541,7 +1834,15 @@ function NewZealand() {
   )
 }
 
-export function Art({ theme }: { theme: ThemeId }) {
+export function Art({ theme, phase = 'day', weather = 'clear' }: { theme: ThemeId; phase?: Phase; weather?: WxKind }) {
+  return (
+    <PhaseCtx.Provider value={phase}>
+      <WxCtx.Provider value={weather}><Scenery theme={theme} /></WxCtx.Provider>
+    </PhaseCtx.Provider>
+  )
+}
+
+function Scenery({ theme }: { theme: ThemeId }) {
   switch (theme) {
     case 'korea': return <Korea />
     case 'hongkong': return <HongKong />

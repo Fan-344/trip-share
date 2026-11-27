@@ -2,9 +2,10 @@
 import { useEffect, useState } from 'preact/hooks'
 import { canInstall, currentPlatform, needsInstall, registerServiceWorker } from '../pwa'
 import { Registry, acceptInvite, createTrip, parseInvite, renameEverywhere, type Invite } from '../store/local'
-import { THEMES } from '../themes'
+import { THEMES, type ThemeId } from '../themes'
+import type { WxKind } from '../weather'
 import { fullDay } from '../time'
-import { Art } from './Art'
+import { Art, type Phase } from './Art'
 import { BAGS, defaultLook } from '../avatar'
 import { Pile } from './Figure'
 import { BackupCard, Recover } from './Backup'
@@ -62,9 +63,12 @@ function UpdateBanner({ onApply }: { onApply: () => void }) {
 
 /** 只在開發版有：#/themes 一次看完所有主題的插畫與配色，改圖時用。 */
 function ThemeGallery() {
+  // 開發用：可以切換白天、黃昏、夜晚看每張主圖
+  const [phase, setPhase] = useState<Phase>('day')
   return (
     <div class="page top">
       <h1>佈景主題一覽</h1>
+      <div class="seg" style="position:sticky;top:8px;z-index:5">{(['day', 'dusk', 'night'] as const).map((p) => <button key={p} class={p === phase ? 'on' : ''} onClick={() => setPhase(p)}>{p}</button>)}</div>
       {/* 行李堆：一到五件各一種擺法。上排有人沒收好，下排全部收好 */}
       <h2>行李堆<span class="muted">一到五件</span></h2>
       {[false, true].map((packed) => (
@@ -78,7 +82,36 @@ function ThemeGallery() {
       {THEMES.map((t) => (
         <div key={t.id} style={`--accent:${t.accent};--accent-l:color-mix(in srgb, ${t.accent} 30%, white)`}>
           <h2><Mascot theme={t.id} size={40} />{t.name}<span class="muted">{t.id}・{t.hint}</span>{t.motifs.map((m) => <Icon key={m} id={m} size={26} />)}</h2>
-          <div class="card hero"><Art theme={t.id} /><div class="body"><button class="primary small">按鈕</button></div></div>
+          <div class="card hero"><Art theme={t.id} phase={phase} /><div class="body"><button class="primary small">按鈕</button></div></div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** 天氣的名稱（範本檢視用）。 */
+const WX_NAMES: [WxKind, string][] = [
+  ['clear', '晴'], ['partly', '晴時多雲'], ['cloudy', '陰'], ['fog', '霧'],
+  ['rain', '雨'], ['storm', '雷雨'], ['snow', '雪'], ['mix', '雨夾雪'],
+]
+
+/** 只在開發版有：#/weather 一個主題的所有天氣並排，可以切主題和白天黃昏夜晚。 */
+function WeatherGallery() {
+  const [phase, setPhase] = useState<Phase>('day')
+  const [theme, setTheme] = useState<ThemeId>(THEMES[0].id)
+  return (
+    <div class="page top">
+      <h1>天氣範本</h1>
+      <div style="position:sticky;top:8px;z-index:5;display:grid;gap:6px">
+        <select value={theme} onChange={(e) => setTheme((e.target as HTMLSelectElement).value as ThemeId)}>
+          {THEMES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        <div class="seg">{(['day', 'dusk', 'night'] as const).map((p) => <button key={p} class={p === phase ? 'on' : ''} onClick={() => setPhase(p)}>{p}</button>)}</div>
+      </div>
+      {WX_NAMES.map(([k, name]) => (
+        <div key={k}>
+          <h2>{name}<span class="muted">{k}</span></h2>
+          <div class="card hero"><Art theme={theme} phase={phase} weather={k} /></div>
         </div>
       ))}
     </div>
@@ -88,6 +121,7 @@ function ThemeGallery() {
 function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   useDocs([reg.ydoc])
   if (import.meta.env.DEV && hash === '#/themes') return <ThemeGallery />
+  if (import.meta.env.DEV && hash === '#/weather') return <WeatherGallery />
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
   if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><FirstRunHelp reg={reg} /><Recover reg={reg} /></div></div>

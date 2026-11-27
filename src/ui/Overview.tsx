@@ -4,7 +4,7 @@ import { WX_NAME, cachedWeather, forecastOpens, hasWeather, isWet, loadWeather, 
 import type { Trip } from '../model/trip'
 import type { Flight, Meta, Stay } from '../model/types'
 import {
-  AIRPORTS, ago, airportName, countdown, daysBetween, fullDay, nightsBetween, placeName, safeUrl,
+  AIRPORTS, ago, airportName, countdown, daysBetween, deviceTz, fullDay, nightsBetween, phaseAt, placeName, safeUrl,
   toInstant, today, zoneOptions,
 } from '../time'
 import { THEMES, autoTheme, themeName } from '../themes'
@@ -73,7 +73,8 @@ export function Overview({ trip, theme }: TabProps) {
     <div>
       <div class="card hero">
         <div class="heroart">
-          <Art theme={theme} />
+          {/* 日夜照目的地（去程降落的地方）的當地時間；沒有航班就照這支手機的時間 */}
+          <Art theme={theme} phase={phaseAt(now, flights[0]?.arr.tz ?? deviceTz())} />
           {/* 倒數結束後（旅行中、或已經沒有要等的航班）：整組小人從進度條搬到主圖下緣，照樣各走各的；正在飛的時候人都在機艙裡，主圖上不站人 */}
           {ended && !flying && (
             <div class="herocrew">

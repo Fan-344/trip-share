@@ -197,3 +197,18 @@ export function safeUrl(u: string): string | null {
     return null
   }
 }
+
+/**
+ * 目的地現在是白天、黃昏還是夜晚（總覽主圖的日夜變化）。看的是那個時區的當地時間：
+ * 晚上 7 點到清晨 5 點是夜晚，傍晚 5 到 7 點和清晨 5 到 6 點是黃昏，其餘是白天。
+ * 用固定的時段，不照各地實際的日出日落。
+ */
+export function phaseAt(now: number, tz: string): 'day' | 'dusk' | 'night' {
+  let h: number
+  try {
+    h = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: tz }).format(now))
+  } catch {
+    h = new Date(now).getHours()
+  }
+  return h >= 19 || h < 5 ? 'night' : h >= 17 || h < 6 ? 'dusk' : 'day'
+}
