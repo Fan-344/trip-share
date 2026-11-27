@@ -136,7 +136,20 @@ export function parseWeather(json: unknown, at: number): Weather {
 /**
  * 查目的地的天氣。一小時內查過就直接用上次的；查不到（沒網路、服務掛了）回傳上次的，連上次的都沒有就是 null。
  */
-export async function loadWeather(airport: string, now = Date.now()): Promise<Weather | null> {
+export function loadWeather(airport: string, now = Date.now()): Promise<Weather | null> {
+  // 同一個地方正在查的話，等那一次的結果就好（主圖和天氣卡同時要，不必查兩次）
+  const key = airport.toUpperCase()
+  const going = pending.get(key)
+  if (going) return going
+  const p = fetchWeather(airport, now).finally(() => pending.delete(key))
+  pending.set(key, p)
+  return p
+}
+
+/** 正在查的天氣，依機場代碼。 */
+const pending = new Map<string, Promise<Weather | null>>()
+
+async function fetchWeather(airport: string, now: number): Promise<Weather | null> {
   const at = COORDS[airport.toUpperCase()]
   if (!at) return null
   const old = cachedWeather(airport)

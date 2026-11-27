@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { dayKind, fallOf, forecastOpens, hasWeather, isWet, kindOf, parseWeather, pickDays, roundChance } from '../src/weather'
+import { describe, expect, it, vi } from 'vitest'
+import { dayKind, fallOf, forecastOpens, hasWeather, isWet, kindOf, parseWeather, pickDays, roundChance, loadWeather } from '../src/weather'
 
 const sample = {
   current: { temperature_2m: 24.7, weather_code: 0 },
@@ -137,5 +137,20 @@ describe('天氣', () => {
     expect((['rain', 'snow', 'mix', 'storm'] as const).map(isWet)).toEqual([true, true, true, true])
     expect((['clear', 'partly', 'cloudy', 'fog'] as const).map(isWet)).toEqual([false, false, false, false])
     expect([61, 88, 24, 92, 100, 2, 0, 63].map(roundChance)).toEqual([60, 90, 25, 90, 100, 0, 0, 65])
+  })
+})
+
+describe('同時查同一個地方的天氣', () => {
+  it('主圖和天氣卡同時要時只查一次，兩邊拿到同樣的結果', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify(sample)))
+    vi.stubGlobal('fetch', fetch)
+    try {
+      const [a, b] = await Promise.all([loadWeather('CNX', 1000), loadWeather('cnx', 1000)])
+      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(a?.now.temp).toBe(25)
+      expect(b).toBe(a)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

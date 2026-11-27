@@ -56,6 +56,8 @@ export function Overview({ trip, theme }: TabProps) {
   const onTrip = dayIndex >= 0 && !waitingFirst
   // 現在正在飛的那一班（起飛了、還沒降落）：這段時間改顯示飛行中的動畫，倒數到抵達。
   const flying = flights.find((f) => toInstant(f.dep) <= now && now < toInstant(f.arr))
+  // 主圖的天氣：目的地（去程降落的地方）現在的天氣
+  const heroWx = useNowWeather(flights[0]?.to)
 
   // 小人：現在是哪個階段（查攻略、收行李、出發、旅行中），以及每個成員的行李收好了沒。
   const startMs = next ? toInstant(next.dep) : meta.startDate ? new Date(`${meta.startDate}T00:00`).getTime() : now
@@ -73,8 +75,8 @@ export function Overview({ trip, theme }: TabProps) {
     <div>
       <div class="card hero">
         <div class="heroart">
-          {/* 日夜照目的地（去程降落的地方）的當地時間；沒有航班就照這支手機的時間 */}
-          <Art theme={theme} phase={phaseAt(now, flights[0]?.arr.tz ?? deviceTz())} />
+          {/* 日夜照目的地（去程降落的地方）的當地時間，沒有航班就照這支手機的時間；天氣照目的地現在的天氣 */}
+          <Art theme={theme} phase={phaseAt(now, flights[0]?.arr.tz ?? deviceTz())} weather={heroWx} />
           {/* 倒數結束後（旅行中、或已經沒有要等的航班）：整組小人從進度條搬到主圖下緣，照樣各走各的；正在飛的時候人都在機艙裡，主圖上不站人 */}
           {ended && !flying && (
             <div class="herocrew">
@@ -596,6 +598,23 @@ const WX_ICON: Record<WxKind, string> = { clear: 'sun', partly: 'partly', cloudy
  * 還太早、整趟都還沒有預報時，不列格子，改寫哪一天起會有。
  * 先顯示上次查到的，同時去查新的；完全查不到就不顯示這張卡片。
  */
+/**
+ * 目的地現在的天氣種類，給主圖用。先用上次查到的，同時去查新的（跟天氣卡共用同一次查詢）。
+ * 沒有目的地、查不到、或上次查到的已經超過 3 小時，就當晴天，免得拿很久以前的天氣來畫。
+ */
+function useNowWeather(airport: string | undefined): WxKind {
+  const ok = !!airport && hasWeather(airport)
+  const [wx, setWx] = useState<Weather | null>(() => (ok ? cachedWeather(airport) : null))
+  useEffect(() => {
+    if (!ok) { setWx(null); return }
+    let gone = false
+    setWx(cachedWeather(airport))
+    void loadWeather(airport).then((w) => { if (!gone && w) setWx(w) })
+    return () => { gone = true }
+  }, [airport, ok])
+  return wx && Date.now() - wx.at < 3 * 3_600_000 ? wx.now.kind : 'clear'
+}
+
 function WeatherCard({ airport, start, end }: { airport: string; start: string; end: string }) {
   const [wx, setWx] = useState<Weather | null>(() => cachedWeather(airport))
   useEffect(() => {
