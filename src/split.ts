@@ -23,7 +23,7 @@ export interface Transfer { from: string; to: string; amount: number; cur: strin
 export const HOME = '台幣'
 
 /** 會用到小數的幣別；其他的結算到整數。 */
-const CENTS = new Set(['美元', '加幣', '歐元', '英鎊', '澳幣', '新加坡幣', '馬幣'])
+const CENTS = new Set(['美元', '加幣', '歐元', '英鎊', '澳幣', '紐幣', '新加坡幣', '馬幣'])
 export const digitsOf = (cur: string): number => (CENTS.has(cur) ? 2 : 0)
 
 const round = (n: number, digits: number) => {

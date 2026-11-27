@@ -4,7 +4,7 @@ import type { Flight } from './model/types'
 /** 選單裡的幣別，常去的排前面。 */
 export const CURRENCIES = [
   '台幣', '泰銖', '日圓', '韓元', '港幣', '澳門幣', '新加坡幣', '馬幣', '披索', '越南盾', '印尼盾', '人民幣',
-  '美元', '加幣', '歐元', '英鎊', '澳幣',
+  '美元', '加幣', '歐元', '英鎊', '澳幣', '紐幣',
 ]
 
 const BY_ZONE: Record<string, string> = {
@@ -13,10 +13,11 @@ const BY_ZONE: Record<string, string> = {
   'Asia/Manila': '披索', 'Asia/Ho_Chi_Minh': '越南盾', 'Asia/Makassar': '印尼盾', 'Asia/Shanghai': '人民幣',
   'America/Los_Angeles': '美元', 'America/New_York': '美元', 'America/Vancouver': '加幣',
   'Europe/London': '英鎊', 'Europe/Paris': '歐元', 'Europe/Berlin': '歐元',
-  'Australia/Sydney': '澳幣', 'Australia/Melbourne': '澳幣',
+  'Australia/Sydney': '澳幣', 'Australia/Melbourne': '澳幣', 'Australia/Brisbane': '澳幣', 'Australia/Perth': '澳幣', 'Australia/Adelaide': '澳幣',
+  'Pacific/Auckland': '紐幣',
 }
 
-const BY_THEME: Record<string, string> = { thai: '泰銖', japan: '日圓', korea: '韓元', hongkong: '港幣', vietnam: '越南盾', singapore: '新加坡幣', europe: '歐元' }
+const BY_THEME: Record<string, string> = { thai: '泰銖', japan: '日圓', korea: '韓元', hongkong: '港幣', vietnam: '越南盾', singapore: '新加坡幣', europe: '歐元', australia: '澳幣', newzealand: '紐幣' }
 
 export interface CurrencyGuess {
   currency: string

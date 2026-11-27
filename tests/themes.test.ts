@@ -16,6 +16,10 @@ describe('佈景主題', () => {
     expect(autoTheme([flight('TPE', 'SIN', '2027-03-05')])).toBe('singapore')
     expect(autoTheme([flight('TPE', 'ICN', '2027-03-05')])).toBe('korea')
     expect(autoTheme([flight('TPE', 'KUL', '2027-03-05')])).toBe('city')
+    expect(autoTheme([flight('TPE', 'SYD', '2027-03-05')])).toBe('australia')
+    expect(autoTheme([flight('TPE', 'BNE', '2027-03-05')])).toBe('australia')
+    expect(autoTheme([flight('TPE', 'AKL', '2027-03-05')])).toBe('newzealand')
+    expect(autoTheme([flight('TPE', 'ZQN', '2027-03-05')])).toBe('newzealand')
   })
 
   it('沒有航班或不認得的機場用通用主題', () => {

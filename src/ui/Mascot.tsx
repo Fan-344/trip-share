@@ -2,7 +2,7 @@
 // 用的是總覽主圖（Art.tsx）的同一批零件，縮小後放進圓框裡。
 import type { ComponentChildren } from 'preact'
 import type { ThemeId } from '../themes'
-import { Balloon, BaySands, C, Eiffel, Junk, Palace, Palm, Pine, Shophouse, Torii, Tree, Wat, Wheel } from './Art'
+import { Balloon, BaySands, C, Eiffel, Junk, Kangaroo, OperaHouse, Palace, Palm, Pine, Sheep, Shophouse, Torii, Tree, Wat, Wheel } from './Art'
 
 const SUN = '#fff3d0'
 
@@ -115,6 +115,30 @@ const BODY: Record<ThemeId, { bg: string; art: ComponentChildren }> = {
         <rect x="33" y="20" width="5" height="46" fill={C.coralD} />
         <rect x="40" y="42" width="14" height="24" rx="1" fill={C.peach} />
         <rect y="66" width="80" height="14" fill="#a9c6d9" />
+      </g>
+    ),
+  },
+  // 歌劇院
+  australia: {
+    bg: '#f8cfac',
+    art: (
+      <g>
+        <circle cx="18" cy="20" r="9" fill={SUN} />
+        <rect y="58" width="80" height="22" fill="#94cbd8" />
+        <g transform="translate(42 62) scale(0.27)"><OperaHouse /></g>
+        <g transform="translate(18 79) scale(0.5)"><Kangaroo /></g>
+      </g>
+    ),
+  },
+  // 雪山與綿羊
+  newzealand: {
+    bg: '#cfe2ef',
+    art: (
+      <g>
+        <path fill="#b8b3d6" d="M0 56L26 26L40 40L56 20L80 50V60H0z" />
+        <path fill="#fff" d="M56 20l-7 8l4 -1l3 3l3 -3l4 1zM26 26l-6 7l4 -1l2 2l3 -3z" />
+        <path fill="#a7d3a4" d="M0 80V56q20 -8 40 -2t40 -4V80z" />
+        <g transform="translate(36 72) scale(1.3)"><Sheep /></g>
       </g>
     ),
   },

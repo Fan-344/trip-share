@@ -1191,6 +1191,356 @@ function Europe() {
   )
 }
 
+/* ---------- 澳洲 ---------- */
+
+/**
+ * 歌劇院的一片帆，像切開的一瓣橘子：尖端在外側，一邊是從尖端直直落到底的直邊，
+ * 另一邊是從尖端往內水平彎過去、再落到底的大圓弧。帆的底邊往上拱，露出後面的深色玻璃和金色窗框。
+ * 靠直邊那一塊是背光的淺灰；圓弧邊緣一道亮線，面上幾道從尖端放射出去的瓦片紋。原點在帆底。
+ */
+function Sail({ x0, x1, tip }: { x0: number; x1: number; tip: [number, number] }) {
+  const [tx, ty] = tip
+  const left = tx < (x0 + x1) / 2
+  const w = x1 - x0
+  // 直邊落在靠尖端那一側；圓弧落在另一側
+  const [edge, back] = left ? [x0, x1] : [x1, x0]
+  const ctrl = `${back + (left ? w * 0.08 : -w * 0.08)} ${ty * 1.05}`
+  // 底邊往上拱多高；拱上某一點的高度（二次曲線）
+  const arch = ty * 0.17
+  const archY = (k: number) => 2 * k * (1 - k) * arch
+  const mid = (x0 + x1) / 2
+  const at = (k: number) => edge + (back - edge) * k
+  const mullions = [0.2, 0.35, 0.5, 0.65, 0.8].map((k) => `M${at(k)} 0V${archY(k)}`).join('')
+  const rays = [0.3, 0.45, 0.6, 0.75, 0.9].map((k) => `M${tx} ${ty}L${at(k)} ${archY(k)}`).join('')
+  return (
+    <g>
+      {/* 帆底下的玻璃 */}
+      <path fill="#7a6f7d" d={`M${edge} 0Q${mid} ${arch} ${back} 0z`} />
+      <path fill="none" stroke="#c9a678" stroke-width="0.600" d={mullions} />
+      <path fill="#fffaf2" d={`M${edge} 0L${tx} ${ty}Q${ctrl} ${back} 0Q${mid} ${arch} ${edge} 0z`} />
+      <path fill="#ece4d9" d={`M${tx} ${ty}L${edge} 0L${at(0.38)} ${archY(0.38)}z`} />
+      <path fill="none" stroke="#e4dacd" stroke-width="0.500" d={rays} />
+      <path fill="none" stroke="#fff" stroke-width="1.200" stroke-linecap="round" d={`M${tx} ${ty}Q${ctrl} ${back} 0`} />
+      <path fill="none" stroke="#ddd2c3" stroke-width="0.700" d={`M${tx} ${ty}L${edge} 0`} />
+    </g>
+  )
+}
+
+/** 階梯上的小人：只有身體和頭。原點在腳底。 */
+function Dot({ x, y, coat }: { x: number; y: number; coat: string }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect x="-1.200" y="-5" width="2.400" height="5" rx="1" fill={coat} />
+      <circle cx="0" cy="-6.300" r="1.300" fill={SKIN} />
+    </g>
+  )
+}
+
+/**
+ * 歌劇院：照實景的輪廓。左邊一組帆尖朝左、越往中間越高，正中那片最高；接著兩片朝右；
+ * 右邊小的一組也朝右、越來越低。帆底下是深色的玻璃和金色窗框，整座坐在高高的磚紅色基座上，
+ * 左邊是一段大階梯，上面有幾個小小的遊客。原點在基座底部正中，寬約 300、高約 125。
+ */
+export function OperaHouse() {
+  return (
+    <g>
+      {/* 基座：亮面、暗面、橫紋、一格格的牆板和一排窗 */}
+      <rect x="-148" y="-24" width="296" height="24" fill="#d9a98a" />
+      <rect x="60" y="-24" width="88" height="24" fill="#c99579" />
+      <path fill="none" stroke="#c48c6e" stroke-width="0.700" d="M-148 -16h296M-148 -8h296" />
+      <path fill="none" stroke="#c48c6e" stroke-width="0.500" opacity="0.7" d={[-60, -20, 20, 100, 130].map((x) => `M${x} -24v24`).join('')} />
+      <g fill="#7a6f78">{[-122, -98, -74, -50, -26, -2, 22, 72, 94, 116].map((x) => <rect key={x} x={x} y="-21" width="14" height="5" rx="1" />)}</g>
+      {/* 左邊的大階梯和上面的遊客 */}
+      <path fill="#e7c2a5" d="M-148 0V-24h22l-26 24z" />
+      <path fill="none" stroke="#d2a888" stroke-width="0.600" d="M-148 -20h18M-148 -16h14M-148 -12h10M-148 -8h6M-148 -4h2" />
+      <Dot x={-140} y={-17} coat={C.coral} /><Dot x={-134} y={-21} coat="#7f8fb5" /><Dot x={-143} y={-9} coat={C.gold} />
+      {/* 基座頂的欄杆和深色玻璃 */}
+      <rect x="-142" y="-30" width="280" height="6" fill="#6f6873" />
+      <path fill="none" stroke="#f1dccb" stroke-width="0.700" d="M-148 -24.500h296" />
+      <g transform="translate(0 -30)">
+        {/* 最高的先畫，旁邊小的疊在前面 */}
+        <Sail x0={-80} x1={-20} tip={[-74, -98]} />
+        <Sail x0={-32} x1={30} tip={[36, -64]} />
+        <Sail x0={-2} x1={48} tip={[56, -42]} />
+        <Sail x0={-106} x1={-56} tip={[-108, -70]} />
+        <Sail x0={-128} x1={-86} tip={[-134, -50]} />
+        <Sail x0={-146} x1={-112} tip={[-152, -30]} />
+        <Sail x0={56} x1={98} tip={[104, -42]} />
+        <Sail x0={82} x1={120} tip={[128, -32]} />
+        <Sail x0={106} x1={138} tip={[146, -22]} />
+      </g>
+    </g>
+  )
+}
+
+/** 港灣大橋：一道拱、吊著橋面，兩頭各一座石塔，拱頂一面小旗。原點在左端的水面，橋長 180。 */
+function HarbourBridge() {
+  // 拱是一條二次曲線：x 從 0 到 180，最高點在正中
+  const archY = (x: number) => -280 * (x / 180) * (1 - x / 180)
+  const hangers = [24, 40, 56, 72, 90, 108, 124, 140, 156].map((x) => `M${x} ${archY(x)}V-24`).join('')
+  const braces = [20, 36, 52, 68, 84, 100, 116, 132, 148, 164].map((x) => `M${x} ${archY(x)}L${x + 8} ${archY(x + 8) * 0.88}`).join('')
+  return (
+    <g>
+      <path fill="none" stroke="#8f9cb0" stroke-width="5" d="M0 0Q90 -140 180 0" />
+      <path fill="none" stroke="#8f9cb0" stroke-width="1.600" d="M10 0Q90 -122 170 0" />
+      <path fill="none" stroke="#8f9cb0" stroke-width="0.800" opacity="0.7" d={braces} />
+      <path fill="none" stroke="#8f9cb0" stroke-width="0.900" opacity="0.8" d={hangers} />
+      <rect x="-24" y="-26" width="228" height="4" fill="#8f9cb0" />
+      <rect x="-24" y="-22" width="228" height="1.400" fill="#7b889c" />
+      {[-18, 184].map((x) => (
+        <g key={x}>
+          <rect x={x} y="-42" width="14" height="42" fill="#d9c6b4" /><rect x={x + 8} y="-42" width="6" height="42" fill="#c8b29e" />
+          <rect x={x - 1} y="-44" width="16" height="3" fill="#c8b29e" /><rect x={x + 3} y="-36" width="5" height="8" rx="2" fill="#c8b29e" />
+        </g>
+      ))}
+      <path fill="none" stroke="#7b889c" stroke-width="0.800" d="M90 -70v-8" />
+      <path class="a-flag" fill={C.coral} d="M90 -78h6l-1.500 2l1.500 2h-6z" />
+    </g>
+  )
+}
+
+/** 雪梨塔：細長的塔身，上面一圈金色的觀景台和尖針。原點在地面。 */
+function SydneyTower() {
+  return (
+    <g>
+      <rect x="-1.600" y="-84" width="3.200" height="84" fill="#c6b5d6" />
+      <path fill="none" stroke="#b6a3c9" stroke-width="0.700" d="M-1.600 -84L-6 -66M1.600 -84L6 -66M-6 -66h12" />
+      <path fill={C.gold} d="M-8 -92h16l-2 8h-12z" />
+      <rect x="-8.500" y="-95" width="17" height="3" rx="1" fill={C.goldD} />
+      <rect x="-0.600" y="-112" width="1.200" height="17" fill="#b6a3c9" />
+    </g>
+  )
+}
+
+/** 雪梨的綠色渡輪：綠色船身、米色船艙和黃色的邊，一根小煙囪。原點在水面正中。 */
+function Ferry() {
+  return (
+    <g class="a-bob">
+      <path fill="#4f8f6f" d="M-28 -4h56l-6 8h-44z" />
+      <rect x="-22" y="-12" width="40" height="8" rx="1.500" fill={C.cream} />
+      <rect x="-22" y="-12" width="40" height="2" fill={C.gold} />
+      {[-18, -11, -4, 3, 10].map((x) => <rect key={x} x={x} y="-9" width="4" height="3.400" rx="1" fill="#9fc3cf" />)}
+      <rect x="-10" y="-18" width="20" height="6" rx="1.500" fill={C.cream} />
+      <rect x="-10" y="-18" width="20" height="1.600" fill={C.gold} />
+      <rect x="3" y="-23" width="3.400" height="6" fill="#4f8f6f" />
+    </g>
+  )
+}
+
+/**
+ * 袋鼠：側面站坐著、面朝右。跟老鼠分得開的地方：身形又高又挺（高大約是寬的兩倍）、頭高高在上、
+ * 像鹿一樣鈍鈍的長臉、長耳朵、粗大的大腿和長腳掌，粗尾巴拖在地上撐著。
+ * 肚子下方的育兒袋裡有一隻探頭的小袋鼠，前爪收在牠上面、不擋住牠。原點在腳底，高約 54。
+ */
+export function Kangaroo() {
+  const body = '#c98f6b'
+  const shade = '#b47a58'
+  const light = '#ecd0b4'
+  const dark = '#6b4a3c'
+  return (
+    <g fill={body}>
+      <path fill={shade} d="M-1 -13Q-16 -10 -29 -2Q-30 0 -28 0.600Q-15 -2.500 -1 -4z" />
+      <path fill={shade} d="M-5 -2.800H12q3.400 0 3.400 2.800H-5z" />
+      <ellipse cx="-1" cy="-10" rx="8.500" ry="9" />
+      <path d="M-8 -10Q-10 -26 -2 -35Q2 -40 6.500 -37Q8.500 -26 6.500 -9z" />
+      <ellipse cx="2.400" cy="-22" rx="3" ry="8" fill={light} />
+      {/* 育兒袋裡探頭的小袋鼠：先畫頭，再畫袋子蓋住下半身 */}
+      <ellipse cx="4.200" cy="-16.400" rx="2.300" ry="2" />
+      <path d="M5 -17.600Q8.200 -17.800 9 -16.200Q8.600 -15 5.400 -15z" />
+      <path d="M3.200 -17.800Q2 -21.600 3 -22Q4.200 -21 4.400 -18z" />
+      <path d="M4.400 -18.100Q5 -22 5.900 -21.800Q6.400 -20 5.900 -17.800z" />
+      <circle cx="5.400" cy="-16.900" r="0.500" fill={dark} />
+      <circle cx="8.900" cy="-16.300" r="0.550" fill={dark} />
+      <path fill={light} d="M-0.800 -14.600Q3 -12.400 7 -14.800Q7.600 -9 5 -6.800Q2 -5.600 -0.200 -7.600Q-1.200 -10 -0.800 -14.600z" />
+      <path fill="none" stroke={shade} stroke-width="0.900" stroke-linecap="round" d="M-0.800 -14.600Q3 -12.400 7 -14.800" />
+      {/* 前爪收在胸前，在小袋鼠上面 */}
+      <path fill="none" stroke={body} stroke-width="2.200" stroke-linecap="round" d="M5 -30q2.600 1.400 3.600 4" />
+      <path fill="none" stroke={body} stroke-width="2" stroke-linecap="round" d="M4 -28q2.200 1.800 2.800 4.200" />
+      <ellipse cx="5" cy="-41.500" rx="4.600" ry="3.900" />
+      <path d="M6 -44.600Q12 -44.600 15 -41Q14.600 -38.600 8 -38z" />
+      <circle cx="14.400" cy="-41.200" r="1.150" fill={dark} />
+      <path d="M2.600 -43.500Q-0.500 -52 2.200 -53.600Q5.400 -51.500 5.600 -44z" />
+      <path d="M5 -44.400Q5.600 -53.400 8.600 -53Q9.800 -49 7.800 -43.600z" />
+      <path fill="#e8a9a0" d="M3.300 -45Q1.600 -50.500 2.600 -51.600Q4.400 -49.600 4.700 -45z" />
+      <circle cx="7.600" cy="-42.300" r="0.850" fill={dark} />
+    </g>
+  )
+}
+
+/** 開紫花的藍花楹樹。 */
+const JACARANDA = { fill: '#b49ad3', light: '#d6c3ec' }
+
+function Australia() {
+  const land = () => (
+    <g>
+      {/* 遠方的丘陵；左後方是城市天際線、雪梨塔和港灣大橋 */}
+      <path fill="#e6d0dc" d="M-4 198V168Q60 150 130 162Q200 146 270 160Q340 148 404 158V198z" />
+      <Building x={6} w={14} h={44} fill="#dcc8de" shade="#cfb9d3" base={192} lit={false} />
+      <Building x={22} w={12} h={58} fill="#d5bfd9" shade="#c8b0cf" base={192} lit={false} />
+      <Building x={66} w={14} h={50} fill="#dcc8de" shade="#cfb9d3" base={192} lit={false} />
+      <At x={50} y={192} s={0.9}><SydneyTower /></At>
+      <At x={-30} y={196} s={0.62}><HarbourBridge /></At>
+      <Building x={350} w={14} h={40} fill="#dcc8de" shade="#cfb9d3" base={192} lit={false} />
+      <Building x={366} w={16} h={52} fill="#d5bfd9" shade="#c8b0cf" base={192} lit={false} />
+      <rect x="-4" y="190" width={W + 8} height="8" fill="#e6c7a8" />
+      {/* 主角：正中的歌劇院，兩旁開紫花的藍花楹 */}
+      <Tree x={50} y={194} s={0.75} fill={JACARANDA.fill} light={JACARANDA.light} />
+      <Tree x={374} y={194} s={0.8} fill={JACARANDA.fill} light={JACARANDA.light} />
+      <Tree x={392} y={195} s={0.55} fill={C.leaf} light={C.leafL} />
+      <At x={214} y={196} s={0.98}><OperaHouse /></At>
+    </g>
+  )
+  return (
+    <Scene id="au" sky={['#f9c7a2', '#f8d5bf', '#ecdfe2', '#b9dde5']}>
+      <Sun id="au" x={56} y={46} r={22} fill="#fff1cf" />
+      <Cloud x={262} y={22} s={1.2} /><Cloud x={350} y={52} s={0.8} delay={-4} />
+      <Gull x={300} y={86} s={1.1} /><Gull x={326} y={74} s={0.9} delay={-1.4} />
+      {land()}
+      <Water id="au" y={198} top="#7fbfd3" bottom="#d4edf0" land={land} />
+      <At x={236} y={226}><Ferry /></At>
+      <At x={352} y={240} s={0.5}><Sailboat /></At>
+      {/* 前景：岸邊有人揮手，旁邊一隻帶著小袋鼠的袋鼠 */}
+      <Bank fill="#e7c09c" />
+      <Stand x={50} y={254} s={2}><Person coat={C.coral} wave /></Stand>
+      <Stand x={112} y={256} s={1.35}><Kangaroo /></Stand>
+    </Scene>
+  )
+}
+
+/* ---------- 紐西蘭 ---------- */
+
+/** 綿羊：一團團的白毛、深色的臉和腳。原點在腳底，面朝右。 */
+export function Sheep() {
+  return (
+    <g>
+      <g fill="#5a4640"><rect x="-6" y="-5" width="2" height="5" /><rect x="-2" y="-5" width="2" height="5" /><rect x="3" y="-5" width="2" height="5" /><rect x="6.500" y="-5" width="2" height="5" /></g>
+      <g fill={C.cream}><circle cx="-6" cy="-10" r="5" /><circle cx="0" cy="-12" r="6" /><circle cx="6" cy="-10" r="5" /><circle cx="0" cy="-7" r="5" /><circle cx="-3" cy="-9" r="5" /><circle cx="4" cy="-8" r="5" /></g>
+      <circle cx="-1" cy="-14" r="3" fill="#fff" opacity="0.6" />
+      <ellipse cx="11" cy="-11" rx="3" ry="4" fill="#5a4640" />
+      <path fill="#5a4640" d="M9 -14l-3.500 -1l1 2.500z" />
+    </g>
+  )
+}
+
+/** 魯冰花：細莖上一串由下往上變小的花。原點在根部。 */
+function Lupin({ x, y, h, fill }: { x: number; y: number; h: number; fill: string }) {
+  const n = Math.round(h / 4)
+  return (
+    <g transform={`translate(${x} ${y})`} class="a-sway">
+      <path fill="none" stroke={C.leaf} stroke-width="1.400" d={`M0 0V${-h * 0.4}`} />
+      <path fill={C.leaf} d={`M0 ${-h * 0.2}q-5 -1 -6 -4q4 0 6 2zM0 ${-h * 0.28}q5 -1 6 -4q-4 0 -6 2z`} />
+      {Array.from({ length: n }, (_, i) => <ellipse key={i} cx="0" cy={-h * 0.4 - i * 3.600} rx={3.400 - (i * 2.400) / n} ry="2.200" fill={fill} />)}
+    </g>
+  )
+}
+
+/** 湖邊的小石頭教堂：石牆（一顆顆石頭）、斜屋頂、亮著燈的窗、旁邊的鐘架。原點在地面正中。 */
+function Chapel() {
+  return (
+    <g>
+      <rect x="-14" y="-16" width="28" height="16" fill="#d8c6b2" />
+      <rect x="4" y="-16" width="10" height="16" fill="#c6b29d" />
+      <g fill="#c6b29d" opacity="0.8">
+        <rect x="-12" y="-14" width="4" height="2.400" rx="1" /><rect x="-6" y="-4" width="5" height="2.400" rx="1" />
+        <rect x="-13" y="-6" width="3.600" height="2.400" rx="1" /><rect x="6" y="-10" width="4" height="2.400" rx="1" fill="#b6a08a" />
+      </g>
+      <path fill="#8a6a5a" d="M-17 -15L0 -28L17 -15z" />
+      <path fill="#77584a" d="M0 -28L17 -15H0z" />
+      <rect x="-12" y="-11" width="4" height="6" rx="2" fill={C.glow} />
+      <rect x="-3" y="-11" width="6" height="11" rx="3" fill="#8a6a5a" />
+      <path fill="none" stroke="#77584a" stroke-width="0.800" d="M0 -28v-5M-1.800 -31.500h3.600" />
+      <rect x="14" y="-22" width="2" height="22" fill="#a8927e" /><rect x="18" y="-22" width="2" height="22" fill="#a8927e" />
+      <rect x="13" y="-24" width="8" height="2.400" fill="#8a6a5a" />
+      <circle cx="17" cy="-19" r="1.400" fill={C.goldD} />
+    </g>
+  )
+}
+
+/** 秋天金黃色的白楊樹：細長的樹冠。原點在樹根。 */
+function Poplar({ x, y, h = 34, fill = C.gold, light = '#fbdc8f' }: { x: number; y: number; h?: number; fill?: string; light?: string }) {
+  return (
+    <At x={x} y={y}>
+      <rect x="-1" y="-6" width="2" height="6" fill={C.trunk} />
+      <g class="a-sway">
+        <ellipse cx="0" cy={-6 - h / 2} rx={h * 0.2} ry={h / 2} fill={fill} />
+        <ellipse cx={-h * 0.06} cy={-6 - h * 0.62} rx={h * 0.08} ry={h * 0.26} fill={light} />
+      </g>
+    </At>
+  )
+}
+
+/** 長在湖裡的那棵樹：細細的樹幹從水裡長出來，一團樹冠。原點在水面。 */
+function LakeTree() {
+  return (
+    <g>
+      <path fill="none" stroke={C.trunk} stroke-width="2.200" stroke-linecap="round" d="M0 0q-2 -10 1 -20M0 -12q-6 -3 -9 -9M1 -16q6 -2 8 -8" />
+      <g class="a-sway">
+        <ellipse cx="0" cy="-26" rx="12" ry="8" fill={C.leaf} />
+        <ellipse cx="-9" cy="-21" rx="6" ry="4.500" fill={C.leaf} /><ellipse cx="9" cy="-22" rx="6" ry="4.500" fill={C.leaf} />
+        <ellipse cx="-3" cy="-29" rx="6" ry="3" fill={C.leafL} />
+      </g>
+    </g>
+  )
+}
+
+/** 一條長長的扁平白雲，掛在雪山上。 */
+function LongCloud({ x, y, w }: { x: number; y: number; w: number }) {
+  return (
+    <g class="a-drift" opacity="0.85">
+      <path fill="#fff" d={`M${x} ${y}q${w * 0.1} -9 ${w * 0.3} -6q${w * 0.2} -8 ${w * 0.4} -2q${w * 0.2} -4 ${w * 0.3} 8z`} />
+    </g>
+  )
+}
+
+/** 魯冰花的顏色：粉、紫、淺紫、淡粉。 */
+const LUPINS = [C.pink, '#b49ad3', C.plum, '#f8d0dc', '#c9a6e0']
+
+function NewZealand() {
+  const land = () => (
+    <g>
+      {/* 兩層雪山：遠的淡、近的有陰影面，山頂大片的雪 */}
+      <path fill="#d3cfe8" d="M-4 198V140L30 112L60 130L92 100L130 128L170 108L210 136L250 104L290 124L330 98L370 120L404 108V198z" />
+      <path fill="#b3add6" d="M-4 198V158L44 116L84 150L128 92L176 150L222 122L262 152L306 100L352 146L404 124V198z" />
+      <path fill="#a39cca" d="M44 116L84 150H50zM128 92L176 150H132zM306 100L352 146H312z" />
+      <path fill="#fff" d="M44 116L34 125l6 -1l4 4l5 -4l6 2zM128 92L114 108l7 -2l6 6l7 -7l9 3zM306 100L293 114l7 -2l6 5l6 -6l8 3z" />
+      <path fill="#e9e6f4" d="M128 92l15 16l-9 -3l-7 7zM306 100l14 14l-8 -3l-6 6z" />
+      <path fill="#a7d3a4" d="M-4 198V178Q80 164 170 174Q260 162 404 174V198z" />
+      {/* 山坡上的羊群（遠看是幾個白點） */}
+      <g fill="#fff">{[[60, 180], [70, 182], [82, 179], [96, 183]].map(([x, y]) => <ellipse key={x} cx={x} cy={y} rx="2.400" ry="1.600" />)}</g>
+      <Pine x={196} y={190} s={0.7} /><Pine x={210} y={191} s={0.5} />
+      <At x={240} y={190} s={1.5}><Chapel /></At>
+      <Poplar x={300} y={192} h={36} /><Poplar x={314} y={193} h={28} fill="#f2a24e" light={C.orangeL} /><Poplar x={328} y={192} h={38} />
+      <Poplar x={30} y={192} h={30} /><Poplar x={44} y={193} h={24} fill="#f2a24e" light={C.orangeL} />
+      <rect x="-4" y="190" width={W + 8} height="8" fill="#9fcb98" />
+    </g>
+  )
+  // 湖裡的那棵樹：自己畫一個倒影
+  const lakeTree = () => <At x={150} y={214} s={0.9}><LakeTree /></At>
+  return (
+    <Scene id="nz" sky={['#c7def0', '#e2ebf3', '#f6e5dc', '#f9d6c2']}>
+      <Sun id="nz" x={352} y={46} r={20} />
+      <Cloud x={30} y={30} s={1.1} />
+      <LongCloud x={110} y={88} w={130} />
+      <Bird x={210} y={60} /><Bird x={228} y={70} delay={-1.2} />
+      {land()}
+      {/* 湖水是帶點奶白的藍綠色 */}
+      <Water id="nz" y={198} top="#6cc4cf" bottom="#c7ecea" land={land} />
+      <g transform="translate(0 428) scale(1 -1)" opacity="0.25">{lakeTree()}</g>
+      {lakeTree()}
+      {/* 前景：兩邊岸上開滿魯冰花，幾隻綿羊，有人揮手 */}
+      <path fill="#b5dba7" d="M-4 264V234Q60 220 132 236Q180 246 200 264z" />
+      <path fill="#b5dba7" d="M404 264V230Q340 220 278 236Q250 246 240 264z" />
+      {[6, 18, 30, 108, 122, 136, 150, 262, 276, 290, 370, 382, 394].map((x, i) => (
+        <Lupin key={x} x={x} y={x < 200 ? 246 + (i % 3) * 5 : 248 + (i % 3) * 4} h={20 + ((i * 7) % 14)} fill={LUPINS[i % LUPINS.length]} />
+      ))}
+      <Stand x={62} y={252} s={1.6}><Sheep /></Stand>
+      <Stand x={92} y={257} s={1.2} rev><Sheep /></Stand>
+      <Stand x={330} y={252} s={1.9}><Person coat="#7f8fb5" wave /></Stand>
+      <Stand x={354} y={258} s={1.3} rev><Sheep /></Stand>
+    </Scene>
+  )
+}
+
 export function Art({ theme }: { theme: ThemeId }) {
   switch (theme) {
     case 'korea': return <Korea />
@@ -1198,6 +1548,8 @@ export function Art({ theme }: { theme: ThemeId }) {
     case 'vietnam': return <Vietnam />
     case 'singapore': return <Singapore />
     case 'europe': return <Europe />
+    case 'australia': return <Australia />
+    case 'newzealand': return <NewZealand />
     case 'thai': return <Thai />
     case 'japan': return <Japan />
     case 'island': return <Island />

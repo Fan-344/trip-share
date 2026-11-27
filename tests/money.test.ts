@@ -84,4 +84,11 @@ describe('幣別選單', () => {
     expect(currencyChoices('日圓', '', [], '美元')).toEqual(['美元', '日圓'])
     expect(currencyChoices('日圓', '', ['台幣'], '美元')).toEqual(['美元', '日圓', '台幣'])
   })
+
+  it('紐西蘭帶紐幣、澳洲各城市帶澳幣；主題也對得上', () => {
+    expect(detectCurrency([flight('AKL', 'Pacific/Auckland', '2027-03-05')]).currency).toBe('紐幣')
+    expect(detectCurrency([flight('BNE', 'Australia/Brisbane', '2027-03-05')]).currency).toBe('澳幣')
+    expect(detectCurrency([], [], 'newzealand').currency).toBe('紐幣')
+    expect(detectCurrency([], [], 'australia').currency).toBe('澳幣')
+  })
 })

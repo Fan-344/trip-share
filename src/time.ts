@@ -32,6 +32,10 @@ export const AIRPORTS: Record<string, Airport> = {
   SEA: a('西雅圖', 'America/Los_Angeles'), JFK: a('紐約', 'America/New_York'),
   YVR: a('溫哥華', 'America/Vancouver'), LHR: a('倫敦', 'Europe/London'), CDG: a('巴黎', 'Europe/Paris'),
   FRA: a('法蘭克福', 'Europe/Berlin'), SYD: a('雪梨', 'Australia/Sydney'), MEL: a('墨爾本', 'Australia/Melbourne'),
+  BNE: a('布里斯本', 'Australia/Brisbane'), OOL: a('黃金海岸', 'Australia/Brisbane'), CNS: a('凱恩斯', 'Australia/Brisbane'),
+  PER: a('伯斯', 'Australia/Perth'), ADL: a('阿德雷德', 'Australia/Adelaide'),
+  AKL: a('奧克蘭', 'Pacific/Auckland'), CHC: a('基督城', 'Pacific/Auckland'), ZQN: a('皇后鎮', 'Pacific/Auckland'),
+  WLG: a('威靈頓', 'Pacific/Auckland'),
 }
 
 const ZONES: Record<string, string> = {
@@ -40,7 +44,8 @@ const ZONES: Record<string, string> = {
   'Asia/Manila': '菲律賓', 'Asia/Ho_Chi_Minh': '越南', 'Asia/Makassar': '峇里島', 'Asia/Shanghai': '中國',
   'America/Los_Angeles': '美西', 'America/New_York': '美東', 'America/Vancouver': '溫哥華',
   'Europe/London': '英國', 'Europe/Paris': '法國', 'Europe/Berlin': '德國',
-  'Australia/Sydney': '雪梨', 'Australia/Melbourne': '墨爾本',
+  'Australia/Sydney': '雪梨', 'Australia/Melbourne': '墨爾本', 'Australia/Brisbane': '布里斯本',
+  'Australia/Perth': '伯斯', 'Australia/Adelaide': '阿德雷德', 'Pacific/Auckland': '紐西蘭',
 }
 
 /** 時區選單的選項：行程用到的排前面，再接內建的常用時區。 */

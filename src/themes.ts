@@ -2,7 +2,7 @@
 // 沒有手動選的時候，依去程航班的目的地自動決定。
 import type { Flight } from './model/types'
 
-export type ThemeId = 'general' | 'thai' | 'japan' | 'korea' | 'hongkong' | 'vietnam' | 'singapore' | 'europe' | 'island' | 'city'
+export type ThemeId = 'general' | 'thai' | 'japan' | 'korea' | 'hongkong' | 'vietnam' | 'singapore' | 'europe' | 'australia' | 'newzealand' | 'island' | 'city'
 
 export interface Theme {
   id: ThemeId
@@ -25,6 +25,8 @@ export const THEMES: Theme[] = [
   { id: 'vietnam', name: '越南', hint: '老街與燈籠', accent: '#ecd29c', motifs: ['lantern', 'food', 'wave', 'lotus'], farewell: '一路順風，Chúc đi vui' },
   { id: 'singapore', name: '新加坡', hint: '海灣與樹塔', accent: '#b7d3cf', motifs: ['building', 'palm', 'food', 'star'], farewell: '一路順風，玩得開心' },
   { id: 'europe', name: '歐洲', hint: '鐵塔與街屋', accent: '#c9d0e0', motifs: ['building', 'camera', 'heart', 'compass'], farewell: '一路順風，Bon voyage' },
+  { id: 'australia', name: '澳洲', hint: '歌劇院與袋鼠', accent: '#efbf9a', motifs: ['kangaroo', 'wave', 'sun', 'camera'], farewell: '一路順風，G’day' },
+  { id: 'newzealand', name: '紐西蘭', hint: '雪山湖泊與綿羊', accent: '#bfd6b8', motifs: ['sheep', 'fuji', 'wave', 'compass'], farewell: '一路順風，Kia ora' },
   { id: 'island', name: '海島', hint: '椰子樹與水上屋', accent: '#b9cdd3', motifs: ['palm', 'wave', 'sun', 'star'], farewell: '一路順風，記得擦防曬' },
   { id: 'city', name: '城市', hint: '高樓與摩天輪', accent: '#cfc3d6', motifs: ['building', 'wheel', 'camera', 'bag'], farewell: '一路順風，玩得開心' },
 ]
@@ -53,7 +55,9 @@ const BY_AIRPORT: Record<string, ThemeId> = {
   LHR: 'europe', CDG: 'europe', FRA: 'europe', AMS: 'europe', FCO: 'europe', MXP: 'europe', MUC: 'europe', VIE: 'europe', ZRH: 'europe', BCN: 'europe', MAD: 'europe', PRG: 'europe', IST: 'europe',
   KUL: 'city',
   PVG: 'city', PEK: 'city', LAX: 'city', SFO: 'city', SEA: 'city', JFK: 'city', YVR: 'city',
-  SYD: 'city', MEL: 'city', MNL: 'city',
+  MNL: 'city',
+  SYD: 'australia', MEL: 'australia', BNE: 'australia', OOL: 'australia', CNS: 'australia', PER: 'australia', ADL: 'australia',
+  AKL: 'newzealand', CHC: 'newzealand', ZQN: 'newzealand', WLG: 'newzealand',
 }
 
 const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v)

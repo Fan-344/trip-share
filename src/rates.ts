@@ -5,7 +5,7 @@ import { HOME } from './split'
 /** 幣別的國際代碼（src/money.ts 的 CURRENCIES）。 */
 const CODE: Record<string, string> = {
   台幣: 'TWD', 泰銖: 'THB', 日圓: 'JPY', 韓元: 'KRW', 港幣: 'HKD', 澳門幣: 'MOP', 新加坡幣: 'SGD', 馬幣: 'MYR',
-  披索: 'PHP', 越南盾: 'VND', 印尼盾: 'IDR', 人民幣: 'CNY', 美元: 'USD', 加幣: 'CAD', 歐元: 'EUR', 英鎊: 'GBP', 澳幣: 'AUD',
+  披索: 'PHP', 越南盾: 'VND', 印尼盾: 'IDR', 人民幣: 'CNY', 美元: 'USD', 加幣: 'CAD', 歐元: 'EUR', 英鎊: 'GBP', 澳幣: 'AUD', 紐幣: 'NZD',
 }
 
 /** 匯率服務：免費、不用金鑰，一天更新一次。條款要求標示來源（畫面上有寫）。 */

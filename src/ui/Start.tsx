@@ -77,7 +77,7 @@ function ThemeGallery() {
       ))}
       {THEMES.map((t) => (
         <div key={t.id} style={`--accent:${t.accent};--accent-l:color-mix(in srgb, ${t.accent} 30%, white)`}>
-          <h2>{t.name}<span class="muted">{t.id}・{t.hint}</span></h2>
+          <h2><Mascot theme={t.id} size={40} />{t.name}<span class="muted">{t.id}・{t.hint}</span>{t.motifs.map((m) => <Icon key={m} id={m} size={26} />)}</h2>
           <div class="card hero"><Art theme={t.id} /><div class="body"><button class="primary small">按鈕</button></div></div>
         </div>
       ))}

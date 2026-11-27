@@ -3,7 +3,7 @@
 // 縮到很小也看得出是什麼；只有介面符號（叉叉、箭頭、加減、勾）是線條。
 import type { JSX } from 'preact'
 import type { ItemCat } from '../model/types'
-import { C } from './Art'
+import { C, Kangaroo } from './Art'
 
 /** 介面符號用的線條。 */
 const LINE = { fill: 'none', stroke: 'var(--ink)', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const
@@ -250,6 +250,15 @@ const ICONS: Record<string, JSX.Element> = {
       <path fill={PAPER} d="M9.500 13.500l3 -5.500q3.500 -2.500 7 0l3 5.500l-3.300 -2l-3.200 3l-3.200 -3z" />
     </g>
   ),
+  // 跟總覽主圖同一隻袋鼠，縮進格子裡
+  kangaroo: <g transform="translate(19.500 31.500) scale(0.570)"><Kangaroo /></g>,
+  sheep: (
+    <g>
+      <g fill="#6b5048"><rect x="10" y="22" width="2.400" height="6" rx="1" /><rect x="19" y="22" width="2.400" height="6" rx="1" /></g>
+      <g fill="#e8ddd2"><circle cx="11" cy="16" r="6" /><circle cx="17" cy="13.500" r="7" /><circle cx="22" cy="17" r="5.500" /><circle cx="16" cy="19.500" r="5.500" /></g>
+      <ellipse cx="26" cy="13.500" rx="3.500" ry="4.500" fill="#6b5048" />
+    </g>
+  ),
   palm: (
     <g>
       <path {...line(C.trunk, 3.400)} d="M16.500 29q2 -9 -1 -16" />
@@ -376,6 +385,6 @@ export const catOf = (id: string | undefined) => CATS.find((c) => c.id === id)
 /** 每日標題可以選的圖示：類別的加上所有主題圖案。 */
 export const DAY_ICONS: string[] = [
   'luggage', 'plane', 'car', 'food', 'camera', 'star', 'moon', 'bag', 'house',
-  'elephant', 'chedi', 'lantern', 'lotus', 'sakura', 'torii', 'fuji', 'palm', 'wave', 'sun',
+  'elephant', 'chedi', 'lantern', 'lotus', 'sakura', 'torii', 'fuji', 'kangaroo', 'sheep', 'palm', 'wave', 'sun',
   'building', 'wheel', 'pin', 'compass', 'heart', 'bear', 'bed', 'ticket', 'gift', 'calendar',
 ]

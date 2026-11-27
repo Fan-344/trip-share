@@ -31,6 +31,8 @@
 :root[data-theme="vietnam"] { --accent: #ecd29c; --accent-l: #f7ecd2; }
 :root[data-theme="singapore"] { --accent: #b7d3cf; --accent-l: #e2eeec; }
 :root[data-theme="europe"] { --accent: #c9d0e0; --accent-l: #e8ebf3; }
+:root[data-theme="australia"] { --accent: #efbf9a; --accent-l: #f8e2d0; }
+:root[data-theme="newzealand"] { --accent: #bfd6b8; --accent-l: #e7f0e3; }
 :root[data-theme="island"] { --accent: #b9cdd3; --accent-l: #e4ecec; }
 :root[data-theme="city"] { --accent: #cfc3d6; --accent-l: #ece6ef; }
 :root[data-theme="general"] { --accent: #c3cdb0; --accent-l: #e6eadc; }
