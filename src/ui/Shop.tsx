@@ -120,12 +120,45 @@ function BoughtRow({ trip, photos, item, onOpen }: { trip: Trip; photos: PhotoSt
   )
 }
 
+/** 某人要的數量；有選規格就寫成「保濕 ×1・控油 ×2」。 */
+const wantText = (item: ShopItemView, who: string, n: number): string => {
+  const picked = item.wantSpecs[who]
+  return picked ? Object.entries(picked).map(([k, c]) => `${k} ×${c}`).join('・') : `×${n}`
+}
+
+/** 代買的各規格加起來（給負責買的人看）：「保濕 3・控油 1」。 */
+function SpecTotals({ item }: { item: ShopItemView }) {
+  if (!item.specs?.length) return null
+  const sum = new Map<string, number>()
+  for (const picked of Object.values(item.wantSpecs)) for (const [k, c] of Object.entries(picked)) sum.set(k, (sum.get(k) ?? 0) + c)
+  const parts = item.specs.filter((k) => sum.get(k)).map((k) => `${k} ${sum.get(k)}`)
+  return parts.length ? <div class="muted">代買：{parts.join('・')}</div> : null
+}
+
+/** 選規格：發起的人列的每個規格各一個數量。全部 0 就是不要了。 */
+function SpecSheet({ trip, item, me, onClose }: { trip: Trip; item: ShopItemView; me: string; onClose: () => void }) {
+  const [picked, setPicked] = useState<Record<string, number>>(() => ({ ...(item.wantSpecs[me] ?? {}) }))
+  return (
+    <Sheet title={`${item.name}要哪一種`} onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); trip.setWantSpecs(item.id, picked); onClose() }}>
+        {(item.specs ?? []).map((k) => (
+          <div class="row spec" key={k}>
+            <span class="grow">{k}</span>
+            <Stepper label={`${k}要幾個`} value={picked[k] ?? 0} onChange={(n) => setPicked({ ...picked, [k]: n })} />
+          </div>
+        ))}
+        <div class="actions"><button class="primary">好</button></div>
+      </form>
+    </Sheet>
+  )
+}
+
 /** 名字 ×數量 的小標籤列：要的人、說不用的人、還沒回的人。 */
 function Answers({ trip, item, pending }: { trip: Trip; item: ShopItemView; pending: string[] }) {
   const wants = Object.entries(item.wants)
   return (
     <div class="row wrap" style="margin-top:6px">
-      {wants.map(([who, n]) => <span class="chip green" key={who}>{trip.nicknameOf(who)} ×{n}</span>)}
+      {wants.map(([who, n]) => <span class="chip green" key={who}>{trip.nicknameOf(who)} {wantText(item, who, n)}</span>)}
       {item.declined.map((who) => <span class="chip" key={who}>{trip.nicknameOf(who)} 不用</span>)}
       {pending.length > 0 && <span class="chip yellow">還沒回：{pending.map((p) => trip.nicknameOf(p)).join('、')}</span>}
     </div>
@@ -143,6 +176,9 @@ function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Photo
   const pending = trip.members.all().filter((m) => !m.managed).map((m) => m.id).filter((id) => id !== item.owner && !answered.has(id))
   const others = item.total - item.qty
   const [open, setOpen] = useState(false)
+  // 有列規格的：回「要」或改數量時，跳出選規格
+  const [choosing, setChoosing] = useState(false)
+  const hasSpecs = !!item.specs?.length
 
   // 買完的縮成一行
   if (item.bought && !open) {
@@ -181,6 +217,7 @@ function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Photo
             <b>合計要買 {item.total} 個</b>
             <span class="muted">（{trip.nicknameOf(item.owner)}自己 {item.qty}{others > 0 && `、幫大家帶 ${others}`}）</span>
           </p>
+          <SpecTotals item={item} />
           <div class="row wrap">
             <button class={`small ${item.bought ? '' : 'primary'}`} onClick={() => trip.shop.update(item.id, { bought: !item.bought })}>
               {item.bought ? '改回還沒買' : '買到了'}
@@ -193,25 +230,33 @@ function AskCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Photo
         <div style="margin-top:10px">
           {mine === undefined && !iDeclined && (
             <div class="two">
-              <button class="primary" onClick={() => trip.setWant(item.id, 1)}>要，幫我買</button>
+              <button class="primary" onClick={() => (hasSpecs ? setChoosing(true) : trip.setWant(item.id, 1))}>要，幫我買</button>
               <button onClick={() => trip.setWant(item.id, 0)}>不用</button>
             </div>
           )}
           {mine !== undefined && (
-            <div class="row">
-              <span class="grow"><b>你要 {mine} 個</b></span>
-              {/* 減到 0 就是回覆「不用」 */}
-              <Stepper label="我要幾個" value={mine} onChange={(n) => trip.setWant(item.id, n)} />
-            </div>
+            hasSpecs ? (
+              <div class="row">
+                <span class="grow"><b>你要 {wantText(item, me, mine)}</b></span>
+                <button class="small" onClick={() => setChoosing(true)}>改</button>
+              </div>
+            ) : (
+              <div class="row">
+                <span class="grow"><b>你要 {mine} 個</b></span>
+                {/* 減到 0 就是回覆「不用」 */}
+                <Stepper label="我要幾個" value={mine} onChange={(n) => trip.setWant(item.id, n)} />
+              </div>
+            )
           )}
           {iDeclined && (
             <div class="row">
               <span class="grow muted">你回了「不用」</span>
-              <button class="small" onClick={() => trip.setWant(item.id, 1)}>改成要一個</button>
+              <button class="small" onClick={() => (hasSpecs ? setChoosing(true) : trip.setWant(item.id, 1))}>改成要</button>
             </div>
           )}
         </div>
       )}
+      {choosing && <SpecSheet trip={trip} item={item} me={me} onClose={() => setChoosing(false)} />}
     </div>
   )
 }
@@ -224,6 +269,9 @@ function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Phot
   const mine = item.wants[me] ?? 0
   // 已經買到的縮成一行，點一下才展開。
   const [open, setOpen] = useState(false)
+  // 有列規格的：+1 改成跳出選規格
+  const [choosing, setChoosing] = useState(false)
+  const hasSpecs = !!item.specs?.length
   if (item.bought && !open) {
     return (
       <BoughtRow trip={trip} photos={photos} item={item} onOpen={() => setOpen(true)} />
@@ -244,18 +292,21 @@ function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Phot
       <div class="row wrap" style="margin-top:6px">
         {item.place && <span class="chip mizu"><Icon id="pin" size={14} />{item.place}</span>}
         <span class="chip yellow">負責：{item.owner ? trip.nicknameOf(item.owner) : '還沒有人'}</span>
-        {wants.map(([who, n]) => <span class="chip" key={who}>代買・{trip.nicknameOf(who)} ×{n}</span>)}
+        {wants.map(([who, n]) => <span class="chip" key={who}>代買・{trip.nicknameOf(who)} {wantText(item, who, n)}</span>)}
       </div>
       <p>
         <b>合計要買 {item.total} 個</b>
         {proxy > 0 && <span class="muted">（{item.owner ? '自己' : '原本'} {item.qty}、代買 {proxy}）</span>}
       </p>
+      <SpecTotals item={item} />
       <div class="row wrap">
-        {/* 負責的人自己的數量在編輯裡改；其他人用這兩顆按鈕加減代買數量 */}
-        {item.owner !== me && !item.bought && (
+        {/* 負責的人自己的數量在編輯裡改；其他人用這兩顆按鈕加減代買數量。有列規格的改成選規格 */}
+        {item.owner !== me && !item.bought && (hasSpecs ? (
+          <button class="small" aria-label="幫我代買，選規格" onClick={() => setChoosing(true)}>{mine > 0 ? '改規格' : '+1'}</button>
+        ) : (
           <button class="small" aria-label="幫我代買，多一個" onClick={() => trip.setWant(item.id, mine + 1)}>+1</button>
-        )}
-        {mine > 0 && !item.bought && (
+        ))}
+        {mine > 0 && !item.bought && !hasSpecs && (
           // 減到零就是收回代買，不是回覆「不用」
           <button class="small" aria-label="幫我代買，少一個" onClick={() => trip.setWant(item.id, mine > 1 ? mine - 1 : null)}>-1</button>
         )}
@@ -264,6 +315,7 @@ function PlanCard({ trip, photos, item, me, onEdit }: { trip: Trip; photos: Phot
         </button>
         {onEdit && <button class="small" onClick={onEdit}><Icon id="pencil" size={16} />修改</button>}
       </div>
+      {choosing && <SpecSheet trip={trip} item={item} me={me} onClose={() => setChoosing(false)} />}
     </div>
   )
 }
@@ -287,6 +339,9 @@ function ShopSheet({ trip, photos, id, ask, days, onClose }: { trip: Trip; photo
     return () => { gone = true }
   }, [id])
   const [photoChanged, setPhotoChanged] = useState(false)
+  // 可選規格：一格文字，用頓號或逗號分開，存的時候拆成一個個
+  const [specText, setSpecText] = useState(old?.specs?.join('、') ?? '')
+  const specs = [...new Set(specText.split(/[、,，\n]/).map((s) => s.trim()).filter(Boolean))]
   const set = (patch: Partial<ShopItem>) => setF({ ...f, ...patch })
   const dateOptions = [...new Set([...days, ...(f.date ? [f.date] : [])])].sort()
   const dayItems = f.date
@@ -337,7 +392,7 @@ function ShopSheet({ trip, photos, id, ask, days, onClose }: { trip: Trip; photo
       <form onSubmit={(e) => {
         e.preventDefault()
         if (!ok) return
-        const data = { ...f, name: f.name.trim(), note: f.note.trim(), place: f.place.trim(), price: formatPrice(price.amount, price.currency) }
+        const data = { ...f, name: f.name.trim(), note: f.note.trim(), place: f.place.trim(), price: formatPrice(price.amount, price.currency), specs }
         if (price.amount.trim()) {
           try {
             localStorage.setItem(curKey, price.currency)
@@ -365,6 +420,7 @@ function ShopSheet({ trip, photos, id, ask, days, onClose }: { trip: Trip; photo
               {qtyInput('我自己要幾個')}
             </div>
             <Field label="在哪裡（可不填）"><input value={f.place} onInput={(e) => set({ place: value(e) })} placeholder="例如：尼曼路的選物店" /></Field>
+            <Field label="可選規格（可不填，用、分開）"><input value={specText} onInput={(e) => setSpecText(value(e))} placeholder="例如：保濕、控油" /></Field>
             <Field label="想跟大家說的（可不填）">
               <textarea value={f.note} onInput={(e) => set({ note: value(e) })} placeholder="有三種顏色、我再待 10 分鐘…" />
             </Field>
@@ -404,6 +460,7 @@ function ShopSheet({ trip, photos, id, ask, days, onClose }: { trip: Trip; photo
             )}
             <Field label="在哪裡買（可不填）"><input value={f.place} onInput={(e) => set({ place: value(e) })} placeholder="例如：尼曼路" /></Field>
             {priceField}
+            <Field label="可選規格（可不填，用、分開）"><input value={specText} onInput={(e) => setSpecText(value(e))} placeholder="例如：保濕、控油" /></Field>
             <Field label="備註（可不填）"><textarea value={f.note} onInput={(e) => set({ note: value(e) })} placeholder="顏色、尺寸、預算…" /></Field>
           </div>
         )}

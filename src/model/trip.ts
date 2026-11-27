@@ -11,6 +11,9 @@ export const SCHEMA = 1
 /** 一份行程最多幾個人（有手機的和不用手機的都算）。畫面上的小人、角色列、分帳的排版都以這個人數為上限設計。 */
 export const MAX_MEMBERS = 12
 
+/** 購物一筆底下，代買的人各自選的規格的欄位名稱前綴（後面接公鑰），值是 規格 → 數量。 */
+const SPEC_KEY = 'wantSpec:'
+
 /**
  * 一份行程的四個 Yjs 文件。哪些資料能離開手機，由「放在哪個文件」決定，而不是靠程式記得過濾：
  * - main、comments：交給同步層，全體成員共享。
@@ -420,11 +423,43 @@ export class Trip {
     return this.shop.all().map((s) => {
       const wants: Record<string, number> = {}
       const declined: string[] = []
-      ;(this.shop.raw(s.id)!.get('wants') as Y.Map<number>).forEach((n, who) => {
+      const rec = this.shop.raw(s.id)!
+      ;(rec.get('wants') as Y.Map<number>).forEach((n, who) => {
         if (n > 0) wants[who] = n
         else declined.push(who)
       })
-      return { ...s, wants, declined, total: s.qty + Object.values(wants).reduce((a, b) => a + b, 0) }
+      // 代買的人各自選的規格：只留還在代買的人的，而且只留發起的人還列著的規格
+      const wantSpecs: Record<string, Record<string, number>> = {}
+      for (const who of Object.keys(wants)) {
+        const picked = rec.get(`${SPEC_KEY}${who}`) as Record<string, number> | undefined
+        const kept = Object.entries(picked ?? {}).filter(([k, n]) => n > 0 && s.specs?.includes(k))
+        if (kept.length) wantSpecs[who] = Object.fromEntries(kept)
+      }
+      return { ...s, wants, declined, wantSpecs, total: s.qty + Object.values(wants).reduce((a, b) => a + b, 0) }
+    })
+  }
+
+  /**
+   * 照規格要幾個（發起的人有列可選規格時用）。數量是各規格加起來，跟 setWant 是同一格；
+   * 選了哪些規格另外放在這筆底下自己的欄位（wantSpec:公鑰），兩個人同時選不會互相蓋掉。
+   * 全部是 0 就是收回代買。
+   */
+  setWantSpecs(id: string, picked: Record<string, number>): void {
+    const rec = this.shop.raw(id)
+    if (!rec) return
+    const kept = Object.fromEntries(Object.entries(picked).filter(([, n]) => n > 0).map(([k, n]) => [k, Math.floor(n)]))
+    const total = Object.values(kept).reduce((a, b) => a + b, 0)
+    const key = `${SPEC_KEY}${this.actor.pubkey}`
+    const wants = rec.get('wants') as Y.Map<number>
+    this.shop.mutate(id, 'wants', wants.get(this.actor.pubkey) ?? null, (r) => {
+      const w = r.get('wants') as Y.Map<number>
+      if (total > 0) {
+        w.set(this.actor.pubkey, total)
+        r.set(key, kept)
+      } else {
+        w.delete(this.actor.pubkey)
+        r.delete(key)
+      }
     })
   }
 
@@ -445,6 +480,33 @@ export class Trip {
       const w = r.get('wants') as Y.Map<number>
       if (next === undefined) w.delete(this.actor.pubkey)
       else w.set(this.actor.pubkey, next)
+    })
+  }
+
+  // ---- 行程項目底下的留言（在留言文件裡；照片走照片索引，ref 是留言的 id）----
+
+  /** 某個行程項目的留言，舊的在前。 */
+  commentsOf(itemId: string): (Comment & Meta)[] {
+    return this.comments.all().filter((c) => c.itemId === itemId).sort((a, b) => a.createdAt - b.createdAt)
+  }
+
+  /** 每個行程項目有幾則留言（卡片收起時顯示數字用）。 */
+  commentCounts(): Map<string, number> {
+    const n = new Map<string, number>()
+    for (const c of this.comments.all()) n.set(c.itemId, (n.get(c.itemId) ?? 0) + 1)
+    return n
+  }
+
+  /** 留一則言；有照片的話照片另外存，回傳留言的 id（照片用它當 ref）。 */
+  addComment(itemId: string, text: string): string {
+    return this.comments.create({ itemId, text: text.trim(), thumb: null })
+  }
+
+  /** 刪掉一則留言，連同它的照片索引。 */
+  removeComment(id: string): void {
+    this.docs.comments.transact(() => {
+      this.setPhotoRef(id, null)
+      this.comments.remove(id)
     })
   }
 

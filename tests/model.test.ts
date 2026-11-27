@@ -411,3 +411,50 @@ describe('移出成員（不換金鑰）', () => {
     expect(a.join('爸爸')).toBe(true)
   })
 })
+
+describe('行程項目底下的留言', () => {
+  it('留言同步到對方、照時間排、可以數；刪掉連照片索引一起拿掉', () => {
+    const { a, b } = twoPhones()
+    const dinner = a.items.create(item('晚餐'))
+    const c1 = a.addComment(dinner, '  菜單在這  ')
+    a.setPhotoRef(c1, { hash: 'h1', size: 10 })
+    sync(a, b)
+    b.addComment(dinner, '看起來好吃')
+    sync(a, b)
+    expect(a.commentsOf(dinner).map((c) => [c.text, c.createdBy])).toEqual([['菜單在這', 'pubA'], ['看起來好吃', 'pubB']])
+    expect(b.commentCounts().get(dinner)).toBe(2)
+    expect(b.photoRecord(c1)?.hash).toBe('h1')
+    a.removeComment(c1)
+    sync(a, b)
+    expect(b.commentsOf(dinner).map((c) => c.text)).toEqual(['看起來好吃'])
+    expect(b.photoRecord(c1)).toBeUndefined()
+  })
+})
+
+describe('代買選規格', () => {
+  it('發起的人列規格；每個人各選各的、數量是各規格加起來；兩人同時選都留著；全選 0 就是收回', () => {
+    const { a, b } = twoPhones()
+    const id = a.shop.create({ name: '精華液', note: '', date: '', itemId: '', place: '', owner: 'pubA', qty: 1, bought: false, specs: ['保濕', '控油'] })
+    const c = new Trip(newTripDocs(), { pubkey: 'pubC', device: 'devC' })
+    sync(a, b)
+    for (const k of ['main', 'comments'] as const) Y.applyUpdate(c.docs[k], Y.encodeStateAsUpdate(a.docs[k]))
+    b.setWantSpecs(id, { 保濕: 1, 控油: 2 })
+    c.setWantSpecs(id, { 保濕: 1, 控油: 0 })
+    sync(a, b)
+    for (const k of ['main', 'comments'] as const) {
+      Y.applyUpdate(a.docs[k], Y.encodeStateAsUpdate(c.docs[k]))
+      Y.applyUpdate(c.docs[k], Y.encodeStateAsUpdate(a.docs[k]))
+    }
+    const s = a.shopItems()[0]
+    expect(s.wants).toEqual({ pubB: 3, pubC: 1 })
+    expect(s.wantSpecs).toEqual({ pubB: { 保濕: 1, 控油: 2 }, pubC: { 保濕: 1 } })
+    expect(s.total).toBe(5)
+    // 發起的人拿掉一個規格：選了那個規格的不再列
+    a.shop.update(id, { specs: ['保濕'] })
+    expect(a.shopItems()[0].wantSpecs).toEqual({ pubB: { 保濕: 1 }, pubC: { 保濕: 1 } })
+    c.setWantSpecs(id, { 保濕: 0 })
+    expect(c.shopItems()[0].wants).toEqual({ pubB: 3 })
+    // c 這支手機還沒收到「拿掉控油」，所以照舊列著
+    expect(c.shopItems()[0].wantSpecs).toEqual({ pubB: { 保濕: 1, 控油: 2 } })
+  })
+})

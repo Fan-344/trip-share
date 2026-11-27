@@ -172,6 +172,8 @@ export interface ShopItem {
   ask?: boolean
   /** 這項代買不用分帳（分帳頁的「代買待登錄」不再列它）。 */
   noSplit?: boolean
+  /** 發起的人列出的可選規格（例如保濕版、控油版）；有的話，代買的人 +1 時要選規格。 */
+  specs?: string[]
   /** 價錢，隨手寫（例如「350 泰銖」）。 */
   price?: string
 }
@@ -205,6 +207,8 @@ export type ShopItemView = ShopItem & Meta & {
   wants: Record<string, number>
   /** 明確回覆「不用」的人。 */
   declined: string[]
+  /** 代買的人各自選的規格（公鑰 → 規格 → 數量；只列還在代買、選了規格的）。 */
+  wantSpecs: Record<string, Record<string, number>>
   /** 合計要買幾個（自己的加上別人要的）。 */
   total: number
 }

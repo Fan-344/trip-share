@@ -6,6 +6,7 @@ import { byDayOrder } from '../order'
 import { defaultDayIcon, themeOf } from '../themes'
 import { ago, dayLabel, daysBetween, defaultTz, fullDay, mapLink, mapSearchOn, placeName, safeUrl, today, zoneOptions } from '../time'
 import { Empty, Farewell } from './bits'
+import { Comments } from './Comments'
 import { Chevron } from './fold'
 import { CATS, DAY_ICONS, Icon, catOf } from './Icons'
 import { EditBar, Field, Seg, Sheet, useNow, value } from './kit'
@@ -14,10 +15,11 @@ import type { TabProps } from './TripPage'
 const KINDS: [ItemKind, string][] = [['normal', '一般'], ['must', '必去'], ['reminder', '提醒']]
 const PINS: [ItemPin, string][] = [['', '照時間'], ['top', '置頂'], ['bottom', '置底']]
 
-export function Plan({ trip, theme }: TabProps) {
+export function Plan({ trip, theme, photos }: TabProps) {
   const now = useNow(60_000)
   const meta = trip.meta
   const items = trip.items.all()
+  const talk = trip.commentCounts()
   const flights = trip.flights.all()
   const range = daysBetween(meta.startDate, meta.endDate)
   // 行程起訖日之間的每一天，加上有項目但落在範圍外的日期。
@@ -103,6 +105,8 @@ export function Plan({ trip, theme }: TabProps) {
                       {cat && <span class="chip">{cat.name}</span>}
                       {i.kind === 'must' && <span class="stamp must"><Icon id="star" size={15} />必去</span>}
                       {i.kind === 'reminder' && <span class="chip yellow">提醒</span>}
+                      {/* 有留言的話卡片上顯示數字，收起來也看得到 */}
+                      {!!talk.get(i.id) && <span class="talk"><Icon id="chat" size={16} />{talk.get(i.id)}</span>}
                       <span class="grow" />
                       <Chevron open={open} />
                     </div>
@@ -131,6 +135,7 @@ export function Plan({ trip, theme }: TabProps) {
                             <Icon id="pencil" size={16} />修改
                           </button>}
                         </div>
+                        <Comments trip={trip} photos={photos} itemId={i.id} />
                       </div>
                     )}
                   </div>

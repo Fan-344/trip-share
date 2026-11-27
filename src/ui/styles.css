@@ -415,6 +415,22 @@ button.group .muted { font-weight: 400; margin-left: auto; }
 /* ---- 照片與現場詢問 ---- */
 .photo { display: block; width: 100%; max-height: 220px; object-fit: cover; border: var(--line); border-radius: 14px; margin-bottom: 10px; background: #fff; }
 .photo.tap { cursor: zoom-in; }
+/* 選規格的每一列：規格名稱和數量 */
+.row.spec { padding: 8px 0; border-bottom: 1px solid var(--edge); }
+/* ---- 行程項目底下的留言 ---- */
+.talk { display: inline-flex; align-items: center; gap: 2px; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.comments { margin-top: 10px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--ink) 25%, transparent); cursor: default; }
+.said { padding: 6px 0; }
+.said .row { gap: 6px; font-size: 0.85rem; }
+.said .note { margin-top: 2px; white-space: pre-wrap; }
+.said .photo { margin: 6px 0 0; max-width: 220px; }
+.said button.ghost { padding: 2px 4px; min-height: 0; }
+.say { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.say input:not([type=file]) { min-width: 0; margin: 0; }
+.say button.ghost { padding: 4px; min-height: 0; }
+.say-photo { position: relative; display: inline-block; margin-top: 6px; }
+.say-photo img { display: block; max-height: 90px; border: var(--line); border-radius: 10px; }
+.say-photo button { position: absolute; top: 2px; right: 2px; background: #fff; border-radius: 50%; padding: 2px; min-height: 0; }
 .photo.full { max-height: none; object-fit: contain; }
 .photofield { margin: 6px 0 10px; }
 .card.asking { background: var(--mizu-l); }

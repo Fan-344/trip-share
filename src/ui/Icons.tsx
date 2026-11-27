@@ -129,6 +129,13 @@ const ICONS: Record<string, JSX.Element> = {
       <path {...line(PAPER)} d="M11 10h10M11 15.500h10" />
     </g>
   ),
+  // 留言：對話框，裡面三個點
+  chat: (
+    <g>
+      <path fill={AQUA} d="M7 5h18a4 4 0 0 1 4 4v10a4 4 0 0 1 -4 4H15l-6.500 5v-5H7a4 4 0 0 1 -4 -4V9a4 4 0 0 1 4 -4z" />
+      <circle cx="10.500" cy="14" r="1.800" fill={PAPER} /><circle cx="16" cy="14" r="1.800" fill={PAPER} /><circle cx="21.500" cy="14" r="1.800" fill={PAPER} />
+    </g>
+  ),
   bell: (
     <g>
       <path fill={C.gold} d="M14 5.500a2 2 0 0 1 4 0a8.500 8.500 0 0 1 6.500 8.500v7l2.500 4H5l2.500 -4v-7a8.500 8.500 0 0 1 6.500 -8.500z" />

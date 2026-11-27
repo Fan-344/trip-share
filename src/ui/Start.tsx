@@ -7,6 +7,10 @@ import type { WxKind } from '../weather'
 import { fullDay } from '../time'
 import { Art, type Phase } from './Art'
 import { WeatherCard } from './Overview'
+import { Plan } from './Plan'
+import { Shop } from './Shop'
+import { Trip, newTripDocs } from '../model/trip'
+import type { PhotoStore } from '../store/photos'
 import { BAGS, defaultLook } from '../avatar'
 import { Pile } from './Figure'
 import { BackupCard, Recover } from './Backup'
@@ -134,11 +138,47 @@ function WeatherCardGallery() {
   )
 }
 
+/**
+ * 只在開發版有：#/demo 用一份只存在這個畫面的假行程，看行程留言和代買選規格。
+ * 不會同步、不存檔，重新整理就回到一開始的樣子。照片不會真的存。
+ */
+function DemoPage() {
+  const [demo] = useState(() => {
+    const trip = new Trip(newTripDocs(), { pubkey: 'demo-me', device: 'demo' })
+    const day = new Date().toISOString().slice(0, 10)
+    trip.init({ id: 'demo', title: '範例行程', startDate: day, endDate: day }, '我')
+    const mei = trip.members.create({ nickname: '小美', role: 'member', joinedAt: Date.now() }, 'demo-mei')
+    const bao = trip.members.create({ nickname: '阿寶', role: 'member', joinedAt: Date.now() }, 'demo-bao')
+    const lunch = trip.items.create({ date: day, time: '12:00', tz: 'Asia/Taipei', title: '午餐：老街小吃', note: '', place: '老街', transport: '', kind: 'normal', cat: 'food' })
+    trip.items.create({ date: day, time: '15:00', tz: 'Asia/Taipei', title: '咖啡廳', note: '', place: '', transport: '', kind: 'normal', cat: 'food' })
+    // 別人留的言：直接寫進留言表，留言人掛成小美、阿寶
+    trip.comments.create({ itemId: lunch, text: '這家要排隊，早點去', thumb: null })
+    trip.comments.map.get([...trip.comments.map.keys()][0])!.set('createdBy', mei)
+    trip.shop.create({ name: '精華液', note: '', date: day, itemId: '', place: '藥妝店', owner: mei, qty: 1, bought: false, specs: ['保濕', '控油'] })
+    trip.shop.create({ name: '帆布包', note: '有三種顏色', date: day, itemId: '', place: '選物店', owner: bao, qty: 1, bought: false, ask: true, specs: ['米白', '黑', '藍'] })
+    trip.shop.create({ name: '鳳梨酥', note: '', date: day, itemId: '', place: '', owner: mei, qty: 2, bought: false })
+    const photos = { has: () => false, get: async () => ({ state: 'none' }), add: async () => {}, remove: () => {} } as unknown as PhotoStore
+    return { trip, photos }
+  })
+  useDocs([demo.trip.docs.main, demo.trip.docs.comments])
+  return (
+    <div class="page top">
+      <h1>範例</h1>
+      <p class="muted">假資料，只在這個畫面，重新整理就重來。</p>
+      <h2>行程留言<span class="muted">點開午餐</span></h2>
+      <Plan trip={demo.trip} theme="general" photos={demo.photos} reg={null as never} sync={null} />
+      <h2>代買選規格<span class="muted">精華液、帆布包有規格</span></h2>
+      <Shop trip={demo.trip} theme="general" photos={demo.photos} reg={null as never} sync={null} />
+    </div>
+  )
+}
+
 function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   useDocs([reg.ydoc])
   if (import.meta.env.DEV && hash === '#/themes') return <ThemeGallery />
   if (import.meta.env.DEV && hash === '#/weather') return <WeatherGallery />
   if (import.meta.env.DEV && hash === '#/wxcard') return <WeatherCardGallery />
+  if (import.meta.env.DEV && hash === '#/demo') return <DemoPage />
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
   if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><FirstRunHelp reg={reg} /><Recover reg={reg} /></div></div>
