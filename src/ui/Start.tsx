@@ -6,6 +6,7 @@ import { THEMES, type ThemeId } from '../themes'
 import type { WxKind } from '../weather'
 import { fullDay } from '../time'
 import { Art, type Phase } from './Art'
+import { WeatherCard } from './Overview'
 import { BAGS, defaultLook } from '../avatar'
 import { Pile } from './Figure'
 import { BackupCard, Recover } from './Backup'
@@ -118,10 +119,26 @@ function WeatherGallery() {
   )
 }
 
+/** 只在開發版有：#/wxcard 看天氣卡（含點開有雨的那天、每 3 小時），可以換城市；行程當作今天起十天。 */
+function WeatherCardGallery() {
+  const [airport, setAirport] = useState('CTS')
+  const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10)
+  return (
+    <div class="page top">
+      <h1>天氣卡範本</h1>
+      <select value={airport} onChange={(e) => setAirport((e.target as HTMLSelectElement).value)}>
+        {['CTS', 'NRT', 'CNX', 'ICN', 'HKG', 'SIN', 'SYD', 'AKL', 'LHR', 'SEA'].map((a) => <option key={a} value={a}>{a}</option>)}
+      </select>
+      <WeatherCard key={airport} airport={airport} start={day(0)} end={day(9)} />
+    </div>
+  )
+}
+
 function Routes({ reg, hash }: { reg: Registry; hash: string }) {
   useDocs([reg.ydoc])
   if (import.meta.env.DEV && hash === '#/themes') return <ThemeGallery />
   if (import.meta.env.DEV && hash === '#/weather') return <WeatherGallery />
+  if (import.meta.env.DEV && hash === '#/wxcard') return <WeatherCardGallery />
   const me = reg.me()
   const wantsJoin = /^#\/?join/i.test(hash)
   if (!me) return <div><Nickname invited={wantsJoin} onSave={(n) => reg.setNickname(n)} /><div class="page" style="padding-top:0"><FirstRunHelp reg={reg} /><Recover reg={reg} /></div></div>

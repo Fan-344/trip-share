@@ -1,6 +1,6 @@
 // 總覽：行程日期與倒數、航班、住宿。
 import { useEffect, useState } from 'preact/hooks'
-import { WX_NAME, cachedWeather, forecastOpens, hasWeather, isWet, loadWeather, pickDays, roundChance, type Weather, type WxKind } from '../weather'
+import { WX_NAME, cachedWeather, forecastOpens, hasWeather, isWet, loadWeather, pickDays, roundChance, type Weather, type WxHour, type WxKind } from '../weather'
 import type { Trip } from '../model/trip'
 import type { Flight, Meta, Stay } from '../model/types'
 import {
@@ -615,8 +615,10 @@ function useNowWeather(airport: string | undefined): WxKind {
   return wx && Date.now() - wx.at < 3 * 3_600_000 ? wx.now.kind : 'clear'
 }
 
-function WeatherCard({ airport, start, end }: { airport: string; start: string; end: string }) {
+export function WeatherCard({ airport, start, end }: { airport: string; start: string; end: string }) {
   const [wx, setWx] = useState<Weather | null>(() => cachedWeather(airport))
+  // 點開的那一天（只有會下雨雪的日子可以點）：下面列出那天每 3 小時的天氣
+  const [open, setOpen] = useState<string | null>(null)
   useEffect(() => {
     let gone = false
     void loadWeather(airport).then((w) => { if (!gone && w) setWx(w) })
@@ -646,7 +648,8 @@ function WeatherCard({ airport, start, end }: { airport: string; start: string; 
               <span class="muted">還沒有</span>
             </div>
           ) : (
-            <div key={d.date} class={inTrip(d.date) ? 'on' : ''}>
+            <div key={d.date} class={`${inTrip(d.date) ? 'on' : ''} ${open === d.date ? 'picked' : ''} ${isWet(d.kind) && d.hours ? 'tap' : ''}`}
+              {...(isWet(d.kind) && d.hours ? { role: 'button', tabIndex: 0, 'aria-expanded': open === d.date, onClick: () => setOpen(open === d.date ? null : d.date) } : {})}>
               <small>{md(d.date)}</small>
               <Icon id={WX_ICON[d.kind]} size={26} />
               <b>{d.hi}°</b><span class="muted">{d.lo}°</span>
@@ -657,6 +660,22 @@ function WeatherCard({ airport, start, end }: { airport: string; start: string; 
           ))}
         </div>
       )}
+      {open && <DayHours hours={wx.days.find((d) => d.date === open)?.hours ?? []} />}
+    </div>
+  )
+}
+
+/** 點開某一天：那天每 3 小時一格，只有時刻和圖示；看圖示就知道幾點會下。 */
+function DayHours({ hours }: { hours: WxHour[] }) {
+  if (hours.length === 0) return null
+  return (
+    <div class="wx-hours">
+      {hours.map((s) => (
+        <div key={s.h} class={isWet(s.kind) ? 'wet' : ''}>
+          <Icon id={WX_ICON[s.kind]} size={22} />
+          <small>{s.h}</small>
+        </div>
+      ))}
     </div>
   )
 }

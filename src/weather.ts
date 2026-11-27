@@ -4,7 +4,13 @@
 
 export type WxKind = 'clear' | 'partly' | 'cloudy' | 'fog' | 'rain' | 'snow' | 'mix' | 'storm'
 
-export interface WxDay { date: string; kind: WxKind; hi: number; lo: number; rain: number }
+export interface WxDay {
+  date: string; kind: WxKind; hi: number; lo: number; rain: number
+  /** 這天每 3 小時一段（0、3、6…21 時，當地時間），點開有雨的日子時顯示。舊的暫存沒有。 */
+  hours?: WxHour[]
+}
+/** 3 小時一段的天氣：從幾點開始、天氣、這段裡最高的降水機率。 */
+export interface WxHour { h: number; kind: WxKind; rain: number }
 export interface Weather {
   /** 什麼時候查的。 */
   at: number
@@ -95,7 +101,7 @@ export function fallOf(precipMm: number, snowCm: number): Fall {
 
 const HOUR = 3_600_000
 // 判斷天氣的方式改過，換一個名字，舊的暫存就不會再被拿來用
-const keyOf = (airport: string) => `wx5:${airport.toUpperCase()}`
+const keyOf = (airport: string) => `wx6:${airport.toUpperCase()}`
 
 /** 上次查到的結果；沒查過、或資料壞了就是 null。 */
 export function cachedWeather(airport: string): Weather | null {
@@ -112,8 +118,10 @@ export function parseWeather(json: unknown, at: number): Weather {
   const j = json as {
     current: { temperature_2m: number; weather_code: number }
     daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max?: (number | null)[]; precipitation_sum?: (number | null)[]; cloud_cover_mean?: (number | null)[]; snowfall_sum?: (number | null)[] }
+    hourly?: Hourly
   }
   if (typeof j?.current?.temperature_2m !== 'number' || !Array.isArray(j?.daily?.time)) throw new Error('天氣資料格式不對')
+  const hours = j.hourly && Array.isArray(j.hourly.time) ? blocksOf(j.hourly) : null
   return {
     at,
     now: { temp: Math.round(j.current.temperature_2m), kind: kindOf(j.current.weather_code) },
@@ -129,8 +137,57 @@ export function parseWeather(json: unknown, at: number): Weather {
       hi: Math.round(j.daily.temperature_2m_max[i]),
       lo: Math.round(j.daily.temperature_2m_min[i]),
       rain: Math.round(j.daily.precipitation_probability_max?.[i] ?? 0),
+      ...(hours?.get(date) ? { hours: hours.get(date) } : {}),
     })),
   }
+}
+
+/** 服務給的每小時資料（時間是當地時間，例如 2027-03-01T06:00）。 */
+interface Hourly {
+  time: string[]; weather_code: (number | null)[]
+  precipitation_probability?: (number | null)[]; precipitation?: (number | null)[]; snowfall?: (number | null)[]
+}
+
+/** 晴、多雲、陰、霧的輕重，3 小時裡取最重的那個。 */
+const DRY_RANK: WxKind[] = ['clear', 'partly', 'cloudy', 'fog']
+
+/**
+ * 每小時的資料併成每 3 小時一段，依日期分好。一段的天氣：
+ * - 有一小時打雷就是雷雨。
+ * - 有一小時代碼是會下的，而且這段的降水機率到四成、或真的有 0.3 毫米以上：算會下；
+ *   雪比雨多是雪、兩種都有份量是雨夾雪、其餘是雨（跟一整天的判斷同一套，見 fallOf）。
+ * - 其餘取這三小時裡最陰的（晴 < 多雲 < 陰 < 霧）。
+ */
+export function blocksOf(hr: Hourly): Map<string, WxHour[]> {
+  const out = new Map<string, WxHour[]>()
+  const groups = new Map<string, number[]>()
+  hr.time.forEach((t, i) => {
+    const key = `${t.slice(0, 10)}|${Math.floor(Number(t.slice(11, 13)) / 3) * 3}`
+    const g = groups.get(key)
+    if (g) g.push(i)
+    else groups.set(key, [i])
+  })
+  for (const [key, idx] of groups) {
+    const [date, h] = key.split('|')
+    const kinds = idx.map((i) => kindOf(hr.weather_code[i] ?? 0))
+    const prob = Math.max(0, ...idx.map((i) => hr.precipitation_probability?.[i] ?? 0))
+    const mm = idx.reduce((s, i) => s + (hr.precipitation?.[i] ?? 0), 0)
+    const snowCm = idx.reduce((s, i) => s + (hr.snowfall?.[i] ?? 0), 0)
+    let kind: WxKind
+    if (kinds.includes('storm')) kind = 'storm'
+    else if (kinds.some((k) => k === 'rain' || k === 'snow') && (prob >= 40 || mm >= 0.3)) {
+      const f = fallOf(mm, snowCm)
+      const less = Math.min(f.rain, f.snow)
+      const more = Math.max(f.rain, f.snow)
+      kind = less >= MIX_MIN && less >= more * MIX_RATIO ? 'mix' : f.snow > f.rain ? 'snow' : 'rain'
+    } else {
+      kind = kinds.reduce<WxKind>((a, k) => (DRY_RANK.indexOf(k) > DRY_RANK.indexOf(a) ? k : a), 'clear')
+    }
+    const list = out.get(date) ?? []
+    list.push({ h: Number(h), kind, rain: Math.round(prob) })
+    out.set(date, list)
+  }
+  return out
 }
 
 /**
@@ -157,11 +214,15 @@ async function fetchWeather(airport: string, now: number): Promise<Weather | nul
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${at[0]}&longitude=${at[1]}`
       + '&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,cloud_cover_mean,snowfall_sum'
-      + '&timezone=auto&forecast_days=16'
+      + '&hourly=weather_code,precipitation_probability,precipitation,snowfall&timezone=auto&forecast_days=16'
     const res = await fetch(url)
     if (!res.ok) throw new Error(`天氣服務回應 ${res.status}`)
     const w = parseWeather(await res.json(), now)
-    try { localStorage.setItem(keyOf(airport), JSON.stringify(w)) } catch { /* 存不下就算了，下次再查 */ }
+    try {
+      // 順便清掉舊格式的暫存（wx:、wx2: … 不是現在這個名字的）
+      for (const k of Object.keys(localStorage)) if (/^wx\d*:/.test(k) && !k.startsWith(keyOf(''))) localStorage.removeItem(k)
+      localStorage.setItem(keyOf(airport), JSON.stringify(w))
+    } catch { /* 存不下就算了，下次再查 */ }
     return w
   } catch {
     return old

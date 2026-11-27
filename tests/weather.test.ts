@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { dayKind, fallOf, forecastOpens, hasWeather, isWet, kindOf, parseWeather, pickDays, roundChance, loadWeather } from '../src/weather'
+import { dayKind, fallOf, forecastOpens, hasWeather, isWet, kindOf, parseWeather, pickDays, roundChance, loadWeather, blocksOf } from '../src/weather'
 
 const sample = {
   current: { temperature_2m: 24.7, weather_code: 0 },
@@ -152,5 +152,34 @@ describe('同時查同一個地方的天氣', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+describe('每 3 小時一段', () => {
+  const t = (h: number) => `2027-03-01T${String(h).padStart(2, '0')}:00`
+  it('照當地時間分段；有雨要機率四成或真的有雨量才算雨，其餘取最陰的', () => {
+    const m = blocksOf({
+      time: [0, 1, 2, 3, 4, 5, 6, 7, 8].map(t),
+      weather_code: [0, 2, 1, 61, 63, 3, 51, 3, 3],
+      precipitation_probability: [0, 0, 5, 70, 80, 40, 20, 10, 10],
+      precipitation: [0, 0, 0, 0.8, 1.5, 0, 0.1, 0, 0],
+      snowfall: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    })
+    expect(m.get('2027-03-01')).toEqual([
+      { h: 0, kind: 'partly', rain: 5 },
+      { h: 3, kind: 'rain', rain: 80 },
+      // 有一小時代碼是毛毛雨，但機率兩成、雨量只有 0.1 毫米：不算雨，取最陰的「陰」
+      { h: 6, kind: 'cloudy', rain: 20 },
+    ])
+  })
+  it('有一小時打雷就是雷雨；下的是雪就是雪', () => {
+    const m = blocksOf({
+      time: [0, 1, 2, 3, 4, 5].map(t),
+      weather_code: [61, 95, 61, 71, 73, 71],
+      precipitation_probability: [90, 90, 90, 90, 90, 90],
+      precipitation: [2, 3, 2, 1, 1.5, 1],
+      snowfall: [0, 0, 0, 1.4, 2.1, 1.4],
+    })
+    expect(m.get('2027-03-01')?.map((s) => s.kind)).toEqual(['storm', 'snow'])
   })
 })
