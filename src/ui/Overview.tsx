@@ -617,7 +617,7 @@ function useNowWeather(airport: string | undefined): WxKind {
 
 export function WeatherCard({ airport, start, end }: { airport: string; start: string; end: string }) {
   const [wx, setWx] = useState<Weather | null>(() => cachedWeather(airport))
-  // 點開的那一天（只有會下雨雪的日子可以點）：下面列出那天每 3 小時的天氣
+  // 點開的那一天：下面列出那天每 3 小時的天氣
   const [open, setOpen] = useState<string | null>(null)
   useEffect(() => {
     let gone = false
@@ -648,8 +648,8 @@ export function WeatherCard({ airport, start, end }: { airport: string; start: s
               <span class="muted">還沒有</span>
             </div>
           ) : (
-            <div key={d.date} class={`${inTrip(d.date) ? 'on' : ''} ${open === d.date ? 'picked' : ''} ${isWet(d.kind) && d.hours ? 'tap' : ''}`}
-              {...(isWet(d.kind) && d.hours ? { role: 'button', tabIndex: 0, 'aria-expanded': open === d.date, onClick: () => setOpen(open === d.date ? null : d.date) } : {})}>
+            <div key={d.date} class={`${inTrip(d.date) ? 'on' : ''} ${open === d.date ? 'picked' : ''} ${d.hours ? 'tap' : ''}`}
+              {...(d.hours ? { role: 'button', tabIndex: 0, 'aria-expanded': open === d.date, onClick: () => setOpen(open === d.date ? null : d.date) } : {})}>
               <small>{md(d.date)}</small>
               <Icon id={WX_ICON[d.kind]} size={26} />
               <b>{d.hi}°</b><span class="muted">{d.lo}°</span>
@@ -671,8 +671,9 @@ function DayHours({ hours }: { hours: WxHour[] }) {
   return (
     <div class="wx-hours">
       {hours.map((s) => (
-        <div key={s.h} class={isWet(s.kind) ? 'wet' : ''}>
-          <Icon id={WX_ICON[s.kind]} size={22} />
+        <div key={s.h}>
+          {/* 晚上 6 點到清晨 6 點的晴、多雲時晴畫月亮，不畫太陽 */}
+          <Icon id={(s.h < 6 || s.h >= 18) && (s.kind === 'clear' || s.kind === 'partly') ? 'moon' : WX_ICON[s.kind]} size={22} />
           <small>{s.h}</small>
         </div>
       ))}

@@ -916,10 +916,9 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--ink)
 .wx-days > div.none i { width: 22px; height: 22px; border-radius: 50%; border: 2px dashed var(--shade); }
 .wx-days > div.none span { font-size: 0.72rem; }
 .wx-wait { margin: 10px 0 0; }
-/* 會下雨雪的日子可以點開；點開的那天框起來，下面列出每 3 小時 */
+/* 每一天都可以點開；點開的那天框起來，下面列出每 3 小時 */
 .wx-days > div.tap { cursor: pointer; }
 .wx-days > div.picked { box-shadow: inset 0 0 0 2px var(--accent); }
 .wx-hours { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; margin-top: 8px; padding: 6px 0 2px; border-top: 1px solid var(--edge); animation: fadein 0.2s ease-out; }
 .wx-hours > div { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
 .wx-hours small { font-size: 0.7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.wx-hours > div:not(.wet) { opacity: 0.45; }
